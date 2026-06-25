@@ -22,7 +22,6 @@ yarn-error.log*
 .env.*.local
 
 # Editor directories and files
-# 이루현
 # VSCode, WebStorm 등 개인 에디터 설정 파일 및 macOS 시스템 파일입니다.
 .vscode/
 .idea/
