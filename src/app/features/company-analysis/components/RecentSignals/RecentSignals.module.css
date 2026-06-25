@@ -1,0 +1,201 @@
+.card {
+  background: #ffffff;
+  border: 0.5px solid #E5E4E7;
+  border-radius: 10px;
+  padding: 14px 16px;
+  margin-bottom: 12px;
+}
+
+.header {
+  margin-bottom: 12px;
+}
+
+.sectionLabel {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: #9CA3AF;
+}
+
+.lane {
+  margin-bottom: 10px;
+}
+
+.lane:last-child {
+  margin-bottom: 0;
+}
+
+.laneHeader {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 5px;
+}
+
+.laneIndicator {
+  width: 3px;
+  height: 11px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.laneLabel {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.laneCount {
+  font-size: 10px;
+  font-weight: 600;
+  background: #F7F8FA;
+  border-radius: 10px;
+  padding: 0px 5px;
+  color: #9CA3AF;
+  font-family: 'ui-monospace', Consolas, monospace;
+}
+
+.laneSignals {
+  border-radius: 7px;
+  overflow: hidden;
+  border: 0.5px solid #E5E4E7;
+}
+
+.signalWrap {
+  border-top: 0.5px solid #F7F8FA;
+}
+
+.signalWrap:first-child {
+  border-top: none;
+}
+
+.signalRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 9px 12px;
+  background: transparent;
+  border: none;
+  text-align: left;
+  transition: background 150ms ease;
+}
+
+.signalRow:hover {
+  background: #F7F8FA;
+}
+
+.dirSymbol {
+  font-size: 10px;
+  font-weight: 700;
+  flex-shrink: 0;
+  width: 22px;
+  text-align: center;
+}
+
+.impactBadge {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 5px;
+  border-radius: 3px;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.signalTitle {
+  font-size: 13px;
+  font-weight: 500;
+  color: #1A1A1A;
+  flex: 1;
+  min-width: 0;
+}
+
+.signalSubtitle {
+  font-size: 12px;
+  color: #6B7280;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.signalSource {
+  font-size: 11px;
+  color: #B0B7C3;
+  font-family: 'ui-monospace', Consolas, monospace;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.expandChevron {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+
+.measurementPanel {
+  padding: 10px 12px 12px 42px;
+  border-top: 0.5px solid #F7F8FA;
+  background: #F7F8FA;
+  animation: fadeIn 120ms ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-3px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.measurementRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 7px;
+  flex-wrap: wrap;
+}
+
+.measureLabel {
+  font-size: 11px;
+  color: #9CA3AF;
+  width: 80px;
+  flex-shrink: 0;
+}
+
+.measureValues {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.prevValue {
+  font-size: 12px;
+  color: #9CA3AF;
+  font-family: 'ui-monospace', Consolas, monospace;
+}
+
+.arrow {
+  font-size: 11px;
+  color: #B0B7C3;
+}
+
+.currValue {
+  font-size: 13px;
+  font-weight: 700;
+  font-family: 'ui-monospace', Consolas, monospace;
+}
+
+.changeLabel {
+  font-size: 11px;
+  font-weight: 600;
+  font-family: 'ui-monospace', Consolas, monospace;
+  background: #ffffff;
+  padding: 1px 6px;
+  border-radius: 3px;
+}
+
+.measureNote {
+  font-size: 12px;
+  color: #6B7280;
+  line-height: 1.65;
+  margin: 0;
+}

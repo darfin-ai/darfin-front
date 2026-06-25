@@ -1,56 +1,28 @@
+# Dependencies
+# 로컬에 설치된 라이브러리 패키지 폴더입니다. 용량이 매우 크고, package.json을 통해 재설치 가능합니다.
+/node_modules
+
 # Build output
-build/
-target/
-bin/
-out/
-*.class
-*.war
-*.ear
+# `npm run build` 실행 시 생성되는 최종 결과물 폴더입니다.
+/dist
 
-# Tomcat / servlet runtime files
-logs/
-temp/
-work/
-localhost.*.log
-catalina*.log
-host-manager.*.log
-manager.*.log
+# Vite
+# Vite 개발 서버가 사용하는 캐시 폴더입니다.
+.vite/
 
-# Eclipse / Java IDE
-.classpath
-.project
-.settings/
-.metadata/
-.recommenders/
-.apt_generated/
-.factorypath
+# Log files
+# npm, yarn 등 패키지 매니저가 생성하는 로그 파일입니다.
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 
-# IntelliJ IDEA
-.idea/
-*.iml
+# Local environment variables
+# API 키 등 민감 정보를 담는 로컬 환경변수 파일입니다. 보안상 반드시 제외해야 합니다.
+.env.local
+.env.*.local
 
-# VS Code
+# Editor directories and files
+# VSCode, WebStorm 등 개인 에디터 설정 파일 및 macOS 시스템 파일입니다.
 .vscode/
-
-# Maven / Gradle caches
-build.gradle
-/.gradle/
-
-# OS files
+.idea/
 .DS_Store
-Thumbs.db
-
-# lib
-**/webapp/WEB-INF/lib/*.jar
-
-# Gradle Wrapper
-gradlew
-gradlew.bat
-gradle/wrapper/gradle-wrapper.jar
-gradle/wrapper/gradle-wrapper.properties
-
-# Gradle Build Output
-.build/
-.gradle/
-build.gradle.kts
-settings.gradle.kts

@@ -1,0 +1,148 @@
+import { useState } from "react";
+import { Link, useNavigate } from "react-router";
+import { toast } from "sonner";
+import { User, Mail, Lock, Phone, MessageSquare } from "lucide-react";
+
+export function SignUp() {
+  const navigate = useNavigate();
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+
+  const handleSignUp = (e) => {
+    e.preventDefault();
+    if (password !== confirmPassword) {
+      toast.error('비밀번호가 일치하지 않습니다.');
+      return;
+    }
+    toast.success('회원가입이 완료되었습니다. 환영합니다!');
+    navigate('/');
+  };
+
+  return (
+    <div className="flex flex-col items-center justify-center py-12 animate-in fade-in duration-500">
+      <div className="w-full max-w-md bg-white p-8 rounded-3xl border border-slate-200 shadow-sm">
+        <div className="text-center mb-8">
+          <h1 className="text-2xl font-bold text-slate-900 mb-2">회원가입</h1>
+          <p className="text-sm text-slate-500">darfin과 함께 새로운 투자 여정을 시작하세요.</p>
+        </div>
+
+        <form onSubmit={handleSignUp} className="space-y-4">
+          <div className="space-y-1">
+            <label className="text-sm font-medium text-slate-700 block">이름</label>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <User className="h-5 w-5 text-slate-400" />
+              </div>
+              <input
+                type="text"
+                required
+                className="block w-full pl-10 pr-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 bg-slate-50"
+                placeholder="홍길동"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-sm font-medium text-slate-700 block">닉네임</label>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <MessageSquare className="h-5 w-5 text-slate-400" />
+              </div>
+              <input
+                type="text"
+                required
+                className="block w-full pl-10 pr-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 bg-slate-50"
+                placeholder="커뮤니티에서 사용할 닉네임"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-sm font-medium text-slate-700 block">전화번호</label>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <Phone className="h-5 w-5 text-slate-400" />
+              </div>
+              <input
+                type="tel"
+                required
+                className="block w-full pl-10 pr-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 bg-slate-50"
+                placeholder="010-0000-0000"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-sm font-medium text-slate-700 block">이메일</label>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <Mail className="h-5 w-5 text-slate-400" />
+              </div>
+              <input
+                type="email"
+                required
+                className="block w-full pl-10 pr-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 bg-slate-50"
+                placeholder="hello@darfin.com"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-sm font-medium text-slate-700 block">비밀번호</label>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <Lock className="h-5 w-5 text-slate-400" />
+              </div>
+              <input
+                type="password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="block w-full pl-10 pr-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 bg-slate-50"
+                placeholder="8자리 이상 영문, 숫자, 특수문자"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-sm font-medium text-slate-700 block">비밀번호 확인</label>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <Lock className="h-5 w-5 text-slate-400" />
+              </div>
+              <input
+                type="password"
+                required
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                className={`block w-full pl-10 pr-3 py-2.5 border rounded-xl text-sm focus:outline-none focus:ring-1 bg-slate-50 ${
+                  confirmPassword && password !== confirmPassword
+                    ? 'border-red-400 focus:border-red-500 focus:ring-red-500'
+                    : 'border-slate-200 focus:border-blue-500 focus:ring-blue-500'
+                }`}
+                placeholder="비밀번호를 다시 한 번 입력해주세요"
+              />
+            </div>
+            {confirmPassword && password !== confirmPassword && (
+              <p className="text-xs text-red-500 mt-1">비밀번호가 일치하지 않습니다.</p>
+            )}
+          </div>
+
+          <button
+            type="submit"
+            className="w-full py-2.5 px-4 mt-6 border border-transparent rounded-xl shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+          >
+            가입하기
+          </button>
+        </form>
+
+        <p className="mt-6 text-center text-sm text-slate-500">
+          이미 계정이 있으신가요?{" "}
+          <Link to="/login" className="font-semibold text-blue-600 hover:text-blue-700 transition-colors">
+            로그인
+          </Link>
+        </p>
+      </div>
+    </div>
+  );
+}
