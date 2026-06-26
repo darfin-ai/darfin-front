@@ -1,108 +1,63 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { useStore, seedRand } from '../store/store.jsx';
 import {
   UP, DOWN, SUB, INK, BRAND,
   won, wonShort, signPct, signNum, tone, timeAgo,
-  Avatar, Card, Modal, primaryBtn, iconBtn, CandleChart, Stub,
+  Avatar, Card, Heart, Modal, primaryBtn, iconBtn, CandleChart, Stub,
 } from '../components/ui.jsx';
 
 const PERIODS = [
-  { key: '1D', label: '1일', n: 48 },
-  { key: '1W', label: '1주일', n: 40 },
-  { key: '1M', label: '1개월', n: 30 },
-  { key: '3M', label: '3개월', n: 60 },
-  { key: '6M', label: '6개월', n: 90 },
-  { key: '1Y', label: '1년', n: 120 },
+  { key: '1D', label: '1일', n: 24 },
+  { key: '1W', label: '1주일', n: 45 },
+  { key: '1M', label: '1개월', n: 75 },
+  { key: '3M', label: '3개월', n: 120 },
+  { key: '6M', label: '6개월', n: 180 },
+  { key: '1Y', label: '1년', n: 250 },
 ];
+const MASTER_CANDLES = 250;
 
-function OrderModal({ stock, side, onClose }) {
-  const { state, buy, sell } = useStore();
-  const holding = state.holdings.find(h => h.code === stock.code);
-  const ownedQty = holding ? holding.qty : 0;
-  const [qty, setQty] = useState(1);
-  const price = stock.price;
-  const total = qty * price;
-  const isBuy = side === 'BUY';
-  const cash = state.funds.cashBalance;
-  const maxBuy = Math.floor(cash / price);
-  const canSubmit = isBuy ? (qty > 0 && total <= cash) : (qty > 0 && qty <= ownedQty);
-  const [done, setDone] = useState(false);
+function InteractiveChart({ allCandles, w, h, showMA5, showMA20, volH, count, resetKey }) {
+  const total = allCandles.length;
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  const visible = clamp(count, 15, total);
+  const [start, setStart] = useState(Math.max(0, total - visible));
+  const ref = useRef(null);
+  const drag = useRef(null);
 
-  const submit = () => {
-    if (!canSubmit) return;
-    if (isBuy) buy(stock.code, qty, price); else sell(stock.code, qty, price);
-    setDone(true);
+  useEffect(() => {
+    setStart(Math.max(0, total - clamp(count, 15, total)));
+  }, [resetKey, total]);
+
+  const onPointerDown = (e) => {
+    drag.current = { x: e.clientX, start };
+    if (ref.current && ref.current.setPointerCapture) try { ref.current.setPointerCapture(e.pointerId); } catch (_) {}
   };
-
-  if (done) {
-    return (
-      <Modal onClose={onClose} width={420}>
-        <div style={{ padding: 32, textAlign: 'center' }}>
-          <div style={{ width: 60, height: 60, borderRadius: '50%', background: isBuy ? '#FEF0F1' : '#EFF5FF', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 18px' }}>
-            <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke={isBuy ? UP : DOWN} strokeWidth="2.6"><path d="M5 12l5 5L20 7" strokeLinecap="round" strokeLinejoin="round" /></svg>
-          </div>
-          <div style={{ fontSize: 20, fontWeight: 800, color: INK, marginBottom: 8 }}>{isBuy ? '매수' : '매도'} 체결 완료</div>
-          <div style={{ fontSize: 15, color: '#4E5968', lineHeight: 1.6 }}>{stock.name} {qty}주를 {won(price)}에<br />{isBuy ? '매수' : '매도'}했어요. (KIS 현재가 기준 즉시 체결)</div>
-          <button onClick={onClose} style={{ ...primaryBtn, width: '100%', height: 50, marginTop: 24 }}>확인</button>
-        </div>
-      </Modal>
-    );
-  }
+  const onPointerMove = (e) => {
+    if (!drag.current || !ref.current) return;
+    const candleW = ref.current.getBoundingClientRect().width / visible;
+    const dx = Math.round((e.clientX - drag.current.x) * 0.18 / candleW);
+    setStart(clamp(drag.current.start - dx, 0, total - visible));
+  };
+  const endDrag = () => { drag.current = null; };
+  const slice = allCandles.slice(start, start + visible);
+  const atEnd = start + visible >= total;
 
   return (
-    <Modal onClose={onClose} width={440}>
-      <div style={{ padding: 28 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 22 }}>
-          <Avatar stock={stock} size={44} />
-          <div>
-            <div style={{ fontSize: 18, fontWeight: 800, color: INK }}>{stock.name}</div>
-            <div style={{ fontSize: 14, fontWeight: 700, color: tone(stock.pct) }}>{won(price)} {signPct(stock.pct)}</div>
-          </div>
-        </div>
-        <div style={{ display: 'flex', background: '#F2F4F6', borderRadius: 12, padding: 4, marginBottom: 22 }}>
-          <div style={{ flex: 1, textAlign: 'center', padding: '10px 0', borderRadius: 9, fontWeight: 800, fontSize: 15,
-            background: '#fff', color: isBuy ? UP : DOWN, boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>{isBuy ? '매수' : '매도'}</div>
-        </div>
-
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-          <span style={{ fontSize: 15, fontWeight: 700, color: '#4E5968' }}>수량</span>
-          <span style={{ fontSize: 13, color: SUB }}>{isBuy ? `최대 ${maxBuy}주 가능` : `보유 ${ownedQty}주`}</span>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18 }}>
-          <button onClick={() => setQty(q => Math.max(1, q - 1))} style={stepBtn}>−</button>
-          <input value={qty} onChange={e => setQty(Math.max(0, parseInt(e.target.value.replace(/\D/g, '')) || 0))}
-            style={{ flex: 1, height: 52, textAlign: 'center', fontSize: 22, fontWeight: 800, color: INK, border: '1px solid #E5E8EB', borderRadius: 12 }} />
-          <button onClick={() => setQty(q => q + 1)} style={stepBtn}>+</button>
-        </div>
-        <div style={{ display: 'flex', gap: 8, marginBottom: 22 }}>
-          {[10, 50, 100].map(p => (
-            <button key={p} onClick={() => setQty(Math.max(1, Math.floor((isBuy ? maxBuy : ownedQty) * p / 100)))}
-              style={quickBtn}>{p}%</button>
-          ))}
-          <button onClick={() => setQty(isBuy ? maxBuy : ownedQty)} style={quickBtn}>{isBuy ? '최대' : '전량'}</button>
-        </div>
-
-        <div style={{ background: '#F9FAFB', borderRadius: 14, padding: 16, marginBottom: 20 }}>
-          <InfoRow label="주문 금액" value={won(total)} bold />
-          <InfoRow label={isBuy ? '주문 가능 현금' : '체결 후 현금'} value={won(isBuy ? cash : cash + total)} />
-        </div>
-        {!canSubmit && qty > 0 && (
-          <div style={{ fontSize: 13, color: UP, marginBottom: 14, fontWeight: 600 }}>
-            {isBuy ? '주문 가능 현금이 부족해요.' : '보유 수량을 초과했어요.'}
-          </div>
-        )}
-        <button onClick={submit} disabled={!canSubmit} style={{
-          width: '100%', height: 54, borderRadius: 14, border: 'none', fontSize: 17, fontWeight: 800, cursor: canSubmit ? 'pointer' : 'not-allowed',
-          background: canSubmit ? (isBuy ? UP : DOWN) : '#E5E8EB', color: canSubmit ? '#fff' : '#B0B8C1' }}>
-          {won(total)} {isBuy ? '매수' : '매도'}
-        </button>
+    <div>
+      <div ref={ref} onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={endDrag} onPointerLeave={endDrag}
+        style={{ cursor: drag.current ? 'grabbing' : 'grab', touchAction: 'pan-y', userSelect: 'none', overflow: 'hidden' }}>
+        <CandleChart candles={slice} w={w} h={h} showMA5={showMA5} showMA20={showMA20} volH={volH} />
       </div>
-    </Modal>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 8, fontSize: 12, color: SUB }}>
+        <span>◀ 과거</span>
+        <span>좌우로 드래그해 과거 시세를 볼 수 있어요</span>
+        <span>{atEnd ? '현재 ▶' : '최근 ▶'}</span>
+      </div>
+    </div>
   );
 }
-const stepBtn = { width: 52, height: 52, borderRadius: 12, border: '1px solid #E5E8EB', background: '#fff', fontSize: 24, fontWeight: 700, color: '#4E5968', cursor: 'pointer' };
-const quickBtn = { flex: 1, height: 38, borderRadius: 10, border: '1px solid #E5E8EB', background: '#fff', fontSize: 13, fontWeight: 700, color: '#4E5968', cursor: 'pointer' };
-function InfoRow({ label, value, bold }) {
+
+function Row({ label, value, bold }) {
   return (
     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '5px 0' }}>
       <span style={{ fontSize: 14, color: SUB, whiteSpace: 'nowrap' }}>{label}</span>
@@ -111,21 +66,214 @@ function InfoRow({ label, value, bold }) {
   );
 }
 
+function tickSize(p) {
+  if (p >= 500000) return 1000;
+  if (p >= 100000) return 500;
+  if (p >= 50000) return 100;
+  if (p >= 10000) return 50;
+  if (p >= 5000) return 10;
+  if (p >= 1000) return 5;
+  return 1;
+}
+
+function PanelTitle({ children, right }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <span style={{ width: 4, height: 16, borderRadius: 2, background: BRAND }} />
+        <span style={{ fontSize: 17, fontWeight: 800, color: INK, whiteSpace: 'nowrap' }}>{children}</span>
+      </div>
+      {right}
+    </div>
+  );
+}
+
+function OrderPanel({ stock, holding, price, setPrice, priceType, setPriceType }) {
+  const { state, buy, sell } = useStore();
+  const ts = tickSize(stock.price);
+  const [side, setSide] = useState('BUY');
+  const [qty, setQty] = useState(0);
+  const [toast, setToast] = useState(null);
+
+  const isBuy = side === 'BUY';
+  const effPrice = priceType === 'market' ? stock.price : price;
+  const cash = state.funds.cashBalance;
+  const ownedQty = holding ? holding.qty : 0;
+  const maxQty = isBuy ? Math.floor(cash / (effPrice || 1)) : ownedQty;
+  const total = qty * effPrice;
+  const canSubmit = qty > 0 && (isBuy ? total <= cash : qty <= ownedQty);
+
+  const stepPrice = (d) => setPrice(p => Math.max(ts, Math.round((p + d * ts) / ts) * ts));
+  const ratio = (r) => setQty(Math.max(0, Math.floor(maxQty * r)));
+
+  const submit = () => {
+    if (!canSubmit) return;
+    if (isBuy) buy(stock.code, qty, effPrice); else sell(stock.code, qty, effPrice);
+    setToast(`${stock.name} ${qty}주 ${isBuy ? '매수' : '매도'} 체결 완료`);
+    setQty(0);
+    setTimeout(() => setToast(null), 2600);
+  };
+
+  const accent = isBuy ? UP : DOWN;
+  const accentBg = isBuy ? '#FEF0F1' : '#EFF5FF';
+  const lblStyle = { fontSize: 14, color: '#4E5968', fontWeight: 600, flexShrink: 0, width: 72 };
+  const obStep = { width: 44, height: 48, flexShrink: 0, borderRadius: 10, border: '1px solid #E5E8EB', background: '#fff', fontSize: 20, fontWeight: 700, color: '#4E5968', cursor: 'pointer' };
+
+  return (
+    <Card style={{ padding: 20 }}>
+      <PanelTitle right={<span style={{ fontSize: 12, color: SUB, whiteSpace: 'nowrap' }}>모의 · 즉시 체결</span>}>일반주문</PanelTitle>
+
+      <div style={{ display: 'flex', background: '#F2F4F6', borderRadius: 12, padding: 4, marginBottom: 18 }}>
+        {[['BUY', '매수', UP], ['SELL', '매도', DOWN]].map(([k, l, c]) => (
+          <button key={k} onClick={() => { setSide(k); setQty(0); }} disabled={k === 'SELL' && !holding}
+            style={{ flex: 1, height: 40, borderRadius: 9, border: 'none', cursor: (k === 'SELL' && !holding) ? 'not-allowed' : 'pointer', fontSize: 15, fontWeight: 800,
+              background: side === k ? '#fff' : 'transparent', color: side === k ? c : (k === 'SELL' && !holding ? '#C5CBD3' : '#8B95A1'),
+              boxShadow: side === k ? '0 1px 3px rgba(0,0,0,0.08)' : 'none' }}>{l}</button>
+        ))}
+      </div>
+
+      <div style={{ display: 'flex', alignItems: 'center', marginBottom: 14 }}>
+        <span style={lblStyle}>주문 유형</span>
+        <div style={{ flex: 1, height: 44, borderRadius: 10, border: '1px solid #E5E8EB', display: 'flex', alignItems: 'center', padding: '0 14px', fontSize: 14, fontWeight: 700, color: INK, justifyContent: 'space-between' }}>
+          정규장 주문
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', alignItems: 'center', marginBottom: 10 }}>
+        <span style={lblStyle}>{isBuy ? '구매' : '판매'} 가격</span>
+        <div style={{ flex: 1, display: 'flex', background: '#F2F4F6', borderRadius: 10, padding: 3 }}>
+          {[['limit', '지정가'], ['market', '시장가']].map(([k, l]) => (
+            <button key={k} onClick={() => setPriceType(k)} style={{ flex: 1, height: 34, borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 700,
+              background: priceType === k ? '#fff' : 'transparent', color: priceType === k ? INK : '#8B95A1', boxShadow: priceType === k ? '0 1px 2px rgba(0,0,0,0.08)' : 'none' }}>{l}</button>
+          ))}
+        </div>
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+        <span style={{ width: 72, flexShrink: 0 }} />
+        {priceType === 'market' ? (
+          <div style={{ flex: 1, height: 48, borderRadius: 10, background: '#F9FAFB', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, color: SUB }}>시장가 ({won(stock.price)})</div>
+        ) : (
+          <>
+            <button onClick={() => stepPrice(-1)} style={obStep}>−</button>
+            <div style={{ flex: 1, height: 48, borderRadius: 10, border: '1px solid #E5E8EB', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', padding: '0 12px' }}>
+              <input value={wonShort(price)} onChange={e => { const n = parseInt(e.target.value.replace(/\D/g, '')) || 0; setPrice(n); }}
+                style={{ width: '100%', border: 'none', outline: 'none', textAlign: 'right', fontSize: 18, fontWeight: 800, color: INK, background: 'transparent' }} />
+              <span style={{ fontSize: 14, color: SUB, marginLeft: 4 }}>원</span>
+            </div>
+            <button onClick={() => stepPrice(1)} style={obStep}>＋</button>
+          </>
+        )}
+      </div>
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+        <span style={lblStyle}>수량</span>
+        <button onClick={() => setQty(q => Math.max(0, q - 1))} style={obStep}>−</button>
+        <div style={{ flex: 1, height: 48, borderRadius: 10, border: '1px solid #E5E8EB', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', padding: '0 12px' }}>
+          <input value={qty === 0 ? '' : qty} placeholder="수량 입력" onChange={e => { const n = parseInt(e.target.value.replace(/\D/g, '')) || 0; setQty(n); }}
+            style={{ width: '100%', border: 'none', outline: 'none', textAlign: 'right', fontSize: 18, fontWeight: 800, color: INK, background: 'transparent' }} />
+          <span style={{ fontSize: 14, color: SUB, marginLeft: 4 }}>주</span>
+        </div>
+        <button onClick={() => setQty(q => q + 1)} style={obStep}>＋</button>
+      </div>
+      <div style={{ display: 'flex', gap: 8, marginBottom: 18 }}>
+        {[[0.1, '10%'], [0.25, '25%'], [0.5, '50%'], [1, '최대']].map(([r, l]) => (
+          <button key={l} onClick={() => ratio(r)} style={{ flex: 1, height: 36, borderRadius: 10, border: '1px solid #E5E8EB', background: '#fff', cursor: 'pointer', fontSize: 13, fontWeight: 700, color: '#4E5968' }}>{l}</button>
+        ))}
+      </div>
+
+      <div style={{ display: 'flex', alignItems: 'center', marginBottom: 6 }}>
+        <span style={lblStyle}>총 주문 금액</span>
+        <div style={{ flex: 1, height: 48, borderRadius: 10, background: '#F9FAFB', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', padding: '0 14px', fontSize: 18, fontWeight: 800, color: total > 0 ? INK : '#C5CBD3' }}>
+          {total > 0 ? won(total) : '금액 입력'}
+        </div>
+      </div>
+      <div style={{ textAlign: 'right', fontSize: 13, color: SUB, marginBottom: 16 }}>
+        {isBuy ? `주문 가능 금액 ${won(cash)}` : `보유 수량 ${ownedQty}주`}
+      </div>
+
+      {!canSubmit && qty > 0 && (
+        <div style={{ fontSize: 13, color: UP, fontWeight: 600, marginBottom: 12, textAlign: 'center' }}>
+          {isBuy ? '주문 가능 금액이 부족해요.' : '보유 수량을 초과했어요.'}
+        </div>
+      )}
+
+      <button onClick={submit} disabled={!canSubmit} style={{
+        width: '100%', height: 54, borderRadius: 14, border: 'none', fontSize: 17, fontWeight: 800, cursor: canSubmit ? 'pointer' : 'not-allowed',
+        background: canSubmit ? accent : '#E5E8EB', color: canSubmit ? '#fff' : '#B0B8C1' }}>
+        {qty > 0 ? `${won(total)} ${isBuy ? '매수하기' : '매도하기'}` : `${isBuy ? '매수' : '매도'}하기`}
+      </button>
+
+      {holding && (
+        <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid #F2F4F6' }}>
+          <div style={{ fontSize: 13, color: SUB, marginBottom: 8 }}>내 보유</div>
+          <Row label="보유 수량" value={holding.qty + '주'} />
+          <Row label="평균 매수가" value={won(holding.avgPrice)} />
+          <Row label="평가 손익" value={signNum((stock.price - holding.avgPrice) * holding.qty) + '원'} />
+        </div>
+      )}
+
+      {toast && (
+        <div style={{ marginTop: 14, display: 'flex', alignItems: 'center', gap: 8, background: accentBg, borderRadius: 12, padding: '12px 14px' }}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={accent} strokeWidth="2.4"><path d="M5 12l5 5L20 7" strokeLinecap="round" strokeLinejoin="round" /></svg>
+          <span style={{ fontSize: 14, fontWeight: 700, color: accent }}>{toast}</span>
+        </div>
+      )}
+    </Card>
+  );
+}
+
+function DetailTabs({ stock, info }) {
+  const [tab, setTab] = useState('info');
+  const tabs = [
+    { key: 'info', label: '종목 정보' },
+    { key: 'fin', label: '정기공시·재무' },
+    { key: 'community', label: '커뮤니티' },
+  ];
+  return (
+    <Card style={{ padding: 0, overflow: 'hidden' }}>
+      <div style={{ display: 'flex', borderBottom: '1px solid #EEF1F4', padding: '0 8px' }}>
+        {tabs.map(t => (
+          <button key={t.key} onClick={() => setTab(t.key)} style={{ position: 'relative', padding: '16px 16px', border: 'none', background: 'none',
+            cursor: 'pointer', fontSize: 15, fontWeight: 700, color: tab === t.key ? INK : '#8B95A1', whiteSpace: 'nowrap' }}>
+            {t.label}
+            {tab === t.key && <span style={{ position: 'absolute', left: 12, right: 12, bottom: -1, height: 3, background: BRAND, borderRadius: 2 }} />}
+          </button>
+        ))}
+      </div>
+      <div style={{ padding: 24 }}>
+        {tab === 'info' && (
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '20px 24px' }}>
+            {info.map(([k, v], i) => (
+              <div key={i}>
+                <div style={{ fontSize: 13, color: SUB, marginBottom: 4 }}>{k}</div>
+                <div style={{ fontSize: 16, fontWeight: 700, color: INK }}>{v}</div>
+              </div>
+            ))}
+          </div>
+        )}
+        {tab === 'fin' && <FinancialsChart stock={stock} bare />}
+        {tab === 'community' && <Community stock={stock} bare />}
+      </div>
+    </Card>
+  );
+}
+
 export function Detail() {
-  const { state, getStock, genCandles, navigate, toggleWatch, aiComments } = useStore();
+  const { state, getStock, genCandles, navigate, toggleWatch } = useStore();
   const code = state.route.params.code;
   const stock = getStock(code);
   const [period, setPeriod] = useState('3M');
   const [ma5, setMa5] = useState(true);
   const [ma20, setMa20] = useState(false);
-  const [order, setOrder] = useState(null);
+  const [orderPrice, setOrderPrice] = useState(stock ? stock.price : 0);
+  const [priceType, setPriceType] = useState('limit');
+  useEffect(() => { if (stock) setOrderPrice(stock.price); }, [code]);
   const periodObj = PERIODS.find(p => p.key === period);
-  const candles = useMemo(() => genCandles(stock, periodObj.n), [code, period]);
+  const allCandles = useMemo(() => stock ? genCandles(stock, MASTER_CANDLES) : [], [code]);
   if (!stock) return <Stub name="종목" />;
   const col = tone(stock.pct);
   const holding = state.holdings.find(h => h.code === code);
   const watched = state.watchlist.includes(code);
-  const comment = aiComments[code] || `${stock.sector} 업황 개선 기대감에 매수세가 유입되고 있어요.`;
 
   const info = [
     ['시가총액', stock.value >= 100 ? (stock.value * 9.2 / 10).toFixed(1) + '조' : (stock.value * 92).toLocaleString() + '억'],
@@ -138,10 +286,12 @@ export function Detail() {
 
   return (
     <div style={{ maxWidth: 1480, margin: '0 auto', padding: '24px 28px 80px' }}>
-      <button onClick={() => navigate('home')} style={{ display: 'flex', alignItems: 'center', gap: 4, border: 'none', background: 'none', color: SUB, fontSize: 14, fontWeight: 600, cursor: 'pointer', marginBottom: 18, whiteSpace: 'nowrap' }}>‹ 실시간 차트</button>
+      <button onClick={() => navigate('home')} style={{ display: 'flex', alignItems: 'center', gap: 6, border: '1px solid #E5E8EB', background: '#fff', color: '#4E5968', fontSize: 16, fontWeight: 700, cursor: 'pointer', marginBottom: 18, whiteSpace: 'nowrap', height: 44, padding: '0 18px', borderRadius: 12 }}>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
+        실시간 차트
+      </button>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: 28, alignItems: 'start' }}>
         <div>
-          {/* header */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 24 }}>
             <Avatar stock={stock} size={56} />
             <div style={{ flex: 1 }}>
@@ -154,7 +304,7 @@ export function Detail() {
                 <span style={{ fontSize: 17, fontWeight: 700, color: col, whiteSpace: 'nowrap' }}>{signNum(stock.changeAmt)} ({signPct(stock.pct)})</span>
               </div>
             </div>
-            <HeartBtn filled={watched} onClick={() => toggleWatch(code)} size={26} />
+            <Heart filled={watched} onClick={() => toggleWatch(code)} size={26} />
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 332px', gap: 20, marginBottom: 20, alignItems: 'start' }}>
@@ -176,68 +326,28 @@ export function Detail() {
                 <div style={{ display: 'flex', gap: 18, marginBottom: 8, fontSize: 12, color: SUB }}>
                   <span><span style={{ color: UP, fontWeight: 800 }}>■</span> 양봉</span>
                   <span><span style={{ color: DOWN, fontWeight: 800 }}>■</span> 음봉</span>
-                  <span style={{ marginLeft: 'auto' }}>거래량</span>
+                  <span style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 5 }}>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={SUB} strokeWidth="2" strokeLinecap="round"><path d="M5 9l-3 3 3 3M19 9l3 3-3 3M2 12h20" /></svg>
+                    드래그로 이동
+                  </span>
                 </div>
-                <CandleChart candles={candles} w={596} h={360} showMA5={ma5} showMA20={ma20} volH={70} />
+                <InteractiveChart allCandles={allCandles} w={596} h={360} showMA5={ma5} showMA20={ma20} volH={70} count={periodObj.n} resetKey={period + code} />
               </Card>
-              <Card>
-                <div style={{ fontSize: 18, fontWeight: 800, color: INK, marginBottom: 18 }}>종목 정보</div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '18px 24px' }}>
-                  {info.map(([k, v], i) => (
-                    <div key={i}>
-                      <div style={{ fontSize: 13, color: SUB, marginBottom: 4 }}>{k}</div>
-                      <div style={{ fontSize: 16, fontWeight: 700, color: INK }}>{v}</div>
-                    </div>
-                  ))}
-                </div>
-              </Card>
+              <DetailTabs stock={stock} info={info} />
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-              <OrderBook stock={stock} />
+              <OrderBook stock={stock} selectedPrice={priceType === 'limit' ? orderPrice : null}
+                onPick={(p) => { setPriceType('limit'); setOrderPrice(p); }} />
               <TickTape stock={stock} />
             </div>
           </div>
-
-          <FinancialsChart stock={stock} />
-          <Community stock={stock} />
         </div>
 
-        {/* right: order + AI */}
-        <div style={{ position: 'sticky', top: 120, display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <Card>
-            {holding && (
-              <div style={{ background: '#F9FAFB', borderRadius: 14, padding: 16, marginBottom: 16 }}>
-                <div style={{ fontSize: 13, color: SUB, marginBottom: 8 }}>내 보유</div>
-                <InfoRow label="보유 수량" value={holding.qty + '주'} />
-                <InfoRow label="평균 매수가" value={won(holding.avgPrice)} />
-                <InfoRow label="평가 손익" value={signNum((stock.price - holding.avgPrice) * holding.qty) + '원'} />
-              </div>
-            )}
-            <div style={{ display: 'flex', gap: 10 }}>
-              <button onClick={() => setOrder('SELL')} disabled={!holding} style={{ flex: 1, height: 54, borderRadius: 14, border: 'none', fontSize: 17, fontWeight: 800,
-                background: holding ? '#EFF5FF' : '#F2F4F6', color: holding ? DOWN : '#C5CBD3', cursor: holding ? 'pointer' : 'not-allowed' }}>매도</button>
-              <button onClick={() => setOrder('BUY')} style={{ flex: 1, height: 54, borderRadius: 14, border: 'none', fontSize: 17, fontWeight: 800, background: UP, color: '#fff', cursor: 'pointer' }}>매수</button>
-            </div>
-            <div style={{ fontSize: 12, color: SUB, textAlign: 'center', marginTop: 12 }}>모의투자 · KIS 현재가 기준 즉시 체결</div>
-          </Card>
-          <Card style={{ background: 'linear-gradient(135deg,#F4F8FF,#fff)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14, fontWeight: 800, color: BRAND, marginBottom: 10, whiteSpace: 'nowrap' }}>✦ Darfin AI 한줄 코멘트</div>
-            <div style={{ fontSize: 15, lineHeight: 1.6, color: '#333D4B' }}>{comment}</div>
-          </Card>
+        <div style={{ position: 'sticky', top: 84, display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <OrderPanel stock={stock} holding={holding} price={orderPrice} setPrice={setOrderPrice} priceType={priceType} setPriceType={setPriceType} />
         </div>
       </div>
-      {order && <OrderModal stock={stock} side={order} onClose={() => setOrder(null)} />}
     </div>
-  );
-}
-
-function HeartBtn({ filled, onClick, size = 22 }) {
-  return (
-    <button onClick={(e) => { e.stopPropagation(); onClick && onClick(); }} style={{ ...iconBtn, width: size + 12, height: size + 12 }}>
-      <svg width={size} height={size} viewBox="0 0 24 24" fill={filled ? UP : 'none'} stroke={filled ? UP : '#C5CBD3'} strokeWidth="2">
-        <path d="M12 21s-7-4.6-9.3-8.4C1 9.5 2.4 6 5.6 6c2 0 3.2 1.2 4.4 2.6C11.2 7.2 12.4 6 14.4 6c3.2 0 4.6 3.5 2.9 6.6C19 16.4 12 21 12 21z" strokeLinejoin="round" />
-      </svg>
-    </button>
   );
 }
 
@@ -250,28 +360,7 @@ function MAToggle({ on, color, label, onClick }) {
   );
 }
 
-function tickSize(p) {
-  if (p >= 500000) return 1000;
-  if (p >= 100000) return 500;
-  if (p >= 50000) return 100;
-  if (p >= 10000) return 50;
-  if (p >= 5000) return 10;
-  if (p >= 1000) return 5;
-  return 1;
-}
-function PanelTitle({ children, right }) {
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <span style={{ width: 4, height: 16, borderRadius: 2, background: BRAND }} />
-        <span style={{ fontSize: 17, fontWeight: 800, color: INK, whiteSpace: 'nowrap' }}>{children}</span>
-      </div>
-      {right}
-    </div>
-  );
-}
-
-function FinancialsChart({ stock }) {
+function FinancialsChart({ stock, bare }) {
   const [metric, setMetric] = useState('revenue');
   const data = useMemo(() => {
     const rnd = seedRand(stock.code + ':fin');
@@ -291,15 +380,16 @@ function FinancialsChart({ stock }) {
   const last = data[data.length - 1], yoyBase = data[data.length - 5] || data[0];
   const yoy = yoyBase[metric] ? ((last[metric] - yoyBase[metric]) / Math.abs(yoyBase[metric]) * 100) : 0;
   const fmt = (v) => v >= 10000 ? (v / 10000).toFixed(2) + '조원' : v.toLocaleString() + '억원';
-  return (
-    <Card style={{ marginBottom: 20 }}>
-      <PanelTitle right={
-        <div style={{ display: 'flex', gap: 4, background: '#F2F4F6', borderRadius: 10, padding: 4 }}>
-          {Object.entries(labels).map(([k, l]) => (
-            <button key={k} onClick={() => setMetric(k)} style={{ padding: '7px 12px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap',
-              background: metric === k ? '#fff' : 'transparent', color: metric === k ? INK : '#8B95A1', boxShadow: metric === k ? '0 1px 3px rgba(0,0,0,0.08)' : 'none' }}>{l}</button>
-          ))}
-        </div>}>정기공시 · 재무 추이</PanelTitle>
+  const metricTabs = (
+    <div style={{ display: 'flex', gap: 4, background: '#F2F4F6', borderRadius: 10, padding: 4 }}>
+      {Object.entries(labels).map(([k, l]) => (
+        <button key={k} onClick={() => setMetric(k)} style={{ padding: '7px 12px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap',
+          background: metric === k ? '#fff' : 'transparent', color: metric === k ? INK : '#8B95A1', boxShadow: metric === k ? '0 1px 3px rgba(0,0,0,0.08)' : 'none' }}>{l}</button>
+      ))}
+    </div>
+  );
+  const body = (
+    <>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 18 }}>
         <span style={{ fontSize: 24, fontWeight: 800, color: INK, whiteSpace: 'nowrap' }}>{fmt(last[metric])}</span>
         <span style={{ fontSize: 14, color: SUB, whiteSpace: 'nowrap' }}>{last.q} {labels[metric]}</span>
@@ -326,12 +416,28 @@ function FinancialsChart({ stock }) {
           </div>
         ))}
       </div>
+    </>
+  );
+  if (bare) return (
+    <div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18, flexWrap: 'wrap', gap: 10 }}>
+        <span style={{ fontSize: 13, color: SUB, fontWeight: 600 }}>최근 6개 분기 · 단일 매출 기준</span>
+        {metricTabs}
+      </div>
+      {body}
+    </div>
+  );
+  return (
+    <Card style={{ marginBottom: 20 }}>
+      <PanelTitle right={metricTabs}>정기공시 · 재무 추이</PanelTitle>
+      {body}
     </Card>
   );
 }
 
 function TickTape({ stock }) {
   const [tab, setTab] = useState('real');
+  const [expanded, setExpanded] = useState(false);
   const prevClose = stock.price - stock.changeAmt;
   const ticks = useMemo(() => {
     const rnd = seedRand(stock.code + ':tick');
@@ -360,6 +466,7 @@ function TickTape({ stock }) {
     }
     return arr;
   }, [stock.code]);
+  const moreBtn = { width: '100%', marginTop: 10, height: 38, borderRadius: 10, border: '1px solid #EEF1F4', background: '#F9FAFB', color: '#4E5968', fontSize: 13, fontWeight: 700, cursor: 'pointer' };
   return (
     <Card style={{ padding: 18 }}>
       <PanelTitle right={
@@ -374,7 +481,7 @@ function TickTape({ stock }) {
           <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.9fr 0.9fr 1fr', gap: 4, padding: '0 4px 8px', fontSize: 12, color: SUB, fontWeight: 600 }}>
             <span>체결가</span><span style={{ textAlign: 'right' }}>체결량</span><span style={{ textAlign: 'right' }}>등락률</span><span style={{ textAlign: 'right' }}>시간</span>
           </div>
-          {ticks.map((t, i) => (
+          {(expanded ? ticks : ticks.slice(0, 6)).map((t, i) => (
             <div key={i} style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.9fr 0.9fr 1fr', gap: 4, padding: '7px 4px', fontSize: 13, borderTop: '1px solid #F6F8FA' }}>
               <span style={{ fontWeight: 700, color: tone((t.p - prevClose)) }}>{wonShort(t.p)}</span>
               <span style={{ textAlign: 'right', color: '#4E5968' }}>{t.qty}</span>
@@ -382,13 +489,14 @@ function TickTape({ stock }) {
               <span style={{ textAlign: 'right', color: SUB }}>{t.time}</span>
             </div>
           ))}
+          <button onClick={() => setExpanded(v => !v)} style={moreBtn}>{expanded ? '접기' : `체결 더보기 (${ticks.length - 6})`}</button>
         </div>
       ) : (
         <div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.2fr 0.9fr 1.2fr', gap: 4, padding: '0 4px 8px', fontSize: 12, color: SUB, fontWeight: 600 }}>
             <span>일자</span><span style={{ textAlign: 'right' }}>종가</span><span style={{ textAlign: 'right' }}>등락률</span><span style={{ textAlign: 'right' }}>거래량</span>
           </div>
-          {daily.map((d, i) => (
+          {(expanded ? daily : daily.slice(0, 6)).map((d, i) => (
             <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 1.2fr 0.9fr 1.2fr', gap: 4, padding: '8px 4px', fontSize: 13, borderTop: '1px solid #F6F8FA' }}>
               <span style={{ color: '#4E5968' }}>{d.date}</span>
               <span style={{ textAlign: 'right', fontWeight: 700, color: INK }}>{wonShort(d.close)}</span>
@@ -396,13 +504,14 @@ function TickTape({ stock }) {
               <span style={{ textAlign: 'right', color: SUB }}>{(d.vol / 1000).toFixed(0)}K</span>
             </div>
           ))}
+          {daily.length > 6 && <button onClick={() => setExpanded(v => !v)} style={moreBtn}>{expanded ? '접기' : '더보기'}</button>}
         </div>
       )}
     </Card>
   );
 }
 
-function OrderBook({ stock }) {
+function OrderBook({ stock, selectedPrice, onPick }) {
   const prevClose = stock.price - stock.changeAmt;
   const { asks, bids, maxQ } = useMemo(() => {
     const rnd = seedRand(stock.code + ':ob');
@@ -416,15 +525,18 @@ function OrderBook({ stock }) {
   const OBRow = ({ lvl, side }) => {
     const col = side === 'ask' ? DOWN : UP;
     const barPct = (lvl.qty / maxQ) * 100;
+    const sel = selectedPrice != null && lvl.price === selectedPrice;
     return (
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 96px 1fr', alignItems: 'center', height: 30 }}>
+      <div onClick={() => onPick && onPick(lvl.price)} title="클릭해서 주문가로 설정"
+        style={{ display: 'grid', gridTemplateColumns: '1fr 96px 1fr', alignItems: 'center', height: 30, cursor: onPick ? 'pointer' : 'default',
+          borderRadius: 6, outline: sel ? `2px solid ${col}` : 'none', background: sel ? col + '0E' : 'transparent' }}>
         <div style={{ position: 'relative', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', paddingRight: 8 }}>
           {side === 'ask' && <>
             <div style={{ position: 'absolute', right: 0, top: 4, bottom: 4, width: barPct + '%', background: DOWN + '14', borderRadius: 4 }} />
             <span style={{ position: 'relative', fontSize: 12, color: '#4E5968', fontWeight: 600 }}>{lvl.qty.toLocaleString()}</span>
           </>}
         </div>
-        <div style={{ textAlign: 'center', fontSize: 14, fontWeight: 700, color: col }}>{wonShort(lvl.price)}</div>
+        <div style={{ textAlign: 'center', fontSize: 14, fontWeight: sel ? 800 : 700, color: col }}>{wonShort(lvl.price)}</div>
         <div style={{ position: 'relative', height: '100%', display: 'flex', alignItems: 'center', paddingLeft: 8 }}>
           {side === 'bid' && <>
             <div style={{ position: 'absolute', left: 0, top: 4, bottom: 4, width: barPct + '%', background: UP + '14', borderRadius: 4 }} />
@@ -436,9 +548,11 @@ function OrderBook({ stock }) {
   };
   return (
     <Card style={{ padding: 18 }}>
-      <PanelTitle right={<span style={{ fontSize: 12, color: SUB, whiteSpace: 'nowrap' }}>매도잔량 · 매수잔량</span>}>호가</PanelTitle>
+      <PanelTitle right={<span style={{ fontSize: 12, color: SUB, whiteSpace: 'nowrap' }}>클릭→주문가 설정</span>}>호가</PanelTitle>
       {asks.map((a, i) => <OBRow key={'a' + i} lvl={a} side="ask" />)}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, height: 38, margin: '4px 0', background: '#F9FAFB', borderRadius: 10 }}>
+      <div onClick={() => onPick && onPick(stock.price)} title="클릭해서 주문가로 설정"
+        style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, height: 38, margin: '4px 0', background: selectedPrice === stock.price ? tone(stock.pct) + '12' : '#F9FAFB', borderRadius: 10,
+          cursor: onPick ? 'pointer' : 'default', outline: selectedPrice === stock.price ? `2px solid ${tone(stock.pct)}` : 'none' }}>
         <span style={{ fontSize: 16, fontWeight: 800, color: tone(stock.pct) }}>{wonShort(stock.price)}</span>
         <span style={{ fontSize: 13, fontWeight: 700, color: tone(stock.pct) }}>{signPct(stock.pct)}</span>
       </div>
@@ -447,15 +561,14 @@ function OrderBook({ stock }) {
   );
 }
 
-function Community({ stock }) {
+function Community({ stock, bare }) {
   const { state, addPost, togglePostLike, addComment } = useStore();
   const posts = state.community[stock.code] || [];
   const [text, setText] = useState('');
   const [openId, setOpenId] = useState(null);
   const submit = () => { if (!text.trim()) return; addPost(stock.code, text.trim()); setText(''); };
-  return (
-    <Card style={{ marginTop: 20 }}>
-      <PanelTitle right={<span style={{ fontSize: 13, color: SUB, whiteSpace: 'nowrap' }}>{posts.length}개 글</span>}>커뮤니티 · {stock.name}</PanelTitle>
+  const inner = (
+    <>
       <div style={{ display: 'flex', gap: 10, marginBottom: 22 }}>
         <input value={text} onChange={e => setText(e.target.value)} onKeyDown={e => e.key === 'Enter' && submit()}
           placeholder={`${stock.name}에 대해 질문하거나 의견을 남겨보세요`}
@@ -500,9 +613,17 @@ function Community({ stock }) {
           ))}
         </div>
       )}
+    </>
+  );
+  if (bare) return inner;
+  return (
+    <Card style={{ marginTop: 20 }}>
+      <PanelTitle right={<span style={{ fontSize: 13, color: SUB, whiteSpace: 'nowrap' }}>{posts.length}개 글</span>}>커뮤니티 · {stock.name}</PanelTitle>
+      {inner}
     </Card>
   );
 }
+
 function CommentBox({ onSubmit }) {
   const [v, setV] = useState('');
   const go = () => { if (!v.trim()) return; onSubmit(v.trim()); setV(''); };
@@ -514,3 +635,5 @@ function CommentBox({ onSubmit }) {
     </div>
   );
 }
+
+Object.assign(window, { Detail, OrderPanel, Row, FinancialsChart, TickTape, OrderBook, Community });

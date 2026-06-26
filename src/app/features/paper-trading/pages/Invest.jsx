@@ -4,9 +4,11 @@ import {
   UP, DOWN, SUB, INK, BRAND,
   won, wonShort, signPct, signNum, tone, dateLabel,
   Avatar, Donut, Card, Modal, ghostBtn, primaryBtn, iconBtn, Heart,
-  PageShell, Empty, Metric, LoginGate,
+  PageShell, Empty, Metric,
 } from '../components/ui.jsx';
+// ===== 포트폴리오 · 관심종목 · 모의자금 · 체결내역 · AI분석 =====
 
+// ---------- usePortfolio ----------
 function usePortfolio() {
   const { state, getStock } = useStore();
   return useMemo(() => {
@@ -46,6 +48,7 @@ export function Portfolio() {
     <PageShell title="내 주식" sub={`보유 ${p.rows.length}종목 · 모의투자 계좌`}
       right={<button onClick={() => navigate('funds')} style={ghostBtn}>자금 관리</button>}>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: 20, marginBottom: 20 }}>
+        {/* summary */}
         <Card>
           <div style={{ fontSize: 14, color: SUB, marginBottom: 6 }}>총 자산</div>
           <div style={{ fontSize: 36, fontWeight: 800, color: INK, letterSpacing: '-0.02em' }}>{won(p.assets)}</div>
@@ -61,6 +64,7 @@ export function Portfolio() {
             <Metric label="주문 가능 현금" value={won(p.cash)} />
           </div>
         </Card>
+        {/* donut */}
         <Card>
           <div style={{ fontSize: 16, fontWeight: 800, color: INK, marginBottom: 14 }}>종목별 비중</div>
           {slices.length > 1 ? (
@@ -86,6 +90,7 @@ export function Portfolio() {
         </Card>
       </div>
 
+      {/* sub-tabs */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 18 }}>
         {[['holdings', '보유 주식'], ['trades', '체결 내역']].map(([k, l]) => (
           <button key={k} onClick={() => setSubtab(k)} style={{ height: 40, padding: '0 18px', borderRadius: 999, border: 'none', cursor: 'pointer',
@@ -94,45 +99,49 @@ export function Portfolio() {
       </div>
 
       {subtab === 'trades' ? <TradesTable /> : (
-        <>
-          {p.rows.length === 0 ? <Empty text="보유 중인 주식이 없어요. 종목을 매수해보세요." cta="종목 둘러보기" onCta={() => navigate('home')} /> : (
-            <Card style={{ padding: 8 }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1.6fr 1fr 1fr 1.1fr 1.1fr', gap: 8, padding: '12px 16px', fontSize: 13, color: SUB, fontWeight: 600 }}>
-                <span>종목</span><span style={{ textAlign: 'right' }}>보유수량</span><span style={{ textAlign: 'right' }}>평균매수가</span>
-                <span style={{ textAlign: 'right' }}>평가금액</span><span style={{ textAlign: 'right' }}>평가손익</span>
-              </div>
-              {p.rows.map(r => (
-                <div key={r.code} onClick={() => navigate('detail', { code: r.code })}
-                  style={{ display: 'grid', gridTemplateColumns: '1.6fr 1fr 1fr 1.1fr 1.1fr', gap: 8, padding: '14px 16px', alignItems: 'center', borderRadius: 12, cursor: 'pointer' }}
-                  onMouseEnter={e => e.currentTarget.style.background = '#F9FAFB'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
-                    <Avatar stock={r.stock} size={38} />
-                    <div style={{ minWidth: 0 }}>
-                      <div style={{ fontSize: 15, fontWeight: 700, color: INK, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.stock.short || r.stock.name}</div>
-                      <div style={{ fontSize: 13, color: tone(r.stock.pct) }}>{won(r.stock.price)} {signPct(r.stock.pct)}</div>
-                    </div>
-                  </div>
-                  <div style={{ textAlign: 'right', fontSize: 15, fontWeight: 600, color: INK }}>{r.qty}주</div>
-                  <div style={{ textAlign: 'right', fontSize: 15, color: '#4E5968' }}>{won(r.avgPrice)}</div>
-                  <div style={{ textAlign: 'right', fontSize: 15, fontWeight: 700, color: INK }}>{won(r.eval)}</div>
-                  <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontSize: 15, fontWeight: 700, color: tone(r.pnl) }}>{signNum(r.pnl)}</div>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: tone(r.pnl) }}>{signPct(r.pnlPct)}</div>
-                  </div>
+      <>
+      {/* holdings list */}
+      {p.rows.length === 0 ? <Empty text="보유 중인 주식이 없어요. 종목을 매수해보세요." cta="종목 둘러보기" onCta={() => navigate('home')} /> : (
+        <Card style={{ padding: 8 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1.6fr 1fr 1fr 1.1fr 1.1fr', gap: 8, padding: '12px 16px', fontSize: 13, color: SUB, fontWeight: 600 }}>
+            <span>종목</span><span style={{ textAlign: 'right' }}>보유수량</span><span style={{ textAlign: 'right' }}>평균매수가</span>
+            <span style={{ textAlign: 'right' }}>평가금액</span><span style={{ textAlign: 'right' }}>평가손익</span>
+          </div>
+          {p.rows.map(r => (
+            <div key={r.code} onClick={() => navigate('detail', { code: r.code })}
+              style={{ display: 'grid', gridTemplateColumns: '1.6fr 1fr 1fr 1.1fr 1.1fr', gap: 8, padding: '14px 16px', alignItems: 'center', borderRadius: 12, cursor: 'pointer' }}
+              onMouseEnter={e => e.currentTarget.style.background = '#F9FAFB'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
+                <Avatar stock={r.stock} size={38} />
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: INK, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.stock.short || r.stock.name}</div>
+                  <div style={{ fontSize: 13, color: tone(r.stock.pct) }}>{won(r.stock.price)} {signPct(r.stock.pct)}</div>
                 </div>
-              ))}
-            </Card>
-          )}
-        </>
+              </div>
+              <div style={{ textAlign: 'right', fontSize: 15, fontWeight: 600, color: INK }}>{r.qty}주</div>
+              <div style={{ textAlign: 'right', fontSize: 15, color: '#4E5968' }}>{won(r.avgPrice)}</div>
+              <div style={{ textAlign: 'right', fontSize: 15, fontWeight: 700, color: INK }}>{won(r.eval)}</div>
+              <div style={{ textAlign: 'right' }}>
+                <div style={{ fontSize: 15, fontWeight: 700, color: tone(r.pnl) }}>{signNum(r.pnl)}</div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: tone(r.pnl) }}>{signPct(r.pnlPct)}</div>
+              </div>
+            </div>
+          ))}
+        </Card>
       )}
+      </>)}
     </PageShell>
   );
+}
+function LoginGate() {
+  const { setLoggedIn } = useStore();
+  return <Empty text="로그인하면 내 모의투자 계좌를 볼 수 있어요." cta="로그인" onCta={() => setLoggedIn(true)} />;
 }
 
 // ---------- 관심 종목 ----------
 export function Watchlist() {
   const { state, getStock, navigate, toggleWatch } = useStore();
-  const [sort, setSort] = useState('added');
+  const [sort, setSort] = useState('added'); // added | pct | name
   const rows = useMemo(() => {
     let arr = state.watchlist.map((code, i) => ({ stock: getStock(code), order: i })).filter(r => r.stock);
     if (sort === 'pct') arr.sort((a, b) => b.stock.pct - a.stock.pct);
@@ -368,3 +377,5 @@ export function Trades() {
   if (!state.isLoggedIn) return <PageShell title="체결 내역"><LoginGate /></PageShell>;
   return <PageShell title="체결 내역"><TradesTable /></PageShell>;
 }
+
+Object.assign(window, { Portfolio, Watchlist, Funds, Trades, PageShell, Empty, LoginGate, Metric, usePortfolio });

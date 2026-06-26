@@ -1,9 +1,9 @@
-import { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
-
+import { createContext, useContext, useState, useEffect, useRef, useCallback, useMemo } from 'react';
+// ===== Darfin global store + seed data =====
 // Korean finance convention: 상승=빨강(red), 하락=파랑(blue)
 
-// ---------- seed: domestic stock universe ----------
-export const RAW_STOCKS = [
+// ---------- seed: domestic stock universe (from Toss screenshot) ----------
+const RAW_STOCKS = [
   { code: '000660', name: 'SK하이닉스',        price: 2095000, pct: 2.29,   value: 440, sector: '반도체',       color: '#E8344E' },
   { code: '005930', name: '삼성전자',          price: 300000,  pct: -0.82,  value: 251, sector: '반도체',       color: '#1428A0' },
   { code: '091230', name: 'KODEX SK하이닉스레버리지', short: 'KODEX SK하이...', price: 22725, pct: 4.53, value: 203, sector: 'ETF', color: '#2A7DE1' },
@@ -20,16 +20,19 @@ export const RAW_STOCKS = [
   { code: '247540', name: '에코프로비엠',       price: 187200,  pct: -2.04,  value: 44,  sector: '2차전지',     color: '#2E7D32' },
 ];
 
+// deterministic pseudo-random seeded by string
 export function seedRand(seed) {
   let h = 2166136261;
   for (let i = 0; i < seed.length; i++) { h ^= seed.charCodeAt(i); h = Math.imul(h, 16777619); }
   return function () { h += 0x6D2B79F5; let t = h; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
 }
 
+// generate OHLCV candles ending near current price, trending toward today's pct
 export function genCandles(stock, n) {
   const rnd = seedRand(stock.code + ':' + n);
   const end = stock.price;
   const drift = stock.pct >= 0 ? 1 : -1;
+  // walk backwards from a start price to the end price
   const start = end * (1 - (stock.pct / 100) * 0.5 - drift * 0.18 - rnd() * 0.05);
   const candles = [];
   let prevClose = start;
@@ -49,6 +52,7 @@ export function genCandles(stock, n) {
   return candles;
 }
 
+// short sparkline points (0..1 normalized) for indices / cards
 export function genSpark(seed, n, up) {
   const rnd = seedRand(seed);
   const pts = [];
@@ -58,6 +62,7 @@ export function genSpark(seed, n, up) {
     v = Math.max(0.05, Math.min(0.95, v));
     pts.push(v);
   }
+  // force end direction
   pts[n - 1] = up ? Math.max(...pts) * 0.96 : Math.min(...pts) * 1.04;
   return pts;
 }
@@ -96,10 +101,10 @@ const AI_COMMENTS = {
   '036930': '주요 고객사 증설 모멘텀으로 장비 발주가 늘어 강한 상승세를 보이고 있어요.',
 };
 
-function defaultState(initialLoggedIn = true) {
+function defaultState() {
   return {
     route: { name: 'home', params: {} },
-    isLoggedIn: initialLoggedIn,
+    isLoggedIn: true,
     funds: { initialized: true, initialAmount: 10000000, cashBalance: 4156000, chargeCountToday: 0 },
     holdings: [
       { code: '005930', qty: 10, avgPrice: 295000 },
@@ -142,31 +147,28 @@ const LS_KEY = 'darfin_v1';
 function loadState() {
   try {
     const raw = localStorage.getItem(LS_KEY);
-    if (!raw) return null;
+    if (!raw) return defaultState();
     const saved = JSON.parse(raw);
     const base = defaultState();
-    const merged = { ...base, ...saved, route: base.route };
+    const merged = { ...base, ...saved, route: base.route }; // route always starts at home
+    // migrate: drop legacy AI reports (old format without .health) and ensure community exists
     merged.aiReports = (merged.aiReports || []).filter(r => r && r.health);
     if (!merged.community) merged.community = base.community;
     return merged;
-  } catch (e) { return null; }
+  } catch (e) { return defaultState(); }
 }
 
 const StoreContext = createContext(null);
 
-export function StoreProvider({ children, initialLoggedIn = true, onLogout }) {
-  const [state, setState] = useState(() => {
-    const saved = loadState();
-    const base = saved ?? defaultState(initialLoggedIn);
-    // always sync isLoggedIn from AuthContext on mount
-    return { ...base, isLoggedIn: initialLoggedIn };
-  });
+export function StoreProvider({ children }) {
+  const [state, setState] = useState(loadState);
 
   useEffect(() => {
     const { route, ...persist } = state;
     try { localStorage.setItem(LS_KEY, JSON.stringify(persist)); } catch (e) {}
   }, [state]);
 
+  // ----- derived helpers -----
   const stockMap = useMemo(() => {
     const m = {};
     RAW_STOCKS.forEach(s => {
@@ -177,27 +179,25 @@ export function StoreProvider({ children, initialLoggedIn = true, onLogout }) {
   }, []);
   const getStock = useCallback((code) => stockMap[code], [stockMap]);
 
+  // ----- actions -----
   const navigate = useCallback((name, params = {}) => {
     setState(s => ({ ...s, route: { name, params } }));
     if (typeof window !== 'undefined') window.scrollTo(0, 0);
   }, []);
 
-  const setLoggedIn = useCallback((v) => {
-    setState(s => ({ ...s, isLoggedIn: v }));
-    if (!v) onLogout?.();
-  }, [onLogout]);
+  const setLoggedIn = useCallback((v) => setState(s => ({ ...s, isLoggedIn: v })), []);
 
   const toggleWatch = useCallback((code) => setState(s => {
     const has = s.watchlist.includes(code);
     if (has) return { ...s, watchlist: s.watchlist.filter(c => c !== code) };
-    if (s.watchlist.length >= 30) return s;
+    if (s.watchlist.length >= 30) return s; // 최대 30개
     return { ...s, watchlist: [code, ...s.watchlist] };
   }), []);
 
   const buy = useCallback((code, qty, price) => {
     setState(s => {
       const cost = qty * price;
-      if (cost > s.funds.cashBalance) return s;
+      if (cost > s.funds.cashBalance) return s; // insufficient
       const holdings = [...s.holdings];
       const idx = holdings.findIndex(h => h.code === code);
       if (idx >= 0) {
@@ -229,7 +229,7 @@ export function StoreProvider({ children, initialLoggedIn = true, onLogout }) {
 
   const chargeFunds = useCallback((amount) => {
     setState(s => {
-      if (s.funds.chargeCountToday >= 3) return s;
+      if (s.funds.chargeCountToday >= 3) return s; // 1일 3회 제한
       return {
         ...s,
         funds: { ...s.funds, cashBalance: s.funds.cashBalance + amount, chargeCountToday: s.funds.chargeCountToday + 1 },
@@ -245,6 +245,7 @@ export function StoreProvider({ children, initialLoggedIn = true, onLogout }) {
       trades: [],
       funds: { ...s.funds, cashBalance: s.funds.initialAmount, chargeCountToday: 0 },
       fundHistory: [{ id: 'f' + Date.now(), type: 'RESET', amount: s.funds.initialAmount, ts: Date.now() }, ...s.fundHistory],
+      // ai_reports 유지
     }));
   }, []);
 
@@ -292,3 +293,5 @@ export function StoreProvider({ children, initialLoggedIn = true, onLogout }) {
 }
 
 export function useStore() { return useContext(StoreContext); }
+
+Object.assign(window, { StoreContext, StoreProvider, useStore, genCandles, genSpark, seedRand, RAW_STOCKS });

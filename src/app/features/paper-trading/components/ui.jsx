@@ -1,13 +1,16 @@
-import { useEffect, useMemo } from 'react';
-import { useNavigate } from 'react-router';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useStore } from '../store/store.jsx';
 
-// ---------- formatters ----------
+// ===== Darfin shared UI: formatters, icons, charts, header =====
 export const won = (n) => (n == null ? '-' : Math.round(n).toLocaleString('ko-KR') + '원');
 export const wonShort = (n) => Math.round(n).toLocaleString('ko-KR');
 export const signPct = (p) => (p > 0 ? '+' : '') + p.toFixed(2) + '%';
 export const signNum = (n) => (n > 0 ? '+' : '') + Math.round(n).toLocaleString('ko-KR');
-export const UP = '#F04452', DOWN = '#3182F6', SUB = '#8B95A1', INK = '#191F28', BRAND = '#1B64DA';
+export const UP = '#F04452';
+export const DOWN = '#3182F6';
+export const SUB = '#8B95A1';
+export const INK = '#191F28';
+export const BRAND = '#1B64DA';
 export const tone = (p) => (p > 0 ? UP : p < 0 ? DOWN : SUB);
 export const eokKMan = (eok) => eok >= 10000 ? (eok / 10000).toFixed(1) + '조원' : eok.toLocaleString() + '억원';
 
@@ -22,6 +25,19 @@ export function dateLabel(ts) {
   return `${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`;
 }
 
+export function Logo({ size = 26, onClick }) {
+  return (
+    <div onClick={onClick} style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', userSelect: 'none' }}>
+      <svg width={size} height={size} viewBox="0 0 32 32" fill="none">
+        <rect width="32" height="32" rx="9" fill={BRAND} />
+        <path d="M9 8h6.5c5 0 8.5 3.2 8.5 8s-3.5 8-8.5 8H9V8z" fill="#fff" />
+        <path d="M14 13h2.2c1.8 0 3 1.2 3 3s-1.2 3-3 3H14v-6z" fill={BRAND} />
+      </svg>
+      <span style={{ fontSize: size * 0.82, fontWeight: 800, color: BRAND, letterSpacing: '-0.03em' }}>Darfin</span>
+    </div>
+  );
+}
+
 export function Avatar({ stock, size = 40 }) {
   const ch = stock.name.replace(/^(KODEX|SOL|TIGER|KBSTAR)\s*/, '').charAt(0);
   return (
@@ -31,7 +47,6 @@ export function Avatar({ stock, size = 40 }) {
   );
 }
 
-// ---------- sparkline ----------
 export function Sparkline({ pts, color, w = 96, h = 40, fill = true }) {
   const min = Math.min(...pts), max = Math.max(...pts), rng = max - min || 1;
   const step = w / (pts.length - 1);
@@ -40,16 +55,18 @@ export function Sparkline({ pts, color, w = 96, h = 40, fill = true }) {
   const gid = useMemo(() => 'sg' + Math.random().toString(36).slice(2), []);
   return (
     <svg width={w} height={h} style={{ display: 'block' }}>
-      <defs><linearGradient id={gid} x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0" stopColor={color} stopOpacity="0.22" /><stop offset="1" stopColor={color} stopOpacity="0" />
-      </linearGradient></defs>
+      <defs>
+        <linearGradient id={gid} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor={color} stopOpacity="0.22" />
+          <stop offset="1" stopColor={color} stopOpacity="0" />
+        </linearGradient>
+      </defs>
       {fill && <path d={area} fill={`url(#${gid})`} />}
       <path d={d} fill="none" stroke={color} strokeWidth="1.8" strokeLinejoin="round" strokeLinecap="round" />
     </svg>
   );
 }
 
-// ---------- candle chart with volume + optional MA ----------
 export function CandleChart({ candles, w = 620, h = 300, showMA5, showMA20, volH = 64 }) {
   const padR = 56, padL = 8, top = 8;
   const chartH = h - volH - 24 - top;
@@ -64,7 +81,8 @@ export function CandleChart({ candles, w = 620, h = 300, showMA5, showMA20, volH
 
   const ma = (period) => candles.map((c, i) => {
     if (i < period - 1) return null;
-    let s = 0; for (let k = 0; k < period; k++) s += candles[i - k].close;
+    let s = 0;
+    for (let k = 0; k < period; k++) s += candles[i - k].close;
     return s / period;
   });
   const ma5 = useMemo(() => ma(5), [candles]);
@@ -101,7 +119,6 @@ export function CandleChart({ candles, w = 620, h = 300, showMA5, showMA20, volH
   );
 }
 
-// ---------- donut ----------
 export function Donut({ slices, size = 180, thickness = 30 }) {
   const total = slices.reduce((a, s) => a + s.value, 0) || 1;
   const r = size / 2 - thickness / 2;
@@ -129,7 +146,6 @@ export const iconBtn = { position: 'relative', width: 40, height: 40, borderRadi
 export const ghostBtn = { height: 40, padding: '0 16px', borderRadius: 12, border: '1px solid #E5E8EB', background: '#fff', color: '#4E5968', fontSize: 14, fontWeight: 700, cursor: 'pointer' };
 export const primaryBtn = { height: 40, padding: '0 20px', borderRadius: 12, border: 'none', background: BRAND, color: '#fff', fontSize: 15, fontWeight: 700, cursor: 'pointer' };
 
-// ---------- small shared bits ----------
 export function Pill({ active, children, onClick, color }) {
   return (
     <button onClick={onClick} style={{ height: 36, padding: '0 16px', borderRadius: 999, border: 'none', cursor: 'pointer',
@@ -138,6 +154,7 @@ export function Pill({ active, children, onClick, color }) {
     </button>
   );
 }
+
 export function Tab({ active, children, onClick }) {
   return (
     <button onClick={onClick} style={{ position: 'relative', padding: '14px 4px', marginRight: 28, border: 'none', background: 'none',
@@ -147,18 +164,21 @@ export function Tab({ active, children, onClick }) {
     </button>
   );
 }
+
 export function Card({ children, style }) {
   return <div style={{ background: '#fff', border: '1px solid #EEF1F4', borderRadius: 20, padding: 24, ...style }}>{children}</div>;
 }
+
 export function Heart({ filled, onClick, size = 22 }) {
   return (
-    <button onClick={(e) => { e.stopPropagation(); onClick && onClick(); }} style={{ ...iconBtn, width: size + 12, height: size + 12 }}>
+    <button onClick={(e) => { e.stopPropagation(); onClick && onClick(); }} style={{ ...iconBtn, width: size + 12, height: size + 12, flexShrink: 0 }}>
       <svg width={size} height={size} viewBox="0 0 24 24" fill={filled ? UP : 'none'} stroke={filled ? UP : '#C5CBD3'} strokeWidth="2">
         <path d="M12 21s-7-4.6-9.3-8.4C1 9.5 2.4 6 5.6 6c2 0 3.2 1.2 4.4 2.6C11.2 7.2 12.4 6 14.4 6c3.2 0 4.6 3.5 2.9 6.6C19 16.4 12 21 12 21z" strokeLinejoin="round" />
       </svg>
     </button>
   );
 }
+
 export function Modal({ children, onClose, width = 460 }) {
   useEffect(() => { const f = (e) => e.key === 'Escape' && onClose(); window.addEventListener('keydown', f); return () => window.removeEventListener('keydown', f); }, []);
   return (
@@ -170,7 +190,6 @@ export function Modal({ children, onClose, width = 460 }) {
   );
 }
 
-// ---------- shared page layout ----------
 export function PageShell({ title, sub, right, children }) {
   return (
     <div style={{ maxWidth: 1480, margin: '0 auto', padding: '28px 28px 80px' }}>
@@ -185,6 +204,7 @@ export function PageShell({ title, sub, right, children }) {
     </div>
   );
 }
+
 export function Empty({ text, cta, onCta }) {
   return (
     <Card style={{ textAlign: 'center', padding: 56 }}>
@@ -193,6 +213,7 @@ export function Empty({ text, cta, onCta }) {
     </Card>
   );
 }
+
 export function Metric({ label, value }) {
   return (
     <div>
@@ -201,10 +222,12 @@ export function Metric({ label, value }) {
     </div>
   );
 }
+
 export function LoginGate() {
-  const navigate = useNavigate();
-  return <Empty text="로그인하면 내 모의투자 계좌를 볼 수 있어요." cta="로그인" onCta={() => navigate('/login')} />;
+  const { setLoggedIn } = useStore();
+  return <Empty text="로그인하면 내 모의투자 계좌를 볼 수 있어요." cta="로그인" onCta={() => setLoggedIn(true)} />;
 }
+
 export function Stub({ name }) {
   return <div style={{ maxWidth: 1480, margin: '0 auto', padding: 60, textAlign: 'center', color: SUB }}>{name} 준비 중</div>;
 }

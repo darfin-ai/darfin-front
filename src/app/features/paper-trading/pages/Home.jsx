@@ -1,12 +1,11 @@
-import { useState, useMemo } from 'react';
-import { useNavigate } from 'react-router';
+import { useState, useMemo, useEffect } from 'react';
 import { useStore } from '../store/store.jsx';
 import {
   UP, DOWN, SUB, INK, BRAND,
-  won, wonShort, signPct, signNum, tone,
+  won, wonShort, signPct, signNum, tone, timeAgo,
   Avatar, Sparkline, CandleChart, Card, Pill, Tab, Heart,
 } from '../components/ui.jsx';
-
+// ===== Home dashboard (Toss layout, domestic only) =====
 function MarketCard({ idx, big }) {
   const col = idx.up ? UP : DOWN;
   return (
@@ -28,6 +27,7 @@ function MarketCard({ idx, big }) {
   );
 }
 
+// ---------- Darfin signature pieces ----------
 function SectionTitle({ children, action, onAction }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
@@ -60,8 +60,7 @@ function MiniIndexCard({ idx }) {
 }
 
 function InvestHero() {
-  const { state, getStock, navigate } = useStore();
-  const toLogin = useNavigate();
+  const { state, getStock, navigate, setLoggedIn } = useStore();
   if (!state.isLoggedIn) {
     return (
       <div style={{ position: 'relative', overflow: 'hidden', borderRadius: 24, padding: '36px 36px', marginBottom: 28,
@@ -71,12 +70,13 @@ function InvestHero() {
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 700, background: 'rgba(255,255,255,0.18)', padding: '6px 12px', borderRadius: 999, marginBottom: 16 }}>✦ AI 모의투자</div>
           <div style={{ fontSize: 32, fontWeight: 800, lineHeight: 1.25, letterSpacing: '-0.03em' }}>실전처럼 연습하는 모의투자,<br />Darfin에서 시작하세요</div>
           <div style={{ fontSize: 15, color: 'rgba(255,255,255,0.85)', marginTop: 12, lineHeight: 1.6 }}>가상 자금 1,000만 원으로 국내 주식을 사고팔며<br />AI가 내 투자 성향을 분석해줘요.</div>
-          <button onClick={() => toLogin('/login')} style={{ marginTop: 22, height: 52, padding: '0 28px', borderRadius: 14, border: 'none',
+          <button onClick={() => setLoggedIn(true)} style={{ marginTop: 22, height: 52, padding: '0 28px', borderRadius: 14, border: 'none',
             background: '#fff', color: BRAND, fontSize: 16, fontWeight: 800, cursor: 'pointer' }}>1,000만 원으로 시작하기</button>
         </div>
       </div>
     );
   }
+  // logged-in: portfolio snapshot
   const rows = state.holdings.map(h => { const s = getStock(h.code); return { eval: s.price * h.qty, cost: h.avgPrice * h.qty }; });
   const totalEval = rows.reduce((a, r) => a + r.eval, 0);
   const totalCost = rows.reduce((a, r) => a + r.cost, 0);
@@ -132,14 +132,13 @@ function HeroGlow() {
 const heroBtn = (solid) => ({ flex: 1, height: 44, borderRadius: 12, border: 'none', cursor: 'pointer', fontSize: 14, fontWeight: 800, whiteSpace: 'nowrap',
   background: solid ? '#fff' : 'rgba(255,255,255,0.16)', color: solid ? BRAND : '#fff' });
 
-function StockRow({ rank, stock, onClick, onHover, watched, onWatch, maxValue }) {
+function StockRow({ rank, stock, onClick, watched, onWatch, maxValue, onHover }) {
   const col = tone(stock.pct);
   const barW = Math.round((stock.value / maxValue) * 100);
   return (
     <div onClick={onClick} style={{ display: 'grid', gridTemplateColumns: '34px 1.5fr 112px 86px 94px 90px', alignItems: 'center',
       gap: 8, padding: '12px 8px', borderRadius: 12, cursor: 'pointer' }}
-      onMouseEnter={e => { e.currentTarget.style.background = '#F9FAFB'; onHover && onHover(); }}
-      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+      onMouseEnter={e => { e.currentTarget.style.background = '#F9FAFB'; onHover && onHover(); }} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
         <Heart filled={watched} onClick={onWatch} size={18} />
       </div>
@@ -192,10 +191,11 @@ function DetailPanel({ stock }) {
 }
 
 function HomeMain() {
-  const { state, market, stocks, industries, navigate, toggleWatch } = useStore();
-  const [tab, setTab] = useState('chart');
-  const [filter, setFilter] = useState('amount');
+  const { state, market, stocks, industries, schedule, navigate, toggleWatch, getStock } = useStore();
+  const [tab, setTab] = useState('chart'); // chart | industry | investor
+  const [filter, setFilter] = useState('amount'); // amount | volume | up | down
   const [selected, setSelected] = useState(stocks.find(s => s.code === '240810'));
+  const [hovered, setHovered] = useState(stocks.find(s => s.code === '240810'));
   const maxValue = Math.max(...stocks.map(s => s.value));
 
   const sorted = useMemo(() => {
@@ -219,10 +219,6 @@ function HomeMain() {
           <span style={{ fontSize: 14, color: SUB }}>{market.status.hours}</span>
           <span style={{ fontSize: 13, color: SUB, marginLeft: 4 }}>· 오늘 14:09 기준</span>
         </div>
-        <button style={{ display: 'flex', alignItems: 'center', gap: 8, height: 40, padding: '0 16px', borderRadius: 999, whiteSpace: 'nowrap',
-          border: 'none', background: '#EFF5FF', cursor: 'pointer', fontSize: 14, fontWeight: 700, color: BRAND }}>
-          <span>✦</span> Darfin AI 소개 <span style={{ opacity: 0.5 }}>›</span>
-        </button>
       </div>
 
       {/* indices */}
@@ -258,17 +254,13 @@ function HomeMain() {
             {sorted.map((s, i) => (
               <StockRow key={s.code} rank={i + 1} stock={s} maxValue={maxValue}
                 watched={state.watchlist.includes(s.code)} onWatch={() => toggleWatch(s.code)}
-                onClick={() => navigate('detail', { code: s.code })}
-                onHover={() => setSelected(s)} />
+                onHover={() => setHovered(s)}
+                onClick={() => navigate('detail', { code: s.code })} />
             ))}
           </div>
-          <div style={{ position: 'sticky', top: 120, display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div style={{ position: 'sticky', top: 84, display: 'flex', flexDirection: 'column', gap: 16 }}>
             <InvestorTrendCard market={market} />
-            {selected && (
-              <Card>
-                <DetailPanel stock={selected} />
-              </Card>
-            )}
+            <StockPreviewCard stock={hovered} />
           </div>
         </div>
       )}
@@ -294,7 +286,55 @@ function HomeMain() {
           </Card>
         </div>
       )}
+
+
     </div>
+  );
+}
+
+function StockPreviewCard({ stock: rawStock }) {
+  const { genCandles, navigate, state, getStock } = useStore();
+  if (!rawStock) return null;
+  const stock = getStock(rawStock.code) || rawStock;
+  const col = tone(stock.pct);
+  const candles = useMemo(() => genCandles(stock, 26), [stock.code]);
+  const posts = (state.community[stock.code] || []).slice(0, 2);
+  return (
+    <Card style={{ padding: 18 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14, cursor: 'pointer' }}
+        onClick={() => navigate('detail', { code: stock.code })}>
+        <Avatar stock={stock} size={36} />
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontSize: 15, fontWeight: 800, color: INK, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{stock.short || stock.name}</div>
+          <div style={{ fontSize: 13, fontWeight: 700 }}>
+            <span style={{ color: INK }}>{won(stock.price)}</span>
+            <span style={{ color: col, marginLeft: 6 }}>{signNum(stock.changeAmt)} ({signPct(stock.pct)})</span>
+          </div>
+        </div>
+      </div>
+      <div style={{ fontSize: 12, fontWeight: 700, color: SUB, marginBottom: 4 }}>주봉</div>
+      <CandleChart candles={candles} w={356} h={170} volH={36} />
+      <div style={{ borderTop: '1px solid #F2F4F6', marginTop: 14, paddingTop: 14 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+          <span style={{ fontSize: 14, fontWeight: 800, color: INK }}>커뮤니티</span>
+          <span onClick={() => navigate('detail', { code: stock.code })} style={{ fontSize: 12, color: SUB, cursor: 'pointer' }}>더보기 ›</span>
+        </div>
+        {posts.length === 0 ? (
+          <div style={{ fontSize: 13, color: SUB, padding: '8px 0' }}>아직 글이 없어요. 첫 글을 남겨보세요.</div>
+        ) : posts.map(p => (
+          <div key={p.id} style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+            <div style={{ width: 28, height: 28, borderRadius: '50%', background: p.author === '나' ? BRAND : '#D1D6DB', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 12, flexShrink: 0 }}>{p.author.charAt(0)}</div>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ fontSize: 13, fontWeight: 700, color: INK }}>{p.author}</span>
+                <span style={{ fontSize: 11, color: SUB }}>{timeAgo(p.ts)}</span>
+              </div>
+              <div style={{ fontSize: 13, color: '#4E5968', lineHeight: 1.5, overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{p.text}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </Card>
   );
 }
 
@@ -326,16 +366,12 @@ function InvestorTrendCard({ market }) {
 }
 
 function WatchRail() {
-  const { state, getStock, navigate, toggleWatch } = useStore();
+  const { state, stocks, getStock, navigate, toggleWatch } = useStore();
   const top = state.watchlist.map(getStock).filter(Boolean).slice(0, 10);
   return (
     <aside style={{ width: 320, flexShrink: 0 }}>
-      <div style={{ position: 'sticky', top: 120 }}>
+      <div style={{ position: 'sticky', top: 84 }}>
         <div style={{ fontSize: 22, fontWeight: 800, color: INK, marginBottom: 16 }}>관심</div>
-        <Card style={{ padding: 18, marginBottom: 16, background: 'linear-gradient(135deg,#F4F8FF,#fff)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14, fontWeight: 800, color: BRAND, marginBottom: 8, whiteSpace: 'nowrap' }}>✦ Darfin AI</div>
-          <div style={{ fontSize: 15, fontWeight: 700, color: INK, lineHeight: 1.5 }}>삼성전자 복합 대외 변수 영향으로 1.3% 하락</div>
-        </Card>
         <Card style={{ padding: 0 }}>
           <div style={{ padding: '18px 18px 8px' }}>
             <div style={{ fontSize: 17, fontWeight: 800, color: INK }}>관심 주식 TOP 10</div>
@@ -363,11 +399,51 @@ function WatchRail() {
   );
 }
 
-export function Home() {
+function MarketTicker() {
+  const { market } = useStore();
+  const [show, setShow] = useState(false);
+  useEffect(() => {
+    const onScroll = () => setShow(window.scrollY > 320);
+    window.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+  const items = [
+    { name: '코스피', value: market.kospi.value, pct: market.kospi.pct, amt: market.kospi.amt },
+    { name: '코스닥', value: market.kosdaq.value, pct: market.kosdaq.pct, amt: market.kosdaq.amt },
+    { name: '달러 환율', value: market.usd.value, pct: market.usd.pct, amt: market.usd.amt },
+  ];
   return (
-    <div style={{ maxWidth: 1480, margin: '0 auto', padding: '28px 28px 80px', display: 'flex', gap: 40 }}>
-      <div style={{ flex: 1, minWidth: 0 }}><HomeMain /></div>
-      <WatchRail />
+    <div style={{ position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 45,
+      background: 'rgba(255,255,255,0.96)', backdropFilter: 'blur(10px)', borderTop: '1px solid #EEF1F4',
+      transform: show ? 'translateY(0)' : 'translateY(100%)', transition: 'transform 0.28s cubic-bezier(0.2,0.8,0.2,1)',
+      boxShadow: '0 -4px 20px rgba(0,0,0,0.05)' }}>
+      <div style={{ maxWidth: 1480, margin: '0 auto', padding: '0 28px', height: 52, display: 'flex', alignItems: 'center', gap: 8 }}>
+        {items.map((it, i) => {
+          const col = tone(it.pct);
+          return (
+            <div key={i} style={{ display: 'flex', alignItems: 'baseline', gap: 7, padding: '0 14px', borderLeft: i === 0 ? 'none' : '1px solid #F2F4F6', flexShrink: 0, whiteSpace: 'nowrap' }}>
+              <span style={{ fontSize: 13, fontWeight: 700, color: '#4E5968' }}>{it.name}</span>
+              <span style={{ fontSize: 13, fontWeight: 800, color: INK }}>{it.value.toLocaleString('ko-KR', { minimumFractionDigits: 2 })}</span>
+              <span style={{ fontSize: 12, fontWeight: 700, color: col }}>{signNum(it.amt)} ({signPct(it.pct)})</span>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
+
+export function Home() {
+  return (
+    <>
+      <div style={{ maxWidth: 1480, margin: '0 auto', padding: '28px 28px 100px', display: 'flex', gap: 40 }}>
+        <div style={{ flex: 1, minWidth: 0 }}><HomeMain /></div>
+        <WatchRail />
+      </div>
+      <MarketTicker />
+    </>
+  );
+}
+
+Object.assign(window, { Home });
