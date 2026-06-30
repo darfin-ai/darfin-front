@@ -29,7 +29,7 @@ export function SignUp() {
       toast.success('회원가입이 완료되었습니다. 로그인해주세요.');
       navigate('/login');
     } catch (err) {
-      const msg = err?.status === 409 ? '이미 사용 중인 이메일입니다.' : (err?.message || '회원가입에 실패했습니다.');
+      const msg = err?.message || (err?.status === 409 ? '이미 사용 중인 이메일입니다.' : '회원가입에 실패했습니다.');
       toast.error(msg);
     } finally {
       setLoading(false);
