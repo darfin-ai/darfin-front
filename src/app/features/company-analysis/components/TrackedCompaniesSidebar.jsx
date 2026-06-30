@@ -1,14 +1,7 @@
 import { Link } from 'react-router';
 import { LayoutDashboard } from 'lucide-react';
 import { formatRelativeKorean } from '../../../shared/utils/dateUtils';
-
-const AVATAR_COLORS = {
-  blue:   { bg: '#E6F1FB', text: '#185FA5' },
-  teal:   { bg: '#E1F5EE', text: '#0F6E56' },
-  amber:  { bg: '#FAEEDA', text: '#854F0B' },
-  purple: { bg: '#EEEDFE', text: '#534AB7' },
-  coral:  { bg: '#FAECE7', text: '#993C1D' },
-};
+import { CompanyLogo } from './CompanyLogo';
 
 const TIER_COLOR = {
   high:     '#A32D2D',
@@ -18,7 +11,6 @@ const TIER_COLOR = {
 };
 
 function CompanyRow({ company, filing, isActive }) {
-  const avatar = AVATAR_COLORS[company.colorKey] ?? AVATAR_COLORS.blue;
   const score = filing?.intelligence?.signalScore?.score ?? null;
   const tier  = filing?.intelligence?.signalScore?.tier ?? 'none';
   const isPending = company.latestFiling?.status === 'pending';
@@ -41,15 +33,7 @@ function CompanyRow({ company, filing, isActive }) {
       onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = '#F7F8FA'; }}
       onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = 'transparent'; }}
     >
-      {/* Avatar */}
-      <div style={{
-        width: 30, height: 30, borderRadius: 7, flexShrink: 0,
-        backgroundColor: avatar.bg, color: avatar.text,
-        fontSize: 9, fontWeight: 700, letterSpacing: '0.02em',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-      }}>
-        {company.initials}
-      </div>
+      <CompanyLogo corpCode={company.corpCode} initials={company.initials} colorKey={company.colorKey} size={30} radius={7} />
 
       {/* Name + meta */}
       <div style={{ flex: 1, minWidth: 0 }}>

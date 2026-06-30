@@ -3,14 +3,7 @@ import { useNavigate, Link } from 'react-router';
 import { Search, Plus } from 'lucide-react';
 import { MOCK_COMPANIES, FILING_BY_ID } from '../data/filings';
 import { formatRelativeKorean } from '../../../shared/utils/dateUtils';
-
-const AVATAR_COLORS = {
-  blue:   { bg: '#E6F1FB', text: '#185FA5' },
-  teal:   { bg: '#E1F5EE', text: '#0F6E56' },
-  amber:  { bg: '#FAEEDA', text: '#854F0B' },
-  purple: { bg: '#EEEDFE', text: '#534AB7' },
-  coral:  { bg: '#FAECE7', text: '#993C1D' },
-};
+import { CompanyLogo } from '../components/CompanyLogo';
 
 const TIER_COLOR = {
   high:     '#A32D2D',
@@ -37,7 +30,6 @@ function getGroup(company, filing) {
 }
 
 function CompanyCard({ company, filing }) {
-  const avatar = AVATAR_COLORS[company.colorKey] ?? AVATAR_COLORS.blue;
   const score = filing?.intelligence?.signalScore?.score ?? null;
   const tier  = filing?.intelligence?.signalScore?.tier ?? 'none';
   const signalCount = filing?.intelligence?.signalScore?.signalCount ?? 0;
@@ -60,15 +52,7 @@ function CompanyCard({ company, filing }) {
       onMouseEnter={e => { e.currentTarget.style.borderColor = '#C7D2FE'; }}
       onMouseLeave={e => { e.currentTarget.style.borderColor = '#E5E4E7'; }}
     >
-      {/* Avatar */}
-      <div style={{
-        width: 34, height: 34, borderRadius: 8, flexShrink: 0,
-        backgroundColor: avatar.bg, color: avatar.text,
-        fontSize: 10, fontWeight: 700, letterSpacing: '0.02em',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-      }}>
-        {company.initials}
-      </div>
+      <CompanyLogo corpCode={company.corpCode} initials={company.initials} colorKey={company.colorKey} size={34} radius={8} />
 
       {/* Main info */}
       <div style={{ flex: 1, minWidth: 0 }}>

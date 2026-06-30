@@ -38,15 +38,32 @@ export function Logo({ size = 26, onClick }) {
   );
 }
 
-const AVATAR_COLORS = ['#3182F6','#E8344E','#00A878','#7C3AED','#F5A623','#0EA5E9','#EC4899','#10B981'];
+const AVATAR_COLORS = ['#1B3A7A', '#E8344E'];
 function avatarColor(code) {
   let h = 0; for (let i = 0; i < code.length; i++) h = (h * 31 + code.charCodeAt(i)) >>> 0;
   return AVATAR_COLORS[h % AVATAR_COLORS.length];
 }
 
 export function Avatar({ stock, size = 40 }) {
+  const [imgFailed, setImgFailed] = useState(false);
+  const logoUrl = stock.logoUrl || `https://file.alphasquare.co.kr/media/images/stock_logo/kr/${stock.code}.png`;
   const ch = stock.name.replace(/^(KODEX|SOL|TIGER|KBSTAR)\s*/, '').charAt(0);
   const bg = stock.color || avatarColor(stock.code || '0');
+
+  if (!imgFailed) {
+    return (
+      <div style={{ width: size, height: size, borderRadius: '50%', overflow: 'hidden', flexShrink: 0,
+        background: '#F2F4F6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <img
+          src={logoUrl}
+          alt={stock.name}
+          onError={() => setImgFailed(true)}
+          style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+        />
+      </div>
+    );
+  }
+
   return (
     <div style={{ width: size, height: size, borderRadius: '50%', background: bg, color: '#fff',
       display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: size * 0.42,

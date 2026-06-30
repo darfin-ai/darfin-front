@@ -11,14 +11,7 @@ import {
   mockMetricChanges,
   mockFilingExplorer,
 } from '../data/samsung2602';
-
-const AVATAR_COLORS = {
-  blue:   { bg: '#E6F1FB', text: '#185FA5' },
-  teal:   { bg: '#E1F5EE', text: '#0F6E56' },
-  amber:  { bg: '#FAEEDA', text: '#854F0B' },
-  purple: { bg: '#EEEDFE', text: '#534AB7' },
-  coral:  { bg: '#FAECE7', text: '#993C1D' },
-};
+import { CompanyLogo } from './CompanyLogo';
 
 const RISK_CHANGE_STYLE = {
   new:         { bg: '#FCEBEB', text: '#A32D2D', label: 'NEW' },
@@ -129,14 +122,11 @@ function GovernanceSection({ changes }) {
 }
 
 function PendingState({ company }) {
-  const avatar = AVATAR_COLORS[company.colorKey] ?? AVATAR_COLORS.blue;
   return (
     <div style={{ padding: '32px 24px', maxWidth: 860, margin: '0 auto', width: '100%' }}>
       <div style={{ background: '#fff', border: '0.5px solid #E5E4E7', borderRadius: 10, padding: '28px 24px', textAlign: 'center' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, marginBottom: 14 }}>
-          <div style={{ width: 36, height: 36, borderRadius: 8, backgroundColor: avatar.bg, color: avatar.text, fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            {company.initials}
-          </div>
+          <CompanyLogo corpCode={company.corpCode} initials={company.initials} colorKey={company.colorKey} size={36} radius={8} />
           <span style={{ fontSize: 16, fontWeight: 600, color: '#1A1A1A' }}>{company.name}</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 8 }}>
@@ -154,7 +144,6 @@ function PendingState({ company }) {
  */
 export default function CompanyAnalysisPage({ filing, onViewInFiling }) {
   const { company, intelligence } = filing;
-  const avatar = AVATAR_COLORS[company.colorKey] ?? AVATAR_COLORS.blue;
   const isSamsung = company.id === '005930';
 
   if (!filing.aiComplete && !intelligence) {
@@ -188,9 +177,7 @@ export default function CompanyAnalysisPage({ filing, onViewInFiling }) {
         <div style={{ maxWidth: 860, margin: '0 auto' }}>
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <div style={{ width: 34, height: 34, borderRadius: 8, flexShrink: 0, backgroundColor: avatar.bg, color: avatar.text, fontSize: 10, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', letterSpacing: '0.02em' }}>
-                {company.initials}
-              </div>
+              <CompanyLogo corpCode={company.corpCode} initials={company.initials} colorKey={company.colorKey} size={34} radius={8} />
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <span style={{ fontSize: 16, fontWeight: 600, color: '#1A1A1A' }}>{company.name}</span>

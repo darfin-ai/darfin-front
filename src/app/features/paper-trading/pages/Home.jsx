@@ -142,38 +142,62 @@ function HeroGlow() {
 const heroBtn = (solid) => ({ flex: 1, height: 44, borderRadius: 12, border: 'none', cursor: 'pointer', fontSize: 14, fontWeight: 800, whiteSpace: 'nowrap',
   background: solid ? '#fff' : 'rgba(255,255,255,0.16)', color: solid ? BRAND : '#fff' });
 
+const RANK_COLS = '28px 28px 40px 1fr 112px 86px 120px 96px';
+
 function StockRow({ rank, stock, onClick, watched, onWatch, maxValue, onHover, rankTab }) {
   const col = tone(stock.pct);
   const displayValue = stock.value || 0;
   const barW = maxValue > 0 ? Math.round((displayValue / maxValue) * 100) : 0;
-  
-  let valText = `${displayValue}억원`;
-  if (rankTab === 'volume') valText = `${(displayValue).toLocaleString()}주`;
+
+  let valText = `${displayValue.toLocaleString()}억원`;
+  if (rankTab === 'volume') valText = `${displayValue.toLocaleString()}주`;
   else if (rankTab === 'topGainers' || rankTab === 'topLosers') valText = `${displayValue.toLocaleString()}원`;
 
   return (
-    <div onClick={onClick} style={{ display: 'grid', gridTemplateColumns: '34px 1.5fr 112px 86px 114px 90px', alignItems: 'center',
-      gap: 8, padding: '12px 8px', borderRadius: 12, cursor: 'pointer' }}
-      onMouseEnter={e => { e.currentTarget.style.background = '#F9FAFB'; onHover && onHover(); }} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }} onClick={e => e.stopPropagation()}>
+    <div onClick={onClick}
+      style={{ display: 'grid', gridTemplateColumns: RANK_COLS, alignItems: 'center',
+        gap: 8, padding: '10px 8px', borderRadius: 12, cursor: 'pointer' }}
+      onMouseEnter={e => { e.currentTarget.style.background = '#F9FAFB'; onHover && onHover(); }}
+      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+
+      {/* 찜 */}
+      <div style={{ display: 'flex', justifyContent: 'center' }} onClick={e => e.stopPropagation()}>
         <Heart filled={watched} onClick={onWatch} size={18} />
       </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
-        <span style={{ width: 16, fontSize: 15, fontWeight: 700, color: '#8B95A1', textAlign: 'center' }}>{rank}</span>
-        <Avatar stock={stock} size={36} />
-        <span style={{ fontSize: 15, fontWeight: 700, color: INK, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{stock.short || stock.name}</span>
+
+      {/* 순위 */}
+      <span style={{ fontSize: 14, fontWeight: 700, color: '#8B95A1', textAlign: 'center' }}>{rank}</span>
+
+      {/* 아이콘 */}
+      <div style={{ display: 'flex', justifyContent: 'center' }}>
+        <Avatar stock={stock} size={34} />
       </div>
+
+      {/* 종목명 */}
+      <span style={{ fontSize: 15, fontWeight: 700, color: INK, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        {stock.short || stock.name}
+      </span>
+
+      {/* 현재가 */}
       <div style={{ textAlign: 'right', fontSize: 15, fontWeight: 700, color: INK }}>{won(stock.price)}</div>
+
+      {/* 등락률 */}
       <div style={{ textAlign: 'right' }}>
-        <span style={{ display: 'inline-block', minWidth: 76, padding: '5px 0', borderRadius: 8, fontSize: 14, fontWeight: 700,
-          color: col, background: stock.pct > 0 ? '#FEF0F1' : stock.pct < 0 ? '#EFF5FF' : '#F2F4F6' }}>{signPct(stock.pct)}</span>
+        <span style={{ display: 'inline-block', padding: '4px 8px', borderRadius: 8, fontSize: 13, fontWeight: 700,
+          color: col, background: stock.pct > 0 ? '#FEF0F1' : stock.pct < 0 ? '#EFF5FF' : '#F2F4F6' }}>
+          {signPct(stock.pct)}
+        </span>
       </div>
-      <div style={{ textAlign: 'right', fontSize: 14, fontWeight: 600, color: '#4E5968' }}>{valText}</div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingLeft: 4 }}>
+
+      {/* 거래대금/거래량 */}
+      <div style={{ textAlign: 'right', fontSize: 13, fontWeight: 600, color: '#4E5968' }}>{valText}</div>
+
+      {/* 비중 바 */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
         <div style={{ flex: 1, height: 6, background: '#F2F4F6', borderRadius: 3, overflow: 'hidden' }}>
           <div style={{ width: barW + '%', height: '100%', background: col, opacity: 0.85 }} />
         </div>
-        <span style={{ fontSize: 13, fontWeight: 700, color: SUB, width: 26, textAlign: 'right' }}>{Math.min(99, barW)}</span>
+        <span style={{ fontSize: 12, fontWeight: 700, color: SUB, width: 24, textAlign: 'right' }}>{Math.min(99, barW)}</span>
       </div>
     </div>
   );
@@ -201,11 +225,10 @@ function HomeMain() {
     return found || displayStocks[0];
   }, [hoveredCode, displayStocks]);
 
+  // 탭 변경 시에만 hover 초기화 — stocks가 300ms마다 바뀌어도 리셋하지 않음
   useEffect(() => {
-    if (displayStocks && displayStocks.length > 0) {
-      setHoveredCode(displayStocks[0].code);
-    }
-  }, [rankTab, stocks]);
+    setHoveredCode('');
+  }, [rankTab]);
 
   return (
     <div>
@@ -248,8 +271,12 @@ function HomeMain() {
               </div>
             </div>
             
-            <div style={{ display: 'grid', gridTemplateColumns: '34px 1.5fr 112px 86px 114px 90px', gap: 8, padding: '0 8px 10px', fontSize: 13, color: SUB, fontWeight: 600 }}>
-              <span>순위</span><span></span><span style={{ textAlign: 'right' }}>현재가</span>
+            <div style={{ display: 'grid', gridTemplateColumns: RANK_COLS, gap: 8, padding: '0 8px 10px', fontSize: 12, color: SUB, fontWeight: 600 }}>
+              <span />
+              <span style={{ textAlign: 'center' }}>순위</span>
+              <span />
+              <span>종목</span>
+              <span style={{ textAlign: 'right' }}>현재가</span>
               <span style={{ textAlign: 'right' }}>등락률</span>
               <span style={{ textAlign: 'right' }}>
                 {rankTab === 'tradeValue' ? '거래대금' : rankTab === 'volume' ? '거래량' : '당일변동'}
@@ -310,13 +337,73 @@ function HomeMain() {
   );
 }
 
+// 일봉 → 주봉 집계 (월요일 기준)
+function toWeekly(daily) {
+  const weeks = {};
+  for (const d of daily) {
+    const s = String(d.date);
+    const dt = new Date(+s.slice(0,4), +s.slice(4,6)-1, +s.slice(6,8));
+    const dow = dt.getDay();
+    dt.setDate(dt.getDate() - (dow === 0 ? 6 : dow - 1));
+    const key = `${dt.getFullYear()}${String(dt.getMonth()+1).padStart(2,'0')}${String(dt.getDate()).padStart(2,'0')}`;
+    if (!weeks[key]) {
+      weeks[key] = { date: key, open: d.open, high: d.high, low: d.low, close: d.close, volume: d.volume };
+    } else {
+      weeks[key].high   = Math.max(weeks[key].high, d.high);
+      weeks[key].low    = Math.min(weeks[key].low,  d.low);
+      weeks[key].close  = d.close;
+      weeks[key].volume += d.volume;
+    }
+  }
+  return Object.values(weeks).sort((a, b) => a.date.localeCompare(b.date));
+}
+
+const weeklyCache = {};
+
 function StockPreviewCard({ stock: rawStock }) {
-  const { genCandles, navigate, state, getStock } = useStore();
-  if (!rawStock) return null;
-  const stock = getStock(rawStock.code) || rawStock;
-  const col = tone(stock.pct);
-  const candles = useMemo(() => genCandles(stock, 26), [stock.code]);
-  const posts = (state.community[stock.code] || []).slice(0, 2);
+  const { navigate, state, getStock } = useStore();
+  // 모든 훅을 조건 분기 전에 선언 (Rules of Hooks)
+  const [candles, setCandles] = useState([]);
+  const [dates,   setDates]   = useState([]);
+  const [status,  setStatus]  = useState('idle'); // idle | loading | ok | error
+
+  const stock     = rawStock ? (getStock(rawStock.code) || rawStock) : null;
+  const stockCode = stock?.code ?? null;
+
+  useEffect(() => {
+    if (!stockCode) return;
+
+    // 캐시 히트
+    if (weeklyCache[stockCode]) {
+      const { c, d } = weeklyCache[stockCode];
+      setCandles(c); setDates(d); setStatus('ok');
+      return;
+    }
+
+    const ctrl = new AbortController();
+    setStatus('loading'); setCandles([]); setDates([]);
+
+    fetch(`http://localhost:8080/funds/stocks/${stockCode}/candles`, { signal: ctrl.signal })
+      .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
+      .then(data => {
+        if (!Array.isArray(data) || data.length === 0) { setStatus('error'); return; }
+        const weekly = toWeekly(data);
+        const c = weekly.map((w, i) => ({ i, open: w.open, close: w.close, hi: w.high, lo: w.low, volume: w.volume }));
+        const d = weekly.map(w => w.date);
+        weeklyCache[stockCode] = { c, d };
+        setCandles(c); setDates(d); setStatus('ok');
+      })
+      .catch(err => { if (err.name !== 'AbortError') setStatus('error'); })
+      .finally(() => { /* loading 종료는 위에서 처리 */ });
+
+    return () => ctrl.abort();
+  }, [stockCode]);
+
+  // 훅 이후 조건부 렌더링
+  if (!stock) return null;
+
+  const col       = tone(stock.pct);
+  const posts     = (state.community[stock.code] || []).slice(0, 2);
   const changeAmt = stock.changeAmt || 0;
 
   return (
@@ -332,8 +419,16 @@ function StockPreviewCard({ stock: rawStock }) {
           </div>
         </div>
       </div>
-      <div style={{ fontSize: 12, fontWeight: 700, color: SUB, marginBottom: 4 }}>주봉 예시</div>
-      <CandleChart candles={candles} w={356} h={170} volH={36} />
+      <div style={{ fontSize: 12, fontWeight: 700, color: SUB, marginBottom: 4 }}>주봉</div>
+      {status === 'loading' && (
+        <div style={{ height: 170, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, color: SUB }}>불러오는 중...</div>
+      )}
+      {status === 'error' && (
+        <div style={{ height: 170, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, color: SUB }}>차트를 불러올 수 없어요</div>
+      )}
+      {status === 'ok' && (
+        <CandleChart candles={candles} dates={dates} w={356} h={170} volH={36} currentPrice={stock.price} />
+      )}
       <div style={{ borderTop: '1px solid #F2F4F6', marginTop: 14, paddingTop: 14 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
           <span style={{ fontSize: 14, fontWeight: 800, color: INK }}>커뮤니티</span>
