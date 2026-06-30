@@ -1,23 +1,35 @@
+import { useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { toast } from "sonner";
 import { Mail, Lock } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
+import { login as apiLogin, getSocialLoginUrl } from "../../../shared/api/authApi";
 
 export function Login() {
   const navigate = useNavigate();
   const { login } = useAuth();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
-    login();
-    toast.success("로그인되었습니다.");
-    navigate("/");
+    setLoading(true);
+    try {
+      const tokens = await apiLogin({ email, password });
+      login(tokens);
+      toast.success("로그인되었습니다.");
+      navigate("/");
+    } catch (err) {
+      const msg = err?.message || '로그인에 실패했습니다.';
+      toast.error(msg);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleSocialLogin = (provider) => {
-    login();
-    toast.success(`${provider} 계정으로 로그인합니다.`);
-    navigate("/");
+    window.location.href = getSocialLoginUrl(provider);
   };
 
   return (
@@ -72,6 +84,8 @@ export function Login() {
                 <input
                   type="email"
                   required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                   placeholder="hello@darfin.com"
                   style={{
                     width: '100%', padding: '8px 10px 8px 30px',
@@ -101,6 +115,8 @@ export function Login() {
                 <input
                   type="password"
                   required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
                   style={{
                     width: '100%', padding: '8px 10px 8px 30px',
@@ -117,16 +133,17 @@ export function Login() {
 
             <button
               type="submit"
+              disabled={loading}
               style={{
                 width: '100%', padding: '9px 16px',
-                background: '#2563EB', border: 'none', borderRadius: 8,
+                background: loading ? '#93C5FD' : '#2563EB', border: 'none', borderRadius: 8,
                 fontSize: 13, fontWeight: 600, color: '#fff',
-                cursor: 'pointer', transition: 'background 0.1s',
+                cursor: loading ? 'not-allowed' : 'pointer', transition: 'background 0.1s',
               }}
-              onMouseEnter={e => { e.currentTarget.style.background = '#1D4ED8'; }}
-              onMouseLeave={e => { e.currentTarget.style.background = '#2563EB'; }}
+              onMouseEnter={e => { if (!loading) e.currentTarget.style.background = '#1D4ED8'; }}
+              onMouseLeave={e => { if (!loading) e.currentTarget.style.background = '#2563EB'; }}
             >
-              이메일로 로그인
+              {loading ? '로그인 중...' : '이메일로 로그인'}
             </button>
           </form>
 
@@ -165,7 +182,7 @@ export function Login() {
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             <button
-              onClick={() => handleSocialLogin("카카오")}
+              onClick={() => handleSocialLogin("kakao")}
               style={{
                 width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
                 padding: '9px 16px', border: '0.5px solid #E5E4E7', borderRadius: 8,
@@ -182,7 +199,7 @@ export function Login() {
             </button>
 
             <button
-              onClick={() => handleSocialLogin("구글")}
+              onClick={() => handleSocialLogin("google")}
               style={{
                 width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
                 padding: '9px 16px', border: '0.5px solid #E5E4E7', borderRadius: 8,

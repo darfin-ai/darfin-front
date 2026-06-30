@@ -40,8 +40,8 @@ export function Layout() {
       navigate("/login");
     }
   };
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await logout();
     toast.success("\uB85C\uADF8\uC544\uC6C3\uB418\uC5C8\uC2B5\uB2C8\uB2E4.");
     navigate("/");
   };

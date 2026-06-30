@@ -2,20 +2,38 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { toast } from "sonner";
 import { User, Mail, Lock, Phone, MessageSquare } from "lucide-react";
+import { signup } from "../../../shared/api/authApi";
 
 export function SignUp() {
   const navigate = useNavigate();
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+  const [form, setForm] = useState({ name: '', nickname: '', phone: '', email: '', password: '', confirmPassword: '' });
+  const [loading, setLoading] = useState(false);
 
-  const handleSignUp = (e) => {
+  const set = (field) => (e) => setForm((prev) => ({ ...prev, [field]: e.target.value }));
+
+  const handleSignUp = async (e) => {
     e.preventDefault();
-    if (password !== confirmPassword) {
+    if (form.password !== form.confirmPassword) {
       toast.error('비밀번호가 일치하지 않습니다.');
       return;
     }
-    toast.success('회원가입이 완료되었습니다. 환영합니다!');
-    navigate('/');
+    setLoading(true);
+    try {
+      await signup({
+        email: form.email,
+        password: form.password,
+        name: form.name,
+        phone: form.phone,
+        nickname: form.nickname,
+      });
+      toast.success('회원가입이 완료되었습니다. 로그인해주세요.');
+      navigate('/login');
+    } catch (err) {
+      const msg = err?.status === 409 ? '이미 사용 중인 이메일입니다.' : (err?.message || '회원가입에 실패했습니다.');
+      toast.error(msg);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -36,6 +54,8 @@ export function SignUp() {
               <input
                 type="text"
                 required
+                value={form.name}
+                onChange={set('name')}
                 className="block w-full pl-10 pr-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 bg-slate-50"
                 placeholder="홍길동"
               />
@@ -51,6 +71,8 @@ export function SignUp() {
               <input
                 type="text"
                 required
+                value={form.nickname}
+                onChange={set('nickname')}
                 className="block w-full pl-10 pr-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 bg-slate-50"
                 placeholder="커뮤니티에서 사용할 닉네임"
               />
@@ -66,6 +88,8 @@ export function SignUp() {
               <input
                 type="tel"
                 required
+                value={form.phone}
+                onChange={set('phone')}
                 className="block w-full pl-10 pr-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 bg-slate-50"
                 placeholder="010-0000-0000"
               />
@@ -81,6 +105,8 @@ export function SignUp() {
               <input
                 type="email"
                 required
+                value={form.email}
+                onChange={set('email')}
                 className="block w-full pl-10 pr-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 bg-slate-50"
                 placeholder="hello@darfin.com"
               />
@@ -96,8 +122,8 @@ export function SignUp() {
               <input
                 type="password"
                 required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                value={form.password}
+                onChange={set('password')}
                 className="block w-full pl-10 pr-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 bg-slate-50"
                 placeholder="8자리 이상 영문, 숫자, 특수문자"
               />
@@ -113,26 +139,27 @@ export function SignUp() {
               <input
                 type="password"
                 required
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
+                value={form.confirmPassword}
+                onChange={set('confirmPassword')}
                 className={`block w-full pl-10 pr-3 py-2.5 border rounded-xl text-sm focus:outline-none focus:ring-1 bg-slate-50 ${
-                  confirmPassword && password !== confirmPassword
+                  form.confirmPassword && form.password !== form.confirmPassword
                     ? 'border-red-400 focus:border-red-500 focus:ring-red-500'
                     : 'border-slate-200 focus:border-blue-500 focus:ring-blue-500'
                 }`}
                 placeholder="비밀번호를 다시 한 번 입력해주세요"
               />
             </div>
-            {confirmPassword && password !== confirmPassword && (
+            {form.confirmPassword && form.password !== form.confirmPassword && (
               <p className="text-xs text-red-500 mt-1">비밀번호가 일치하지 않습니다.</p>
             )}
           </div>
 
           <button
             type="submit"
-            className="w-full py-2.5 px-4 mt-6 border border-transparent rounded-xl shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+            disabled={loading}
+            className="w-full py-2.5 px-4 mt-6 border border-transparent rounded-xl shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
           >
-            가입하기
+            {loading ? '처리 중...' : '가입하기'}
           </button>
         </form>
 

@@ -6,7 +6,7 @@ import { DisclosureSearch, DisclosureViewer } from "./features/filings";
 import { TradingRoot } from "./features/paper-trading";
 import { CommunityList, CommunityDetail, CommunityWrite } from "./features/community";
 import { MyPage, SubscriptionManagement, AllNotifications } from "./features/account";
-import { Login, SignUp, ForgotId, ResetPassword } from "./features/auth";
+import { Login, SignUp, ForgotId, ResetPassword, OAuthCallback } from "./features/auth";
 export const router = createBrowserRouter([
   {
     path: "/",
@@ -27,7 +27,8 @@ export const router = createBrowserRouter([
       { path: "login", Component: Login },
       { path: "signup", Component: SignUp },
       { path: "forgot-id", Component: ForgotId },
-      { path: "reset-password", Component: ResetPassword }
+      { path: "reset-password", Component: ResetPassword },
+      { path: "oauth/callback", Component: OAuthCallback }
     ]
   }
 ]);
