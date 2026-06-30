@@ -38,10 +38,17 @@ export function Logo({ size = 26, onClick }) {
   );
 }
 
+const AVATAR_COLORS = ['#3182F6','#E8344E','#00A878','#7C3AED','#F5A623','#0EA5E9','#EC4899','#10B981'];
+function avatarColor(code) {
+  let h = 0; for (let i = 0; i < code.length; i++) h = (h * 31 + code.charCodeAt(i)) >>> 0;
+  return AVATAR_COLORS[h % AVATAR_COLORS.length];
+}
+
 export function Avatar({ stock, size = 40 }) {
   const ch = stock.name.replace(/^(KODEX|SOL|TIGER|KBSTAR)\s*/, '').charAt(0);
+  const bg = stock.color || avatarColor(stock.code || '0');
   return (
-    <div style={{ width: size, height: size, borderRadius: '50%', background: stock.color, color: '#fff',
+    <div style={{ width: size, height: size, borderRadius: '50%', background: bg, color: '#fff',
       display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: size * 0.42,
       flexShrink: 0, letterSpacing: '-0.02em' }}>{ch}</div>
   );
@@ -67,54 +74,182 @@ export function Sparkline({ pts, color, w = 96, h = 40, fill = true }) {
   );
 }
 
-export function CandleChart({ candles, w = 620, h = 300, showMA5, showMA20, volH = 64 }) {
-  const padR = 56, padL = 8, top = 8;
-  const chartH = h - volH - 24 - top;
-  const prices = candles.flatMap(c => [c.hi, c.lo]);
-  const min = Math.min(...prices), max = Math.max(...prices), rng = max - min || 1;
-  const plotW = w - padR - padL;
-  const cw = plotW / candles.length;
-  const bodyW = Math.max(2, cw * 0.62);
-  const y = (v) => top + (1 - (v - min) / rng) * chartH;
-  const maxVol = Math.max(...candles.map(c => c.volume));
-  const volY = top + chartH + 24;
+export function CandleChart({ candles, w = 620, h = 300, showMA5, showMA20, volH = 64, currentPrice, dates }) {
+  const [hoverIdx, setHoverIdx] = useState(null);
+  const svgRef = useRef(null);
 
-  const ma = (period) => candles.map((c, i) => {
+  const PR = 66, PL = 8, PT = 12, DH = 22, SEP = 6;
+  const chartH = h - PT - DH - SEP - volH;
+  const volY = PT + chartH + DH + SEP;
+  const n = candles.length;
+
+  // useMemo는 early return 전에 항상 호출해야 함 (Rules of Hooks)
+  const calcMA = (period) => candles.map((_, i) => {
     if (i < period - 1) return null;
-    let s = 0;
-    for (let k = 0; k < period; k++) s += candles[i - k].close;
+    let s = 0; for (let k = 0; k < period; k++) s += candles[i - k].close;
     return s / period;
   });
-  const ma5 = useMemo(() => ma(5), [candles]);
-  const ma20 = useMemo(() => ma(20), [candles]);
-  const maPath = (arr) => arr.map((v, i) => v == null ? null : `${(padL + i * cw + cw / 2).toFixed(1)},${y(v).toFixed(1)}`)
+  const ma5v = useMemo(() => calcMA(5), [candles]);
+  const ma20v = useMemo(() => calcMA(20), [candles]);
+
+  if (n === 0) {
+    return <svg width={w} height={h}><text x={w / 2} y={h / 2} textAnchor="middle" fill={SUB} fontSize="14">데이터 없음</text></svg>;
+  }
+
+  const allPrices = candles.flatMap(c => [c.hi, c.lo]);
+  const pMin = Math.min(...allPrices), pMax = Math.max(...allPrices);
+  const rMin = currentPrice != null ? Math.min(pMin, currentPrice) : pMin;
+  const rMax = currentPrice != null ? Math.max(pMax, currentPrice) : pMax;
+  const rng = rMax - rMin || 1;
+  const y = (v) => PT + (1 - (v - rMin) / rng) * chartH;
+
+  const cw = (w - PR - PL) / n;
+  const bw = Math.max(2, cw * 0.6);
+  const maxVol = Math.max(...candles.map(c => c.volume || 0), 1);
+  const maPath = (arr) => arr
+    .map((v, i) => v == null ? null : `${(PL + i * cw + cw / 2).toFixed(1)},${y(v).toFixed(1)}`)
     .filter(Boolean).map((p, i) => (i === 0 ? 'M' : 'L') + p).join(' ');
 
-  const ticks = [max, min + rng * 0.66, min + rng * 0.33, min];
+  // Grid ticks (4개 균등)
+  const ticks = [0, 1, 2, 3].map(i => rMin + rng * (3 - i) / 3);
+
+  // X축 날짜 인덱스 (5개 균등)
+  const dateIdxs = n > 1
+    ? [0, Math.round(n * 0.25), Math.round(n * 0.5), Math.round(n * 0.75), n - 1]
+    : [0];
+
+  const formatChartDate = (d) => {
+    if (!d) return '';
+    if (d.includes('.') || d.includes('-')) return d;
+    if (d.length === 8) return `${d.slice(0,4)}.${d.slice(4,6)}.${d.slice(6,8)}`;
+    if (d.length === 6) return `${d.slice(0,4)}.${d.slice(4,6)}`;
+    if (d.length === 4) return d;
+    if (d.length === 10) return `${d.slice(0,4)}.${d.slice(4,6)}.${d.slice(6,8)} ${d.slice(8,10)}시`;
+    return d;
+  };
+
+  const onMouseMove = (e) => {
+    const rect = svgRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const i = Math.max(0, Math.min(n - 1, Math.floor((e.clientX - rect.left - PL) / cw)));
+    setHoverIdx(i);
+  };
+
+  const hc = hoverIdx != null ? candles[hoverIdx] : null;
+  const hDate = (hoverIdx != null && dates) ? dates[hoverIdx] : null;
+  const hCx = hoverIdx != null ? PL + hoverIdx * cw + cw / 2 : null;
+
+  const lastCandle = candles[n - 1];
+  const priceCol = currentPrice != null ? (currentPrice >= lastCandle.open ? UP : DOWN) : SUB;
+
+  // 툴팁 위치 (오른쪽 경계 초과 시 왼쪽)
+  const TW = 124, startOffset = hDate ? 33 : 17;
+  const TH = startOffset + 5 * 17 + 12;
+  const ttX = hCx != null
+    ? (hCx + TW + 14 > w - PR ? Math.max(PL + 4, hCx - TW - 8) : hCx + 10)
+    : 0;
+
   return (
-    <svg width={w} height={h} style={{ display: 'block' }}>
+    <svg ref={svgRef} width={w} height={h} style={{ display: 'block', cursor: 'crosshair' }}
+      onMouseMove={onMouseMove} onMouseLeave={() => setHoverIdx(null)}>
+
+      {/* 수평 그리드 + Y축 레이블 */}
       {ticks.map((t, i) => (
         <g key={i}>
-          <line x1={padL} y1={y(t)} x2={w - padR} y2={y(t)} stroke="#F2F4F6" />
-          <text x={w - padR + 6} y={y(t) + 4} fontSize="11" fill={SUB}>{Math.round(t).toLocaleString()}</text>
+          <line x1={PL} x2={w - PR} y1={y(t)} y2={y(t)} stroke="#F2F4F6" strokeWidth="1" />
+          <text x={w - PR + 6} y={y(t) + 4} fontSize="11" fill={SUB}>{Math.round(t).toLocaleString()}</text>
         </g>
       ))}
+
+      {/* 가격/거래량 구분선 */}
+      <line x1={PL} x2={w - PR} y1={PT + chartH + SEP / 2} y2={PT + chartH + SEP / 2} stroke="#EEF1F4" />
+
+      {/* 캔들 + 거래량 바 */}
       {candles.map((c, i) => {
         const up = c.close >= c.open;
         const col = up ? UP : DOWN;
-        const cx = padL + i * cw + cw / 2;
-        const oY = y(c.open), clY = y(c.close);
+        const cx = PL + i * cw + cw / 2;
+        const isLast = i === n - 1;
+        const isH = hoverIdx === i;
+        const dim = hoverIdx != null && !isH ? 0.4 : 1;
+        const bodyTop = Math.min(y(c.open), y(c.close));
+        const bodyH = Math.max(1.5, Math.abs(y(c.close) - y(c.open)));
+        const volH_ = (c.volume / maxVol) * volH;
         return (
-          <g key={i}>
-            <line x1={cx} y1={y(c.hi)} x2={cx} y2={y(c.lo)} stroke={col} strokeWidth="1" />
-            <rect x={cx - bodyW / 2} y={Math.min(oY, clY)} width={bodyW} height={Math.max(1.2, Math.abs(clY - oY))} fill={col} />
-            <rect x={cx - bodyW / 2} y={volY + (volH - (c.volume / maxVol) * volH)} width={bodyW}
-              height={(c.volume / maxVol) * volH} fill={col} opacity="0.45" />
+          <g key={i} opacity={dim}>
+            <line x1={cx} y1={y(c.hi)} x2={cx} y2={y(c.lo)} stroke={col} strokeWidth={isH ? 1.8 : isLast ? 1.4 : 1.1} />
+            <rect x={cx - bw / 2} y={bodyTop} width={bw} height={bodyH} fill={col} />
+            <rect x={cx - bw / 2} y={volY + volH - volH_} width={bw} height={volH_} fill={col} opacity={isH ? 0.6 : 0.28} />
           </g>
         );
       })}
-      {showMA5 && <path d={maPath(ma5)} fill="none" stroke="#F5A623" strokeWidth="1.5" />}
-      {showMA20 && <path d={maPath(ma20)} fill="none" stroke="#7C3AED" strokeWidth="1.5" />}
+
+      {/* 현재가 점선 + 배지 */}
+      {currentPrice != null && (
+        <>
+          <line x1={PL} x2={w - PR} y1={y(currentPrice)} y2={y(currentPrice)}
+            stroke={priceCol} strokeWidth="1.1" strokeDasharray="5 3" opacity="0.9" />
+          <rect x={w - PR + 2} y={y(currentPrice) - 11} width={PR - 4} height={22} rx={6} fill={priceCol} />
+          <text x={w - PR / 2 - 1} y={y(currentPrice) + 4.5} fontSize="11" fontWeight="700" fill="#fff" textAnchor="middle">
+            {Math.round(currentPrice).toLocaleString()}
+          </text>
+        </>
+      )}
+
+      {/* MA 라인 */}
+      {showMA5 && <path d={maPath(ma5v)} fill="none" stroke="#F5A623" strokeWidth="1.6" />}
+      {showMA20 && <path d={maPath(ma20v)} fill="none" stroke="#7C3AED" strokeWidth="1.6" />}
+
+      {/* 크로스헤어 */}
+      {hc && hCx != null && (
+        <>
+          <line x1={hCx} x2={hCx} y1={PT} y2={PT + chartH} stroke="#ADB5BD" strokeWidth="1" strokeDasharray="4 3" />
+          <circle cx={hCx} cy={y(hc.close)} r="4" fill={hc.close >= hc.open ? UP : DOWN} stroke="#fff" strokeWidth="1.5" />
+        </>
+      )}
+
+      {/* X축 날짜/시간 레이블 — 길이로 포맷 자동 감지 */}
+      {dates && dateIdxs.map(idx => {
+        if (idx >= n || !dates[idx]) return null;
+        const d = formatChartDate(dates[idx]);
+        const cx = PL + idx * cw + cw / 2;
+        const anchor = idx === 0 ? 'start' : idx === n - 1 ? 'end' : 'middle';
+        return (
+          <text key={idx} x={Math.min(cx, w - PR - 2)} y={PT + chartH + DH - 2} fontSize="10" fill={SUB} textAnchor={anchor}>{d}</text>
+        );
+      })}
+
+      {/* 호버 툴팁 (SVG 내부 — overflow:hidden 영향 없음) */}
+      {hc && hCx != null && (
+        <g>
+          <rect x={ttX} y={PT + 4} width={TW} height={TH} rx={8} fill="#1B2335" opacity="0.94" />
+          {hDate && (
+            <text x={ttX + 10} y={PT + 18} fontSize="11" fill="#8B95A1">
+              {formatChartDate(hDate)}
+            </text>
+          )}
+          {[
+            ['시가', Math.round(hc.open).toLocaleString(), '#CBD3DC'],
+            ['고가', Math.round(hc.hi).toLocaleString(), UP],
+            ['저가', Math.round(hc.lo).toLocaleString(), DOWN],
+            ['종가', Math.round(hc.close).toLocaleString(), hc.close >= hc.open ? UP : DOWN],
+          ].map(([label, val, col], idx) => {
+            const by = PT + startOffset + idx * 17;
+            return (
+              <g key={label}>
+                <text x={ttX + 10} y={by} fontSize="11.5" fill="#8B95A1">{label}</text>
+                <text x={ttX + TW - 10} y={by} fontSize="11.5" fill={col} fontWeight="700" textAnchor="end">{val}</text>
+              </g>
+            );
+          })}
+          <line x1={ttX + 8} x2={ttX + TW - 8}
+            y1={PT + startOffset + 4 * 17 + 2} y2={PT + startOffset + 4 * 17 + 2} stroke="#2E3A4F" />
+          <text x={ttX + 10} y={PT + startOffset + 5 * 17} fontSize="11" fill="#8B95A1">거래량</text>
+          <text x={ttX + TW - 10} y={PT + startOffset + 5 * 17} fontSize="11" fill="#9BAFBF" textAnchor="end">
+            {hc.volume >= 1e6 ? (hc.volume / 1e6).toFixed(1) + 'M' : (hc.volume / 1e3).toFixed(0) + 'K'}
+          </text>
+        </g>
+      )}
     </svg>
   );
 }

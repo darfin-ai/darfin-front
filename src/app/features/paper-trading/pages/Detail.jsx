@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { useStore, seedRand } from '../store/store.jsx';
+import { fetchCandleData } from '../lib/stockApi.js';
 import {
   UP, DOWN, SUB, INK, BRAND,
   won, wonShort, signPct, signNum, tone, timeAgo,
@@ -7,25 +8,23 @@ import {
 } from '../components/ui.jsx';
 
 const PERIODS = [
-  { key: '1D', label: '1일', n: 24 },
-  { key: '1W', label: '1주일', n: 45 },
-  { key: '1M', label: '1개월', n: 75 },
-  { key: '3M', label: '3개월', n: 120 },
-  { key: '6M', label: '6개월', n: 180 },
-  { key: '1Y', label: '1년', n: 250 },
+  { key: '1D', label: '일', n: 120 },
+  { key: '1W', label: '주', n: 40 },
+  { key: '1M', label: '월', n: 24 },
+  { key: '1Y', label: '년', n: 10 },
 ];
 const MASTER_CANDLES = 250;
 
-function InteractiveChart({ allCandles, w, h, showMA5, showMA20, volH, count, resetKey }) {
+function InteractiveChart({ allCandles, allDates, currentPrice, w, h, showMA5, showMA20, volH, count, resetKey }) {
   const total = allCandles.length;
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
-  const visible = clamp(count, 15, total);
+  const visible = clamp(count, 3, total);
   const [start, setStart] = useState(Math.max(0, total - visible));
   const ref = useRef(null);
   const drag = useRef(null);
 
   useEffect(() => {
-    setStart(Math.max(0, total - clamp(count, 15, total)));
+    setStart(Math.max(0, total - clamp(count, 3, total)));
   }, [resetKey, total]);
 
   const onPointerDown = (e) => {
@@ -40,19 +39,27 @@ function InteractiveChart({ allCandles, w, h, showMA5, showMA20, volH, count, re
   };
   const endDrag = () => { drag.current = null; };
   const slice = allCandles.slice(start, start + visible);
+  const sliceDates = allDates ? allDates.slice(start, start + visible) : undefined;
   const atEnd = start + visible >= total;
 
   return (
     <div>
       <div ref={ref} onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={endDrag} onPointerLeave={endDrag}
         style={{ cursor: drag.current ? 'grabbing' : 'grab', touchAction: 'pan-y', userSelect: 'none', overflow: 'hidden' }}>
-        <CandleChart candles={slice} w={w} h={h} showMA5={showMA5} showMA20={showMA20} volH={volH} />
+        <CandleChart candles={slice} w={w} h={h} showMA5={showMA5} showMA20={showMA20} volH={volH}
+          currentPrice={atEnd ? currentPrice : undefined}
+          dates={sliceDates} />
       </div>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 8, fontSize: 12, color: SUB }}>
         <span>◀ 과거</span>
         <span>좌우로 드래그해 과거 시세를 볼 수 있어요</span>
         <span>{atEnd ? '현재 ▶' : '최근 ▶'}</span>
       </div>
+      {sliceDates && sliceDates.length > 0 && (
+        <div style={{ marginTop: 6, fontSize: 12, color: SUB, textAlign: 'right' }}>
+          {sliceDates.length === 1 ? sliceDates[0] : `${sliceDates[0]} ~ ${sliceDates[sliceDates.length - 1]}`}
+        </div>
+      )}
     </div>
   );
 }
@@ -262,14 +269,160 @@ export function Detail() {
   const { state, getStock, genCandles, navigate, toggleWatch } = useStore();
   const code = state.route.params.code;
   const stock = getStock(code);
-  const [period, setPeriod] = useState('3M');
+  const [period, setPeriod] = useState('1W');
   const [ma5, setMa5] = useState(true);
   const [ma20, setMa20] = useState(false);
-  const [orderPrice, setOrderPrice] = useState(stock ? stock.price : 0);
+  const [orderPrice, setOrderPrice] = useState(stock?.price || 0);
   const [priceType, setPriceType] = useState('limit');
-  useEffect(() => { if (stock) setOrderPrice(stock.price); }, [code]);
-  const periodObj = PERIODS.find(p => p.key === period);
-  const allCandles = useMemo(() => stock ? genCandles(stock, MASTER_CANDLES) : [], [code]);
+  const [apiCandles, setApiCandles] = useState(null);        // 일봉: null=로딩, []=실패, [...]=성공
+  const [candlesLoading, setCandlesLoading] = useState(true);
+
+  // 종목 변경 시 주문가 리셋
+  useEffect(() => { setOrderPrice(stock?.price || 0); }, [code]);
+  // 처음 stock이 로드될 때 주문가 초기화 (code 변경 이후 stock이 뒤늦게 세팅되는 경우)
+  useEffect(() => {
+    if (stock?.price && orderPrice === 0) setOrderPrice(stock.price);
+  }, [stock?.price]);
+
+  // 일봉 데이터 API 호출 (종목 변경 시 1회)
+  useEffect(() => {
+    let cancelled = false;
+    setCandlesLoading(true);
+    setApiCandles(null);
+    fetchCandleData(code)
+      .then(data => { if (!cancelled) setApiCandles(data); })
+      .catch(() => { if (!cancelled) setApiCandles([]); })
+      .finally(() => { if (!cancelled) setCandlesLoading(false); });
+    return () => { cancelled = true; };
+  }, [code]);
+
+  const periodObj = PERIODS.find(p => p.key === period) || PERIODS[1];
+  const expectedCount = periodObj.n;
+
+  const formatCandleDate = (date, unit = '1D') => {
+    if (!date) return '';
+    if (unit === '1W') {
+      return `${date.slice(0, 4)}.${date.slice(4, 6)}.${date.slice(6, 8)}`;
+    }
+    if (unit === '1M') {
+      return `${date.slice(0, 4)}.${date.slice(4, 6)}`;
+    }
+    if (unit === '1Y') {
+      return `${date.slice(0, 4)}`;
+    }
+    if (date.length >= 8) {
+      return `${date.slice(0, 4)}.${date.slice(4, 6)}.${date.slice(6, 8)}`;
+    }
+    if (date.length === 10) {
+      return `${date.slice(4, 6)}.${date.slice(6, 8)} ${date.slice(8, 10)}시`;
+    }
+    return date;
+  };
+
+  const mapCandles = (candles, unit = '1D') => candles.map((c, i) => {
+    const rawDate = c.dateLabel || c.date || c.D || '';
+    return {
+      i,
+      open: c.open,
+      close: c.close,
+      hi: c.high ?? c.hi,
+      lo: c.low ?? c.lo,
+      volume: c.volume ?? c.vol,
+      date: c.dateLabel || formatCandleDate(rawDate, unit),
+    };
+  });
+
+  const getWeekKey = (date) => {
+    const year = Number(date.slice(0, 4));
+    const month = Number(date.slice(4, 6)) - 1;
+    const day = Number(date.slice(6, 8));
+    const dt = new Date(year, month, day);
+    const dayOfWeek = dt.getDay();
+    const monday = new Date(dt);
+    monday.setDate(dt.getDate() - ((dayOfWeek + 6) % 7));
+    const y = monday.getFullYear();
+    const m = String(monday.getMonth() + 1).padStart(2, '0');
+    const d = String(monday.getDate()).padStart(2, '0');
+    return `${y}${m}${d}`;
+  };
+
+  const aggregateDailyCandles = (candles, unit) => {
+    if (!candles || !candles.length) return [];
+    const groups = new Map();
+    candles.forEach((c) => {
+      const date = c.date || c.D;
+      if (!date || date.length < 8) return;
+      let key;
+      let label;
+      if (unit === '1W') {
+        key = getWeekKey(date);
+        label = formatCandleDate(key, '1W');
+      } else if (unit === '1M') {
+        key = `${date.slice(0, 4)}${date.slice(4, 6)}`;
+        label = formatCandleDate(`${key}01`, '1M');
+      } else if (unit === '1Y') {
+        key = date.slice(0, 4);
+        label = formatCandleDate(`${key}0101`, '1Y');
+      } else {
+        key = date.slice(0, 8);
+        label = formatCandleDate(key, '1D');
+      }
+      const open = c.open ?? c.O;
+      const close = c.close ?? c.C;
+      const high = c.high ?? c.H;
+      const low = c.low ?? c.L;
+      const volume = c.volume ?? c.V ?? 0;
+      const prev = groups.get(key);
+      if (!prev) {
+        groups.set(key, { key, dateLabel: label, open, close, hi: high, lo: low, volume });
+      } else {
+        groups.set(key, {
+          key,
+          dateLabel: prev.dateLabel,
+          open: prev.open,
+          close,
+          hi: Math.max(prev.hi, high),
+          lo: Math.min(prev.lo, low),
+          volume: prev.volume + volume,
+        });
+      }
+    });
+    return Array.from(groups.values());
+  };
+
+  const allCandles = useMemo(() => {
+    if (!apiCandles || apiCandles.length === 0) {
+      return stock ? mapCandles(genCandles(stock, expectedCount)) : [];
+    }
+    if (period === '1D') {
+      return mapCandles(apiCandles.slice(-expectedCount), '1D');
+    }
+    if (period === '1W') {
+      return mapCandles(aggregateDailyCandles(apiCandles, '1W').slice(-expectedCount), '1W');
+    }
+    if (period === '1M') {
+      return mapCandles(aggregateDailyCandles(apiCandles, '1M').slice(-expectedCount), '1M');
+    }
+    if (period === '1Y') {
+      return mapCandles(aggregateDailyCandles(apiCandles, '1Y').slice(-expectedCount), '1Y');
+    }
+    return mapCandles(apiCandles.slice(-expectedCount), '1D');
+  }, [apiCandles, period, stock, expectedCount]);
+
+  const candleDates = useMemo(() => allCandles.map(c => c.date || ''), [allCandles]);
+
+  // 마지막 캔들을 현재가로 실시간 업데이트
+  const liveCandles = useMemo(() => {
+    if (!allCandles.length || !stock?.price) return allCandles;
+    const last = allCandles[allCandles.length - 1];
+    return [...allCandles.slice(0, -1), {
+      ...last,
+      close: stock.price,
+      hi: Math.max(last.hi, stock.price),
+      lo: Math.min(last.lo, stock.price),
+    }];
+  }, [allCandles, stock?.price]);
+
   if (!stock) return <Stub name="종목" />;
   const col = tone(stock.pct);
   const holding = state.holdings.find(h => h.code === code);
@@ -277,11 +430,11 @@ export function Detail() {
 
   const info = [
     ['시가총액', stock.value >= 100 ? (stock.value * 9.2 / 10).toFixed(1) + '조' : (stock.value * 92).toLocaleString() + '억'],
-    ['거래대금', stock.value + '억원'],
+    ['거래대금', (stock.value ?? 0).toLocaleString() + '억원'],
     ['52주 최고', won(Math.round(stock.price * 1.34))],
     ['52주 최저', won(Math.round(stock.price * 0.72))],
-    ['PER', (8 + (stock.value % 17)).toFixed(1) + '배'],
-    ['업종', stock.sector],
+    ['PER', stock.value > 0 ? (8 + ((stock.value ?? 0) % 17)).toFixed(1) + '배' : '-'],
+    ['업종', stock.sector ?? '-'],
   ];
 
   return (
@@ -331,7 +484,14 @@ export function Detail() {
                     드래그로 이동
                   </span>
                 </div>
-                <InteractiveChart allCandles={allCandles} w={596} h={360} showMA5={ma5} showMA20={ma20} volH={70} count={periodObj.n} resetKey={period + code} />
+                {candlesLoading ? (
+                  <div style={{ height: 360, display: 'flex', alignItems: 'center', justifyContent: 'center', color: SUB, fontSize: 14 }}>
+                    차트 데이터 로딩 중…
+                  </div>
+                ) : (
+                  <InteractiveChart allCandles={liveCandles} allDates={candleDates} currentPrice={stock.price}
+                    w={596} h={360} showMA5={ma5} showMA20={ma20} volH={70} count={periodObj.n} resetKey={period + code} />
+                )}
               </Card>
               <DetailTabs stock={stock} info={info} />
             </div>

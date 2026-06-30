@@ -7,7 +7,7 @@ import { Portfolio, Watchlist, Funds, Trades } from './pages/Invest.jsx';
 import { AIReports } from './pages/AIReports.jsx';
 
 function SubNav() {
-  const { state, navigate } = useStore();
+  const { state, navigate, setRankTab } = useStore(); // setRankTab 추가
   const route = state.route.name;
   const tabs = [
     { key: 'home', label: '홈' },
@@ -17,11 +17,20 @@ function SubNav() {
     { key: 'ai', label: 'AI 분석' },
   ];
   const cur = route === 'detail' ? 'home' : route === 'trades' ? 'portfolio' : route;
+
+  const handleTabClick = (key) => {
+    if (key === 'home') {
+      // 홈 탭을 새로 누르면 백엔드 순위 API도 기본 '거래대금' 탭 데이터로 초기화 시킴
+      setRankTab('tradeValue');
+    }
+    navigate(key);
+  };
+
   return (
     <div style={{ borderBottom: '1px solid #EEF1F4', background: '#fff' }}>
       <div style={{ maxWidth: 1480, margin: '0 auto', padding: '0 28px', display: 'flex', alignItems: 'center', gap: 0 }}>
         {tabs.map(t => (
-          <button key={t.key} onClick={() => navigate(t.key)} style={{ position: 'relative', padding: '16px 8px', marginRight: 28,
+          <button key={t.key} onClick={() => handleTabClick(t.key)} style={{ position: 'relative', padding: '16px 8px', marginRight: 28,
             border: 'none', background: 'none', cursor: 'pointer', fontSize: 16, fontWeight: 700, whiteSpace: 'nowrap',
             color: cur === t.key ? INK : '#B0B8C1' }}>
             {t.label}
@@ -41,12 +50,23 @@ function SubNavSearch() {
   const [q, setQ] = useState('');
   const [open, setOpen] = useState(false);
   const [hi, setHi] = useState(0);
+  
   const results = useMemo(() => {
     const term = q.trim().toLowerCase();
     if (!term) return [];
-    return stocks.filter(s => s.name.toLowerCase().includes(term) || s.code.includes(term) || (s.sector && s.sector.toLowerCase().includes(term))).slice(0, 7);
+    return stocks.filter(s => 
+      s.name.toLowerCase().includes(term) || 
+      s.code.includes(term) || 
+      (s.sector && s.sector.toLowerCase().includes(term))
+    ).slice(0, 7);
   }, [q, stocks]);
-  const go = (code) => { navigate('detail', { code }); setQ(''); setOpen(false); };
+
+  const go = (code) => { 
+    navigate('detail', { code }); 
+    setQ(''); 
+    setOpen(false); 
+  };
+
   const onKey = (e) => {
     if (!open || !results.length) return;
     if (e.key === 'ArrowDown') { e.preventDefault(); setHi(h => Math.min(results.length - 1, h + 1)); }
@@ -54,6 +74,7 @@ function SubNavSearch() {
     else if (e.key === 'Enter') { e.preventDefault(); go(results[hi].code); }
     else if (e.key === 'Escape') setOpen(false);
   };
+
   return (
     <div style={{ position: 'relative', width: '100%' }}>
       <input value={q} onChange={e => { setQ(e.target.value); setOpen(true); setHi(0); }} onFocus={() => setOpen(true)} onBlur={() => setTimeout(() => setOpen(false), 200)} onKeyDown={onKey}
@@ -66,20 +87,24 @@ function SubNavSearch() {
       {open && q.trim() && results.length > 0 && (
         <div style={{ position: 'absolute', top: 44, left: 0, right: 0, background: '#fff', border: '1px solid #EEF1F4', borderRadius: 14,
           boxShadow: '0 12px 32px rgba(0,0,0,0.12)', padding: 6, zIndex: 50, maxHeight: 320, overflow: 'auto' }}>
-          {results.map((s, i) => (
-            <div key={s.code} onMouseEnter={() => setHi(i)} onMouseDown={(e) => { e.preventDefault(); go(s.code); }}
-              style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 10px', borderRadius: 10, cursor: 'pointer', background: hi === i ? '#F4F8FF' : 'transparent' }}>
-              <Avatar stock={s} size={30} />
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: INK, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.name}</div>
-                <div style={{ fontSize: 11, color: SUB }}>{s.code} · {s.sector}</div>
+          {results.map((s, i) => {
+            const currentPct = s.pct || 0; // 시세 레이트 로딩 대비 안전장치
+            const currentPrice = s.price || 0;
+            return (
+              <div key={s.code} onMouseEnter={() => setHi(i)} onMouseDown={(e) => { e.preventDefault(); go(s.code); }}
+                style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 10px', borderRadius: 10, cursor: 'pointer', background: hi === i ? '#F4F8FF' : 'transparent' }}>
+                <Avatar stock={s} size={30} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: INK, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.name}</div>
+                  <div style={{ fontSize: 11, color: SUB }}>{s.code} · {s.sector}</div>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: INK }}>{won(currentPrice)}</div>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: tone(currentPct) }}>{signPct(currentPct)}</div>
+                </div>
               </div>
-              <div style={{ textAlign: 'right' }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: INK }}>{won(s.price)}</div>
-                <div style={{ fontSize: 11, fontWeight: 700, color: tone(s.pct) }}>{signPct(s.pct)}</div>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

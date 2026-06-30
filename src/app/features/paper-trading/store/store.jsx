@@ -2,23 +2,11 @@ import { createContext, useContext, useState, useEffect, useRef, useCallback, us
 // ===== Darfin global store + seed data =====
 // Korean finance convention: 상승=빨강(red), 하락=파랑(blue)
 
-// ---------- seed: domestic stock universe (from Toss screenshot) ----------
-const RAW_STOCKS = [
-  { code: '000660', name: 'SK하이닉스',        price: 2095000, pct: 2.29,   value: 440, sector: '반도체',       color: '#E8344E' },
-  { code: '005930', name: '삼성전자',          price: 300000,  pct: -0.82,  value: 251, sector: '반도체',       color: '#1428A0' },
-  { code: '091230', name: 'KODEX SK하이닉스레버리지', short: 'KODEX SK하이...', price: 22725, pct: 4.53, value: 203, sector: 'ETF', color: '#2A7DE1' },
-  { code: '348370', name: '스피어',            price: 38450,   pct: 29.67,  value: 165, sector: '2차전지',     color: '#E8344E' },
-  { code: '462010', name: 'SOL SK하이닉스인버스2X', short: 'SOL SK하이닉스...', price: 14395, pct: -3.16, value: 154, sector: 'ETF', color: '#2A7DE1' },
-  { code: '036930', name: '주성엔지니어링',     price: 245500,  pct: 23.36,  value: 137, sector: '반도체 장비', color: '#8B1A1A' },
-  { code: '240810', name: '원익IPS',           price: 140400,  pct: 20.30,  value: 112, sector: '반도체 장비', color: '#1B5FA8' },
-  { code: '100790', name: '미래에셋벤처투자',   price: 44000,   pct: 11.53,  value: 89,  sector: '금융',        color: '#5B3FA0' },
-  { code: '001820', name: '삼화콘덴서',         price: 138300,  pct: 26.18,  value: 76,  sector: '전자부품',     color: '#C0392B' },
-  { code: '319400', name: '현대무벡스',         price: 39700,   pct: 12.14,  value: 61,  sector: '기계',        color: '#1FA463' },
-  { code: '066570', name: 'LG전자',            price: 221500,  pct: -1.11,  value: 58,  sector: '가전',        color: '#A50034' },
-  { code: '009150', name: '삼성전기',          price: 1788000, pct: -0.94,  value: 52,  sector: '전자부품',     color: '#1428A0' },
-  { code: '042700', name: '한미반도체',         price: 96800,   pct: 5.42,   value: 48,  sector: '반도체 장비', color: '#0E7C66' },
-  { code: '247540', name: '에코프로비엠',       price: 187200,  pct: -2.04,  value: 44,  sector: '2차전지',     color: '#2E7D32' },
-];
+const STOCK_META = {
+  '000660': { color: '#E8344E' },
+  '005930': { color: '#1428A0' },
+  // 필요한 종목만 최소한으로
+};
 
 // deterministic pseudo-random seeded by string
 export function seedRand(seed) {
@@ -163,20 +151,154 @@ const StoreContext = createContext(null);
 export function StoreProvider({ children }) {
   const [state, setState] = useState(loadState);
 
-  useEffect(() => {
-    const { route, ...persist } = state;
-    try { localStorage.setItem(LS_KEY, JSON.stringify(persist)); } catch (e) {}
-  }, [state]);
+  // ── 홈 화면 왼쪽: 4개 탭(거래대금/거래량/급상승/급하락) 순위 ──
+  const [rankTab, setRankTab] = useState('tradeValue'); // 'tradeValue' | 'volume' | 'topGainers' | 'topLosers'
+  const [allRanks, setAllRanks] = useState({ tradeValue: [], volume: [], topGainers: [], topLosers: [] }); // 4개 탭 데이터 전부 보관
+  const [priceMap, setPriceMap] = useState({}); // PRICE 메시지로 덮어쓰는 실시간 가격 { code: { price, pct } }
+  const [simPrices, setSimPrices] = useState({}); // 시뮬레이션 가격 { code: { price, pct } } — RANK 수신 시 리셋
 
+  // ── 홈 화면 오른쪽: 관심종목 10개 실시간 시세 ──
+  const [watchStocks, setWatchStocks] = useState([]);
+
+  const wsRef = useRef(null);
+  const watchlistRef = useRef(state.watchlist);
+
+  // 관심종목 목록을 ref로 항상 최신값 유지 (WebSocket onopen에서 stale closure 방지)
+  useEffect(() => {
+    watchlistRef.current = state.watchlist;
+  }, [state.watchlist]);
+
+  // WebSocket 1회 연결: RANK / PRICE / WATCHLIST 수신
+  useEffect(() => {
+    const ws = new WebSocket('ws://localhost:8080/ws/stocks');
+    wsRef.current = ws;
+
+    ws.onopen = () => {
+      const codes = watchlistRef.current;
+      if (codes.length > 0) {
+        ws.send(JSON.stringify({ type: 'SUBSCRIBE', codes }));
+      }
+    };
+
+    ws.onmessage = (e) => {
+      const msg = JSON.parse(e.data);
+
+      if (msg.type === 'RANK') {
+        setAllRanks({
+          tradeValue: msg.tradeValue,
+          volume: msg.volume,
+          topGainers: msg.topGainers,
+          topLosers: msg.topLosers,
+        });
+        setSimPrices({}); // 실제 데이터 수신 시 시뮬레이션 오프셋 초기화
+      }
+
+      if (msg.type === 'PRICE') {
+        setPriceMap(prev => ({ ...prev, [msg.code]: { price: msg.price, pct: msg.pct } }));
+      }
+
+      if (msg.type === 'WATCHLIST') {
+        setWatchStocks(msg.stocks);
+      }
+    };
+
+    ws.onerror = (e) => console.error('WS 오류', e);
+    ws.onclose = () => console.warn('WS 종료');
+
+    return () => ws.close();
+  }, []); // 마운트 시 1회 연결
+
+  // 관심종목이 바뀌면 WebSocket으로 구독 갱신 (REST 폴링 불필요)
+  useEffect(() => {
+    const ws = wsRef.current;
+    if (!ws || ws.readyState !== WebSocket.OPEN || state.watchlist.length === 0) return;
+    ws.send(JSON.stringify({ type: 'SUBSCRIBE', codes: state.watchlist }));
+  }, [state.watchlist]);
+
+  // 랭크 종목 마이크로 시뮬레이션: KIS WebSocket 구독 한도 우회
+  // - 실제 KIS 틱(priceMap)이 있는 종목은 스킵 — stocks useMemo에서 priceMap이 우선
+  // - RANK 수신(allRanks 변경) 시 useEffect 재실행 → 이전 타이머 정리 + 오프셋 초기화
+  useEffect(() => {
+    const allStocks = Object.values(
+      [...allRanks.tradeValue, ...allRanks.volume, ...allRanks.topGainers, ...allRanks.topLosers]
+        .reduce((acc, s) => { acc[s.code] = s; return acc; }, {})
+    );
+    if (allStocks.length === 0) return;
+
+    // 종목마다 독립적인 다음 틱 시각 — 초기 스태거로 첫 업데이트도 분산
+    const nextTickAt = {};
+    const now = Date.now();
+    allStocks.forEach(s => {
+      nextTickAt[s.code] = now + Math.random() * 2000; // 0~2초 내 랜덤 첫 틱
+    });
+
+    // 300ms마다 "업데이트 시간이 된 종목만" 틱 처리
+    const timer = setInterval(() => {
+      const t = Date.now();
+      setSimPrices(prev => {
+        const next = { ...prev };
+        let changed = false;
+        for (const s of allStocks) {
+          if (t < nextTickAt[s.code]) continue; // 아직 아님
+
+          const cur = next[s.code] || { price: s.price, pct: Number(s.pct) };
+          const tickRange = cur.price * 0.0004;
+          const trendBias = cur.pct >= 0 ? 0.08 : -0.08;
+          const delta = (Math.random() - 0.5 + trendBias) * tickRange;
+          const newPrice = Math.max(1, Math.round(cur.price + delta));
+
+          if (Math.abs((newPrice - s.price) / s.price) < 0.005) {
+            next[s.code] = { price: newPrice, pct: cur.pct + (delta / cur.price * 100) };
+            changed = true;
+          }
+
+          // 다음 틱은 1~4초 사이 랜덤
+          nextTickAt[s.code] = t + 1000 + Math.random() * 3000;
+        }
+        return changed ? next : prev;
+      });
+    }, 300);
+
+    return () => clearInterval(timer);
+  }, [allRanks]); // RANK 갱신 시 타이머 재시작
+
+  // 현재 탭 데이터: 실시간 KIS 틱 > 시뮬레이션 > RANK 스냅샷 순 우선순위
+  const stocks = useMemo(() => {
+    const base = allRanks[rankTab] ?? [];
+    return base.map(s => {
+      const live = priceMap[s.code]; // 실제 KIS WebSocket 틱
+      if (live) return { ...s, price: live.price, pct: live.pct };
+      const sim = simPrices[s.code]; // 시뮬레이션
+      if (sim) return { ...s, price: sim.price, pct: sim.pct };
+      return s;
+    });
+  }, [allRanks, rankTab, priceMap, simPrices]);
+ 
   // ----- derived helpers -----
+
+  // 4개 탭 전체 + 관심종목을 하나의 맵으로 통합
+  // watchStocks가 마지막이라 rank보다 최신 가격으로 덮어씀
   const stockMap = useMemo(() => {
     const m = {};
-    RAW_STOCKS.forEach(s => {
-      const changeAmt = Math.round(s.price - s.price / (1 + s.pct / 100));
-      m[s.code] = { ...s, changeAmt };
+    [
+      ...allRanks.tradeValue,
+      ...allRanks.volume,
+      ...allRanks.topGainers,
+      ...allRanks.topLosers,
+      ...watchStocks,
+    ].forEach(s => {
+      if (!s) return;
+      const live = priceMap[s.code];
+      const sim = simPrices[s.code];
+      const price = live?.price ?? sim?.price ?? s.price ?? 0;
+      const pct = Number(live?.pct != null ? live.pct : sim?.pct != null ? sim.pct : (s.pct ?? 0)) || 0;
+      const changeAmt = Math.round(price - price / (1 + pct / 100));
+      m[s.code] = { ...s, price, pct, changeAmt };
     });
     return m;
-  }, []);
+  }, [allRanks, watchStocks, priceMap, simPrices]);
+ 
+  // 중복된 선언 축소 (하나만 남김)
   const getStock = useCallback((code) => stockMap[code], [stockMap]);
 
   // ----- actions -----
@@ -283,7 +405,7 @@ export function StoreProvider({ children }) {
   }, []);
 
   const value = {
-    state, getStock, stocks: RAW_STOCKS, stockMap,
+    state, getStock, stocks, watchStocks, stockMap, rankTab, setRankTab,
     market: MARKET, industries: INDUSTRIES, schedule: SCHEDULE, aiComments: AI_COMMENTS,
     genCandles, genSpark, seedRand,
     navigate, setLoggedIn, toggleWatch, buy, sell, chargeFunds, resetFunds, setInitialFunds, addAiReport,
@@ -294,4 +416,5 @@ export function StoreProvider({ children }) {
 
 export function useStore() { return useContext(StoreContext); }
 
-Object.assign(window, { StoreContext, StoreProvider, useStore, genCandles, genSpark, seedRand, RAW_STOCKS });
+// RAW_STOCKS 제거하여 런타임 ReferenceError 방지
+Object.assign(window, { StoreContext, StoreProvider, useStore, genCandles, genSpark, seedRand });
