@@ -1,9 +1,15 @@
 import axios from 'axios';
+import { getAccessToken } from '../../../shared/api/apiClient';
 
 const client = axios.create({
   baseURL: 'http://localhost:8080',
   timeout: 15000,
 });
+
+function authHeaders() {
+  const token = getAccessToken();
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
 
 // ── 순위 4종 (홈 화면 왼쪽 탭 — 거래대금/거래량/급상승/급하락) ──
 // KIS 실전 도메인 호출이지만 조회 전용. 백엔드가 1회 호출로 14개를 한꺼번에 줌.
@@ -95,6 +101,32 @@ export async function fetchMarketIndices() {
 }
 
 /**
+ * 지수 일봉 차트 (KOSPI=0001, KOSDAQ=1001). 최대 ~200개, oldest-first.
+ * 반환: [{ date, open, high, low, close, volume }, ...]
+ */
+export async function fetchIndexCandles(indexCode) {
+  const { data } = await client.get(`/funds/market/indices/${indexCode}/candles`, { timeout: 30000 });
+  return data;
+}
+
+/**
+ * USD/KRW 환율 일봉 차트. 최대 ~200개, oldest-first.
+ */
+export async function fetchUsdKrwCandles() {
+  const { data } = await client.get('/funds/market/exchange/usd-krw/candles', { timeout: 30000 });
+  return data;
+}
+
+/**
+ * 지수 당일 분봉(오늘 장중 흐름). 1분 간격, oldest-first.
+ * 환율은 이 계정 권한으로 분봉을 제공하지 않아 해당 엔드포인트가 없다.
+ */
+export async function fetchIndexIntradayCandles(indexCode) {
+  const { data } = await client.get(`/funds/market/indices/${indexCode}/candles/intraday`, { timeout: 30000 });
+  return data;
+}
+
+/**
  * 지금 뜨는 산업 / 업종별 시세 조회 (TR_ID: FHPUP02140000 기반)
  */
 export async function fetchIndustryRanks() {
@@ -108,4 +140,20 @@ export async function fetchIndustryRanks() {
 export async function fetchInvestorSentiment() {
   const { data } = await client.get('/funds/market/investor-sentiment');
   return data;
+}
+
+// ── 관심종목 (로그인 사용자별 DB 영속) ──
+// 인증 필요 — /funds/watchlist/** 는 SecurityConfig에서 authenticated()로 보호됨.
+
+export async function fetchWatchlist() {
+  const { data } = await client.get('/funds/watchlist', { headers: authHeaders() });
+  return data;
+}
+
+export async function addWatchlistItem(code) {
+  await client.put(`/funds/watchlist/${code}`, null, { headers: authHeaders() });
+}
+
+export async function removeWatchlistItem(code) {
+  await client.delete(`/funds/watchlist/${code}`, { headers: authHeaders() });
 }

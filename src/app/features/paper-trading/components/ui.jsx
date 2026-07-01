@@ -376,8 +376,8 @@ export function Metric({ label, value }) {
 }
 
 export function LoginGate() {
-  const { setLoggedIn } = useStore();
-  return <Empty text="로그인하면 내 모의투자 계좌를 볼 수 있어요." cta="로그인" onCta={() => setLoggedIn(true)} />;
+  const { goToLogin } = useStore();
+  return <Empty text="로그인하면 내 모의투자 계좌를 볼 수 있어요." cta="로그인" onCta={goToLogin} />;
 }
 
 export function Stub({ name }) {

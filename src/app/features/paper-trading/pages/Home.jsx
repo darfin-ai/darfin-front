@@ -43,30 +43,36 @@ function SectionTitle({ children, action, onAction }) {
 
 // 1. 코스피/코스닥 지수 (TR_ID: FHPUP02100000) 반영 컴포넌트
 function MiniIndexCard({ idx }) {
-  if (!idx) return null;
+  if (!idx) {
+    return (
+      <Card style={{ padding: '14px 18px', flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 14, fontWeight: 700, color: '#4E5968', marginBottom: 6 }}>시장 지표</div>
+        <div style={{ fontSize: 14, fontWeight: 700, color: SUB, height: 28, display: 'flex', alignItems: 'center' }}>KIS 데이터를 불러오는 중입니다</div>
+      </Card>
+    );
+  }
   const isUp = idx.pct >= 0;
   const col = isUp ? UP : DOWN;
   return (
-    <Card style={{ padding: '18px 20px', flex: 1, minWidth: 0 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+    <Card style={{ padding: '14px 18px', flex: 1, minWidth: 0 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
         <span style={{ fontSize: 14, fontWeight: 700, color: '#4E5968', whiteSpace: 'nowrap' }}>{idx.name}</span>
         {idx.tag && <span style={{ fontSize: 11, fontWeight: 700, color: col, background: col + '14', padding: '2px 7px', borderRadius: 6, whiteSpace: 'nowrap' }}>{idx.tag}</span>}
       </div>
-      <div style={{ fontSize: 24, fontWeight: 800, color: INK, letterSpacing: '-0.02em', whiteSpace: 'nowrap' }}>
-        {(idx.value || 0).toLocaleString('ko-KR', { minimumFractionDigits: 2 })}
-      </div>
-      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginTop: 6 }}>
+      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 }}>
+        <span style={{ fontSize: 24, fontWeight: 800, color: INK, letterSpacing: '-0.02em', whiteSpace: 'nowrap' }}>
+          {(idx.value || 0).toLocaleString('ko-KR', { minimumFractionDigits: 2 })}
+        </span>
         <span style={{ fontSize: 13, fontWeight: 700, color: col, whiteSpace: 'nowrap' }}>
           {signNum(idx.amt)} ({signPct(idx.pct)})
         </span>
-        {idx.spark && <Sparkline pts={idx.spark} color={col} w={86} h={34} />}
       </div>
     </Card>
   );
 }
 
 export function InvestHero() {
-  const { state, getStock, navigate, setLoggedIn } = useStore();
+  const { state, getStock, navigate, goToLogin } = useStore();
   if (!state.isLoggedIn) {
     return (
       <div style={{ position: 'relative', overflow: 'hidden', borderRadius: 24, padding: '36px 36px', marginBottom: 28,
@@ -76,17 +82,18 @@ export function InvestHero() {
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 700, background: 'rgba(255,255,255,0.18)', padding: '6px 12px', borderRadius: 999, marginBottom: 16 }}>✦ AI 모의투자</div>
           <div style={{ fontSize: 32, fontWeight: 800, lineHeight: 1.25, letterSpacing: '-0.03em' }}>실전처럼 연습하는 모의투자,<br />Darfin에서 시작하세요</div>
           <div style={{ fontSize: 15, color: 'rgba(255,255,255,0.85)', marginTop: 12, lineHeight: 1.6 }}>가상 자금 1,000만 원으로 국내 주식을 사고팔며<br />AI가 내 투자 성향을 분석해줘요.</div>
-          <button onClick={() => setLoggedIn(true)} style={{ marginTop: 22, height: 52, padding: '0 28px', borderRadius: 14, border: 'none',
+          <button onClick={goToLogin} style={{ marginTop: 22, height: 52, padding: '0 28px', borderRadius: 14, border: 'none',
             background: '#fff', color: BRAND, fontSize: 16, fontWeight: 800, cursor: 'pointer' }}>1,000만 원으로 시작하기</button>
         </div>
       </div>
     );
   }
 
-  const rows = state.holdings.map(h => { 
-    const s = getStock(h.code); 
-    const currentPrice = s ? s.price : h.avgPrice;
-    return { eval: currentPrice * h.qty, cost: h.avgPrice * h.qty }; 
+  const rows = state.holdings.map(h => {
+    const s = getStock(h.code);
+    // snapPrice: 실시간 틱/시뮬레이션을 섞지 않은 10초 주기 실측값 — "내 모의투자 자산"은 10초마다만 갱신
+    const currentPrice = s ? s.snapPrice : h.avgPrice;
+    return { eval: currentPrice * h.qty, cost: h.avgPrice * h.qty };
   });
   const totalEval = rows.reduce((a, r) => a + r.eval, 0);
   const totalCost = rows.reduce((a, r) => a + r.cost, 0);
@@ -204,7 +211,7 @@ function StockRow({ rank, stock, onClick, watched, onWatch, maxValue, onHover, r
 }
 
 function HomeMain() {
-  const { state, market, stocks, industries, navigate, toggleWatch, rankTab, setRankTab } = useStore();
+  const { state, market, marketError, stocks, industries, navigate, toggleWatch, rankTab, setRankTab } = useStore();
   const [tab, setTab] = useState('chart');
 
   const [hoveredCode, setHoveredCode] = useState('');
@@ -240,7 +247,9 @@ function HomeMain() {
           <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#1FA463' }} />
           <span style={{ fontSize: 15, fontWeight: 700, color: INK }}>{market?.status?.label || '장 운영중'}</span>
           <span style={{ fontSize: 14, color: SUB }}>{market?.status?.hours || '09:00 ~ 15:30'}</span>
-          <span style={{ fontSize: 13, color: SUB, marginLeft: 4 }}>· 실시간 자동 갱신 중</span>
+          <span style={{ fontSize: 13, color: marketError ? DOWN : SUB, marginLeft: 4 }}>
+            · {marketError ? 'KIS 시장 지표 연결 실패' : '실시간 자동 갱신 중'}
+          </span>
         </div>
       </div>
 
@@ -531,13 +540,14 @@ function MarketTicker() {
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
   
-  if (!market || !market.kospi) return null;
+  if (!market) return null;
   
   const items = [
-    { name: '코스피', value: market.kospi.value, pct: market.kospi.pct, amt: market.kospi.amt },
-    { name: '코스닥', value: market.kosdaq.value, pct: market.kosdaq.pct, amt: market.kosdaq.amt },
-    { name: '달러 환율', value: market.usd?.value || 1350, pct: market.usd?.pct || 0, amt: market.usd?.amt || 0 },
-  ];
+    market.kospi,
+    market.kosdaq,
+    market.usd,
+  ].filter(Boolean);
+  if (items.length === 0) return null;
   return (
     <div style={{ position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 45,
       background: 'rgba(255,255,255,0.96)', backdropFilter: 'blur(10px)', borderTop: '1px solid #EEF1F4',

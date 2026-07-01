@@ -1,4 +1,6 @@
 import { createContext, useContext, useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useNavigate } from 'react-router';
+import { fetchMarketIndices, fetchWatchlist, addWatchlistItem, removeWatchlistItem } from '../lib/stockApi';
 // ===== Darfin global store + seed data =====
 // Korean finance convention: 상승=빨강(red), 하락=파랑(blue)
 
@@ -57,9 +59,9 @@ export function genSpark(seed, n, up) {
 
 const MARKET = {
   status: { label: '국내 정규장', hours: '09:00 ~ 15:30', open: true },
-  kospi:  { name: '코스피', value: 7752.76, pct: 0.28, amt: 21.94, up: true,  spark: genSpark('kospi', 30, true) },
-  kosdaq: { name: '코스닥', value: 990.53,  pct: 4.08, amt: 38.90, up: true,  spark: genSpark('kosdaq', 30, true), tag: '개인 순매수세' },
-  usd:    { name: '달러 환율', value: 1525.30, pct: 0.19, amt: 2.90, up: true,  spark: genSpark('usd', 30, true), tag: '외국인 매도세' },
+  kospi: null,
+  kosdaq: null,
+  usd: null,
   invSentiment: [
     { who: '개인',   val: 19395,  buy: true },
     { who: '외국인', val: -30305, buy: false },
@@ -92,7 +94,7 @@ const AI_COMMENTS = {
 function defaultState() {
   return {
     route: { name: 'home', params: {} },
-    isLoggedIn: true,
+    isLoggedIn: false,
     funds: { initialized: true, initialAmount: 10000000, cashBalance: 4156000, chargeCountToday: 0 },
     holdings: [
       { code: '005930', qty: 10, avgPrice: 295000 },
@@ -108,7 +110,7 @@ function defaultState() {
       { id: 't2', code: '240810', type: 'BUY',  qty: 8,  price: 118000,  ts: Date.now() - 86400000 * 5, pnl: null },
       { id: 't1', code: '005930', type: 'BUY',  qty: 10, price: 295000,  ts: Date.now() - 86400000 * 9, pnl: null },
     ],
-    watchlist: ['348370', '036930', '005930', '000660', '100790', '001820', '319400', '066570', '240810', '009150'],
+    watchlist: [], // 로그인 사용자의 DB 관심종목을 StoreProvider에서 별도로 불러와 채운다
     fundHistory: [
       { id: 'f1', type: 'INIT',   amount: 10000000, ts: Date.now() - 86400000 * 12 },
     ],
@@ -142,14 +144,20 @@ function loadState() {
     // migrate: drop legacy AI reports (old format without .health) and ensure community exists
     merged.aiReports = (merged.aiReports || []).filter(r => r && r.health);
     if (!merged.community) merged.community = base.community;
+    // isLoggedIn/watchlist는 서버가 실제 출처(auth 세션 / DB) — 캐시된 값을 신뢰하지 않는다
+    merged.isLoggedIn = false;
+    merged.watchlist = [];
     return merged;
   } catch (e) { return defaultState(); }
 }
 
 const StoreContext = createContext(null);
 
-export function StoreProvider({ children }) {
+export function StoreProvider({ children, initialLoggedIn, onLogout }) {
   const [state, setState] = useState(loadState);
+  const [market, setMarket] = useState(MARKET);
+  const [marketError, setMarketError] = useState(false);
+  const routerNavigate = useNavigate();
 
   // ── 홈 화면 왼쪽: 4개 탭(거래대금/거래량/급상승/급하락) 순위 ──
   const [rankTab, setRankTab] = useState('tradeValue'); // 'tradeValue' | 'volume' | 'topGainers' | 'topLosers'
@@ -161,12 +169,45 @@ export function StoreProvider({ children }) {
   const [watchStocks, setWatchStocks] = useState([]);
 
   const wsRef = useRef(null);
-  const watchlistRef = useRef(state.watchlist);
+  // 관심종목 + 보유종목(모의투자) 코드를 합쳐서 구독 — 보유종목도 실시간(10초) 실제가로 갱신되게 한다
+  const subscribedCodes = useMemo(() => {
+    return Array.from(new Set([...state.watchlist, ...state.holdings.map(h => h.code)]));
+  }, [state.watchlist, state.holdings]);
+  const subscribedCodesRef = useRef(subscribedCodes);
 
-  // 관심종목 목록을 ref로 항상 최신값 유지 (WebSocket onopen에서 stale closure 방지)
+  const applyMarketIndices = useCallback((data) => {
+    setMarket(prev => ({
+      ...prev,
+      kospi: toMarketItem(data?.kospi, '코스피'),
+      kosdaq: toMarketItem(data?.kosdaq, '코스닥'),
+      usd: toMarketItem(data?.usd, '달러 환율'),
+    }));
+    setMarketError(false);
+  }, []);
+
+  // 구독 코드 목록을 ref로 항상 최신값 유지 (WebSocket onopen에서 stale closure 방지)
   useEffect(() => {
-    watchlistRef.current = state.watchlist;
-  }, [state.watchlist]);
+    subscribedCodesRef.current = subscribedCodes;
+  }, [subscribedCodes]);
+
+  // 실제 로그인 상태(AuthContext/JWT)를 state.isLoggedIn에 반영 — 이전에는 이 prop이
+  // 버려져서 로그인 여부와 무관하게 항상 로그인된 것처럼 보이는 버그가 있었다.
+  useEffect(() => {
+    setState(s => (s.isLoggedIn === !!initialLoggedIn ? s : { ...s, isLoggedIn: !!initialLoggedIn }));
+  }, [initialLoggedIn]);
+
+  // 관심종목: 로그인된 사용자의 DB 데이터를 서버에서 불러온다. 비로그인 시 빈 배열.
+  useEffect(() => {
+    if (!initialLoggedIn) {
+      setState(s => (s.watchlist.length ? { ...s, watchlist: [] } : s));
+      return;
+    }
+    let cancelled = false;
+    fetchWatchlist()
+      .then(codes => { if (!cancelled) setState(s => ({ ...s, watchlist: codes })); })
+      .catch(e => console.warn('관심종목 조회 실패', e));
+    return () => { cancelled = true; };
+  }, [initialLoggedIn]);
 
   // WebSocket 1회 연결: RANK / PRICE / WATCHLIST 수신
   useEffect(() => {
@@ -174,7 +215,7 @@ export function StoreProvider({ children }) {
     wsRef.current = ws;
 
     ws.onopen = () => {
-      const codes = watchlistRef.current;
+      const codes = subscribedCodesRef.current;
       if (codes.length > 0) {
         ws.send(JSON.stringify({ type: 'SUBSCRIBE', codes }));
       }
@@ -190,6 +231,13 @@ export function StoreProvider({ children }) {
           topGainers: msg.topGainers,
           topLosers: msg.topLosers,
         });
+        if (msg.marketOverview) {
+          applyMarketIndices({
+            kospi: msg.marketOverview.indices?.find(item => item.code === '0001'),
+            kosdaq: msg.marketOverview.indices?.find(item => item.code === '1001'),
+            usd: msg.marketOverview.usdKrw,
+          });
+        }
         setSimPrices({}); // 실제 데이터 수신 시 시뮬레이션 오프셋 초기화
       }
 
@@ -206,14 +254,36 @@ export function StoreProvider({ children }) {
     ws.onclose = () => console.warn('WS 종료');
 
     return () => ws.close();
-  }, []); // 마운트 시 1회 연결
+  }, [applyMarketIndices]); // 마운트 시 1회 연결
 
-  // 관심종목이 바뀌면 WebSocket으로 구독 갱신 (REST 폴링 불필요)
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadMarket = async () => {
+      try {
+        const data = await fetchMarketIndices();
+        if (!cancelled) applyMarketIndices(data);
+      } catch (e) {
+        console.warn('시장 지표 조회 실패', e);
+        if (!cancelled) setMarketError(true);
+      }
+    };
+
+    loadMarket();
+    const timer = setInterval(loadMarket, 30000);
+
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+  }, [applyMarketIndices]);
+
+  // 관심종목/보유종목이 바뀌면 WebSocket으로 구독 갱신 (REST 폴링 불필요)
   useEffect(() => {
     const ws = wsRef.current;
-    if (!ws || ws.readyState !== WebSocket.OPEN || state.watchlist.length === 0) return;
-    ws.send(JSON.stringify({ type: 'SUBSCRIBE', codes: state.watchlist }));
-  }, [state.watchlist]);
+    if (!ws || ws.readyState !== WebSocket.OPEN || subscribedCodes.length === 0) return;
+    ws.send(JSON.stringify({ type: 'SUBSCRIBE', codes: subscribedCodes }));
+  }, [subscribedCodes]);
 
   // 랭크 종목 마이크로 시뮬레이션: KIS WebSocket 구독 한도 우회
   // - 실제 KIS 틱(priceMap)이 있는 종목은 스킵 — stocks useMemo에서 priceMap이 우선
@@ -293,7 +363,9 @@ export function StoreProvider({ children }) {
       const price = live?.price ?? sim?.price ?? s.price ?? 0;
       const pct = Number(live?.pct != null ? live.pct : sim?.pct != null ? sim.pct : (s.pct ?? 0)) || 0;
       const changeAmt = Math.round(price - price / (1 + pct / 100));
-      m[s.code] = { ...s, price, pct, changeAmt };
+      // snapPrice/snapPct: 실시간 틱·시뮬레이션을 섞지 않은 10초 주기 실측값 그대로.
+      // 모의투자 "내 자산" 계산처럼 10초에 한 번만 바뀌어야 하는 곳에서 사용한다.
+      m[s.code] = { ...s, price, pct, changeAmt, snapPrice: s.price ?? 0, snapPct: Number(s.pct ?? 0) || 0 };
     });
     return m;
   }, [allRanks, watchStocks, priceMap, simPrices]);
@@ -307,14 +379,24 @@ export function StoreProvider({ children }) {
     if (typeof window !== 'undefined') window.scrollTo(0, 0);
   }, []);
 
-  const setLoggedIn = useCallback((v) => setState(s => ({ ...s, isLoggedIn: v })), []);
+  // "로그인" CTA(관심종목/포트폴리오 등 게이트) — 실제 로그인 페이지로 이동
+  const goToLogin = useCallback(() => routerNavigate('/login'), [routerNavigate]);
 
-  const toggleWatch = useCallback((code) => setState(s => {
-    const has = s.watchlist.includes(code);
-    if (has) return { ...s, watchlist: s.watchlist.filter(c => c !== code) };
-    if (s.watchlist.length >= 30) return s; // 최대 30개
-    return { ...s, watchlist: [code, ...s.watchlist] };
-  }), []);
+  // 관심종목 추가/삭제 — DB에 즉시 반영(낙관적 갱신) 후 실패 시 콘솔 경고만 남긴다.
+  // 비로그인 상태면 어차피 서버가 401을 반환하므로 여기서 바로 로그인 페이지로 보낸다.
+  const toggleWatch = useCallback((code) => {
+    if (!initialLoggedIn) { goToLogin(); return; }
+    setState(s => {
+      const has = s.watchlist.includes(code);
+      if (has) {
+        removeWatchlistItem(code).catch(e => console.warn('관심종목 삭제 실패', e));
+        return { ...s, watchlist: s.watchlist.filter(c => c !== code) };
+      }
+      if (s.watchlist.length >= 30) return s; // 최대 30개
+      addWatchlistItem(code).catch(e => console.warn('관심종목 추가 실패', e));
+      return { ...s, watchlist: [code, ...s.watchlist] };
+    });
+  }, [initialLoggedIn, goToLogin]);
 
   const buy = useCallback((code, qty, price) => {
     setState(s => {
@@ -406,15 +488,36 @@ export function StoreProvider({ children }) {
 
   const value = {
     state, getStock, stocks, watchStocks, stockMap, rankTab, setRankTab,
-    market: MARKET, industries: INDUSTRIES, schedule: SCHEDULE, aiComments: AI_COMMENTS,
+    market, industries: INDUSTRIES, schedule: SCHEDULE, aiComments: AI_COMMENTS,
+    marketError,
     genCandles, genSpark, seedRand,
-    navigate, setLoggedIn, toggleWatch, buy, sell, chargeFunds, resetFunds, setInitialFunds, addAiReport,
+    navigate, goToLogin, toggleWatch, buy, sell, chargeFunds, resetFunds, setInitialFunds, addAiReport,
     addPost, togglePostLike, addComment,
   };
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;
 }
 
 export function useStore() { return useContext(StoreContext); }
+
+function toMarketItem(raw, fallbackName) {
+  if (!raw || raw.price == null) return null;
+
+  const pct = Number(raw.pct ?? 0);
+  const amt = Number(raw.change ?? 0);
+  const spark = Array.isArray(raw.spark) && raw.spark.length > 1
+    ? raw.spark.map(Number).filter(Number.isFinite)
+    : null;
+
+  return {
+    code: raw.code,
+    name: raw.name || fallbackName,
+    value: Number(raw.price),
+    pct,
+    amt,
+    up: pct >= 0,
+    spark,
+  };
+}
 
 // RAW_STOCKS 제거하여 런타임 ReferenceError 방지
 Object.assign(window, { StoreContext, StoreProvider, useStore, genCandles, genSpark, seedRand });
