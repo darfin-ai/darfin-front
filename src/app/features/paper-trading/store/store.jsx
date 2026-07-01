@@ -168,6 +168,10 @@ export function StoreProvider({ children, initialLoggedIn, onLogout }) {
   // ── 홈 화면 오른쪽: 관심종목 10개 실시간 시세 ──
   const [watchStocks, setWatchStocks] = useState([]);
 
+  // ── 종목 상세 페이지: SUBSCRIBE_DETAIL 구독 중인 종목의 실시간 체결/호가 ──
+  const [lastExecution, setLastExecution] = useState(null); // 가장 최근 EXECUTION 메시지 1건
+  const [lastOrderBook, setLastOrderBook] = useState(null); // 가장 최근 ORDERBOOK 메시지(asks/bids 전체 교체용)
+
   const wsRef = useRef(null);
   // 관심종목 + 보유종목(모의투자) 코드를 합쳐서 구독 — 보유종목도 실시간(10초) 실제가로 갱신되게 한다
   const subscribedCodes = useMemo(() => {
@@ -247,6 +251,14 @@ export function StoreProvider({ children, initialLoggedIn, onLogout }) {
 
       if (msg.type === 'WATCHLIST') {
         setWatchStocks(msg.stocks);
+      }
+
+      if (msg.type === 'EXECUTION') {
+        setLastExecution({ price: msg.price, quantity: msg.quantity, changeRate: msg.changeRate, time: msg.time });
+      }
+
+      if (msg.type === 'ORDERBOOK') {
+        setLastOrderBook({ asks: msg.asks, bids: msg.bids });
       }
     };
 
@@ -398,6 +410,17 @@ export function StoreProvider({ children, initialLoggedIn, onLogout }) {
     });
   }, [initialLoggedIn, goToLogin]);
 
+  // 종목 상세 페이지 마운트(또는 종목 변경) 시 1회 호출 — 해당 종목의 실시간 체결(EXECUTION)/호가(ORDERBOOK)만 이 세션으로 수신
+  const subscribeDetail = useCallback((code) => {
+    setLastExecution(null);
+    setLastOrderBook(null);
+    const ws = wsRef.current;
+    if (!ws) return;
+    const send = () => ws.send(JSON.stringify({ type: 'SUBSCRIBE_DETAIL', code }));
+    if (ws.readyState === WebSocket.OPEN) send();
+    else ws.addEventListener('open', send, { once: true });
+  }, []);
+
   const buy = useCallback((code, qty, price) => {
     setState(s => {
       const cost = qty * price;
@@ -493,6 +516,7 @@ export function StoreProvider({ children, initialLoggedIn, onLogout }) {
     genCandles, genSpark, seedRand,
     navigate, goToLogin, toggleWatch, buy, sell, chargeFunds, resetFunds, setInitialFunds, addAiReport,
     addPost, togglePostLike, addComment,
+    lastExecution, lastOrderBook, subscribeDetail,
   };
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;
 }

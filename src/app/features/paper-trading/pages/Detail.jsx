@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { useStore, seedRand } from '../store/store.jsx';
-import { fetchCandleData } from '../lib/stockApi.js';
+import { fetchCandleData, fetchOrderBook, fetchExecutions, fetchDailyPrices } from '../lib/stockApi.js';
 import {
   UP, DOWN, SUB, INK, BRAND,
   won, wonShort, signPct, signNum, tone, timeAgo,
@@ -266,9 +266,12 @@ function DetailTabs({ stock, info }) {
 }
 
 export function Detail() {
-  const { state, getStock, genCandles, navigate, toggleWatch } = useStore();
+  const { state, getStock, genCandles, navigate, toggleWatch, subscribeDetail } = useStore();
   const code = state.route.params.code;
   const stock = getStock(code);
+
+  // 상세 페이지 마운트/종목 변경 시 실시간 체결(EXECUTION) 구독 1회 전송
+  useEffect(() => { subscribeDetail(code); }, [code, subscribeDetail]);
   const [period, setPeriod] = useState('1W');
   const [ma5, setMa5] = useState(true);
   const [ma20, setMa20] = useState(false);
@@ -596,36 +599,39 @@ function FinancialsChart({ stock, bare }) {
 }
 
 function TickTape({ stock }) {
+  const { lastExecution } = useStore();
   const [tab, setTab] = useState('real');
   const [expanded, setExpanded] = useState(false);
-  const prevClose = stock.price - stock.changeAmt;
-  const ticks = useMemo(() => {
-    const rnd = seedRand(stock.code + ':tick');
-    const ts = tickSize(stock.price);
-    let t = 15 * 3600 + 29 * 60 + 50;
-    const arr = [];
-    for (let i = 0; i < 13; i++) {
-      let p = stock.price + Math.round((rnd() - 0.45) * ts * 6 / ts) * ts;
-      p = Math.round(p / ts) * ts;
-      const qty = Math.max(1, Math.round(rnd() * rnd() * 80));
-      const hh = Math.floor(t / 3600), mm = Math.floor((t % 3600) / 60), ss = t % 60;
-      arr.push({ p, qty, up: p >= prevClose, time: `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}:${String(ss).padStart(2, '0')}` });
-      t -= Math.floor(rnd() * 3) + 1;
-    }
-    return arr;
+  const [ticks, setTicks] = useState([]);
+
+  // 최근 체결 초기 로드 (종목 변경 시 1회)
+  useEffect(() => {
+    let cancelled = false;
+    setTicks([]);
+    fetchExecutions(stock.code)
+      .then(data => { if (!cancelled) setTicks((data || []).slice(0, 50)); })
+      .catch(() => { if (!cancelled) setTicks([]); });
+    return () => { cancelled = true; };
   }, [stock.code]);
-  const daily = useMemo(() => {
-    const rnd = seedRand(stock.code + ':daily');
-    const arr = []; let p = stock.price;
-    for (let i = 0; i < 8; i++) {
-      const d = new Date(Date.now() - 86400000 * i);
-      const pct = (rnd() - 0.5) * 5;
-      const vol = Math.round((0.5 + rnd()) * 1e6);
-      arr.push({ date: `${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`, close: Math.round(p), pct, vol });
-      p = p / (1 + pct / 100);
-    }
-    return arr;
-  }, [stock.code]);
+
+  // 실시간 체결(EXECUTION) 수신 시 맨 앞에 추가, 최대 50개 유지
+  useEffect(() => {
+    if (!lastExecution) return;
+    setTicks(prev => [lastExecution, ...prev].slice(0, 50));
+  }, [lastExecution]);
+
+  const [daily, setDaily] = useState([]);
+  const dailyLoadedCode = useRef(null);
+
+  // 일별 탭 처음 열릴 때(종목당) 1회만 호출
+  useEffect(() => {
+    if (tab !== 'daily' || dailyLoadedCode.current === stock.code) return;
+    dailyLoadedCode.current = stock.code;
+    setDaily([]);
+    fetchDailyPrices(stock.code)
+      .then(data => setDaily(data || []))
+      .catch(() => setDaily([]));
+  }, [tab, stock.code]);
   const moreBtn = { width: '100%', marginTop: 10, height: 38, borderRadius: 10, border: '1px solid #EEF1F4', background: '#F9FAFB', color: '#4E5968', fontSize: 13, fontWeight: 700, cursor: 'pointer' };
   return (
     <Card style={{ padding: 18 }}>
@@ -643,9 +649,9 @@ function TickTape({ stock }) {
           </div>
           {(expanded ? ticks : ticks.slice(0, 6)).map((t, i) => (
             <div key={i} style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.9fr 0.9fr 1fr', gap: 4, padding: '7px 4px', fontSize: 13, borderTop: '1px solid #F6F8FA' }}>
-              <span style={{ fontWeight: 700, color: tone((t.p - prevClose)) }}>{wonShort(t.p)}</span>
-              <span style={{ textAlign: 'right', color: '#4E5968' }}>{t.qty}</span>
-              <span style={{ textAlign: 'right', fontWeight: 700, color: tone(t.p - prevClose) }}>{signPct((t.p - prevClose) / prevClose * 100)}</span>
+              <span style={{ fontWeight: 700, color: tone(t.changeRate) }}>{wonShort(t.price)}</span>
+              <span style={{ textAlign: 'right', color: '#4E5968' }}>{t.quantity}</span>
+              <span style={{ textAlign: 'right', fontWeight: 700, color: tone(t.changeRate) }}>{signPct(t.changeRate)}</span>
               <span style={{ textAlign: 'right', color: SUB }}>{t.time}</span>
             </div>
           ))}
@@ -658,10 +664,10 @@ function TickTape({ stock }) {
           </div>
           {(expanded ? daily : daily.slice(0, 6)).map((d, i) => (
             <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 1.2fr 0.9fr 1.2fr', gap: 4, padding: '8px 4px', fontSize: 13, borderTop: '1px solid #F6F8FA' }}>
-              <span style={{ color: '#4E5968' }}>{d.date}</span>
-              <span style={{ textAlign: 'right', fontWeight: 700, color: INK }}>{wonShort(d.close)}</span>
-              <span style={{ textAlign: 'right', fontWeight: 700, color: tone(d.pct) }}>{signPct(d.pct)}</span>
-              <span style={{ textAlign: 'right', color: SUB }}>{(d.vol / 1000).toFixed(0)}K</span>
+              <span style={{ color: '#4E5968' }}>{d.date.slice(5).replace('-', '.')}</span>
+              <span style={{ textAlign: 'right', fontWeight: 700, color: INK }}>{d.closePrice.toLocaleString()}</span>
+              <span style={{ textAlign: 'right', fontWeight: 700, color: tone(d.changeRate) }}>{signPct(d.changeRate)}</span>
+              <span style={{ textAlign: 'right', color: SUB }}>{Math.round(d.volume / 10000).toLocaleString()}만</span>
             </div>
           ))}
           {daily.length > 6 && <button onClick={() => setExpanded(v => !v)} style={moreBtn}>{expanded ? '접기' : '더보기'}</button>}
@@ -672,16 +678,33 @@ function TickTape({ stock }) {
 }
 
 function OrderBook({ stock, selectedPrice, onPick }) {
-  const prevClose = stock.price - stock.changeAmt;
-  const { asks, bids, maxQ } = useMemo(() => {
-    const rnd = seedRand(stock.code + ':ob');
-    const ts = tickSize(stock.price);
-    const asks = [], bids = [];
-    for (let i = 5; i >= 1; i--) asks.push({ price: stock.price + i * ts, qty: Math.round(rnd() * 9000 + 300) });
-    for (let i = 1; i <= 5; i++) bids.push({ price: stock.price - i * ts, qty: Math.round(rnd() * 9000 + 300) });
-    const maxQ = Math.max(...asks.map(a => a.qty), ...bids.map(b => b.qty));
-    return { asks, bids, maxQ };
+  const { lastOrderBook } = useStore();
+  const [book, setBook] = useState(null); // null = 로딩 중, { asks, bids } = 로드 완료
+
+  // 호가 초기 로드 (종목 변경 시 1회)
+  useEffect(() => {
+    let cancelled = false;
+    setBook(null);
+    fetchOrderBook(stock.code)
+      .then(data => { if (!cancelled) setBook(data); })
+      .catch(() => { if (!cancelled) setBook({ asks: [], bids: [] }); });
+    return () => { cancelled = true; };
   }, [stock.code]);
+
+  // ORDERBOOK 이벤트 수신 시 asks/bids 전체 교체 (merge 아님)
+  useEffect(() => {
+    if (!lastOrderBook) return;
+    setBook(prev => ({ ...(prev || {}), asks: lastOrderBook.asks, bids: lastOrderBook.bids }));
+  }, [lastOrderBook]);
+
+  // asks[0]/bids[0] = 최우선호가(현재가에 가장 가까움) → asks는 화면 표시상 역순(먼 호가가 위, 최우선호가가 현재가 바로 위)
+  const { asks, bids, maxQ } = useMemo(() => {
+    const asks = (book?.asks || []).map(a => ({ price: a.price, qty: a.quantity })).reverse();
+    const bids = (book?.bids || []).map(b => ({ price: b.price, qty: b.quantity }));
+    const maxQ = Math.max(1, ...asks.map(a => a.qty), ...bids.map(b => b.qty));
+    return { asks, bids, maxQ };
+  }, [book]);
+
   const OBRow = ({ lvl, side }) => {
     const col = side === 'ask' ? DOWN : UP;
     const barPct = (lvl.qty / maxQ) * 100;
@@ -709,14 +732,20 @@ function OrderBook({ stock, selectedPrice, onPick }) {
   return (
     <Card style={{ padding: 18 }}>
       <PanelTitle right={<span style={{ fontSize: 12, color: SUB, whiteSpace: 'nowrap' }}>클릭→주문가 설정</span>}>호가</PanelTitle>
-      {asks.map((a, i) => <OBRow key={'a' + i} lvl={a} side="ask" />)}
-      <div onClick={() => onPick && onPick(stock.price)} title="클릭해서 주문가로 설정"
-        style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, height: 38, margin: '4px 0', background: selectedPrice === stock.price ? tone(stock.pct) + '12' : '#F9FAFB', borderRadius: 10,
-          cursor: onPick ? 'pointer' : 'default', outline: selectedPrice === stock.price ? `2px solid ${tone(stock.pct)}` : 'none' }}>
-        <span style={{ fontSize: 16, fontWeight: 800, color: tone(stock.pct) }}>{wonShort(stock.price)}</span>
-        <span style={{ fontSize: 13, fontWeight: 700, color: tone(stock.pct) }}>{signPct(stock.pct)}</span>
-      </div>
-      {bids.map((b, i) => <OBRow key={'b' + i} lvl={b} side="bid" />)}
+      {!book ? (
+        <div style={{ padding: '24px 0', textAlign: 'center', color: SUB, fontSize: 14 }}>호가 정보를 불러오는 중…</div>
+      ) : (
+        <>
+          {asks.map((a, i) => <OBRow key={'a' + i} lvl={a} side="ask" />)}
+          <div onClick={() => onPick && onPick(stock.price)} title="클릭해서 주문가로 설정"
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, height: 38, margin: '4px 0', background: selectedPrice === stock.price ? tone(stock.pct) + '12' : '#F9FAFB', borderRadius: 10,
+              cursor: onPick ? 'pointer' : 'default', outline: selectedPrice === stock.price ? `2px solid ${tone(stock.pct)}` : 'none' }}>
+            <span style={{ fontSize: 16, fontWeight: 800, color: tone(stock.pct) }}>{wonShort(stock.price)}</span>
+            <span style={{ fontSize: 13, fontWeight: 700, color: tone(stock.pct) }}>{signPct(stock.pct)}</span>
+          </div>
+          {bids.map((b, i) => <OBRow key={'b' + i} lvl={b} side="bid" />)}
+        </>
+      )}
     </Card>
   );
 }

@@ -90,6 +90,34 @@ export async function fetchWeeklyData(code) {
   return data;
 }
 
+/**
+ * 호가 초기 로드.
+ * 반환: { currentPrice, changeRate, asks: [{price, quantity}], bids: [{price, quantity}] }
+ * asks[0]/bids[0]이 현재가에 가장 가까운 최우선호가.
+ */
+export async function fetchOrderBook(code) {
+  const { data } = await client.get(`/funds/stocks/${code}/orderbook`);
+  return data;
+}
+
+/**
+ * 최근 체결 초기 로드 (최신 순).
+ * 반환: [{ price, quantity, changeRate, time }, ...]
+ */
+export async function fetchExecutions(code) {
+  const { data } = await client.get(`/funds/stocks/${code}/executions`);
+  return data;
+}
+
+/**
+ * 일별 시세 (최신 순, 최대 100일).
+ * 반환: [{ date(YYYY-MM-DD), closePrice, changeRate, volume }, ...]
+ */
+export async function fetchDailyPrices(code) {
+  const { data } = await client.get(`/funds/stocks/${code}/daily`);
+  return data;
+}
+
 // ── 국내 시장 지표 및 동향 API 추가 ──
 
 /**
