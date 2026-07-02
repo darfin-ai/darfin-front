@@ -1,6 +1,9 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { useStore, seedRand } from '../store/store.jsx';
-import { fetchCandleData, fetchOrderBook, fetchExecutions, fetchDailyPrices } from '../lib/stockApi.js';
+import {
+  fetchCandleData, fetchOrderBook, fetchExecutions, fetchDailyPrices, fetchStockInfo,
+  fetchPaperTradingBalance, fetchPaperTradingHolding, placeBuyOrder, placeSellOrder,
+} from '../lib/stockApi.js';
 import {
   UP, DOWN, SUB, INK, BRAND,
   won, wonShort, signPct, signNum, tone, timeAgo,
@@ -64,11 +67,11 @@ function InteractiveChart({ allCandles, allDates, currentPrice, w, h, showMA5, s
   );
 }
 
-function Row({ label, value, bold }) {
+function Row({ label, value, bold, color }) {
   return (
     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '5px 0' }}>
       <span style={{ fontSize: 14, color: SUB, whiteSpace: 'nowrap' }}>{label}</span>
-      <span style={{ fontSize: bold ? 17 : 14, fontWeight: bold ? 800 : 600, color: INK, whiteSpace: 'nowrap' }}>{value}</span>
+      <span style={{ fontSize: bold ? 17 : 14, fontWeight: bold ? 800 : 600, color: color || INK, whiteSpace: 'nowrap' }}>{value}</span>
     </div>
   );
 }
@@ -83,6 +86,17 @@ function tickSize(p) {
   return 1;
 }
 
+// 시가총액(원) → "4조 2,100억" / "4,210억" 형식
+function formatMarketCap(won) {
+  const eok = Math.round(won / 1e8);
+  if (eok >= 10000) {
+    const jo = Math.floor(eok / 10000);
+    const rest = eok % 10000;
+    return `${jo}조${rest ? ' ' + rest.toLocaleString() + '억' : ''}`;
+  }
+  return `${eok.toLocaleString()}억`;
+}
+
 function PanelTitle({ children, right }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
@@ -95,134 +109,172 @@ function PanelTitle({ children, right }) {
   );
 }
 
-function OrderPanel({ stock, holding, price, setPrice, priceType, setPriceType }) {
-  const { state, buy, sell } = useStore();
+function OrderPanel({ stock, price, setPrice, priceType, setPriceType }) {
+  const { refreshPortfolio } = useStore();
   const ts = tickSize(stock.price);
-  const [side, setSide] = useState('BUY');
+  const [tab, setTab] = useState('BUY'); // 'BUY' | 'SELL' | 'HOLDING'
+  const [balance, setBalance] = useState(null); // API 1: { availableBalance }
+  const [holding, setHolding] = useState(null); // API 2: { quantity, avgBuyPrice, valuationPnl, valuationPnlRate, ... }
   const [qty, setQty] = useState(0);
-  const [toast, setToast] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [toast, setToast] = useState(null); // { ok, text }
 
-  const isBuy = side === 'BUY';
+  const isBuy = tab === 'BUY';
+  const isSell = tab === 'SELL';
+
+  // 탭 전환/종목 변경 시마다 잔액·보유 현황 재조회
+  const refresh = () => {
+    fetchPaperTradingBalance().then(setBalance).catch(() => setBalance(null));
+    fetchPaperTradingHolding(stock.code).then(setHolding).catch(() => setHolding(null));
+  };
+  useEffect(() => { refresh(); }, [tab, stock.code]);
+  useEffect(() => { setQty(0); }, [tab]);
+
   const effPrice = priceType === 'market' ? stock.price : price;
-  const cash = state.funds.cashBalance;
-  const ownedQty = holding ? holding.qty : 0;
+  const cash = balance?.availableBalance ?? 0;
+  const ownedQty = holding?.quantity ?? 0;
   const maxQty = isBuy ? Math.floor(cash / (effPrice || 1)) : ownedQty;
   const total = qty * effPrice;
-  const canSubmit = qty > 0 && (isBuy ? total <= cash : qty <= ownedQty);
+  const canSubmit = !submitting && qty > 0 && (isBuy ? total <= cash : qty <= ownedQty);
 
   const stepPrice = (d) => setPrice(p => Math.max(ts, Math.round((p + d * ts) / ts) * ts));
   const ratio = (r) => setQty(Math.max(0, Math.floor(maxQty * r)));
 
-  const submit = () => {
+  const submit = async () => {
     if (!canSubmit) return;
-    if (isBuy) buy(stock.code, qty, effPrice); else sell(stock.code, qty, effPrice);
-    setToast(`${stock.name} ${qty}주 ${isBuy ? '매수' : '매도'} 체결 완료`);
-    setQty(0);
+    setSubmitting(true);
+    setToast(null);
+    const body = {
+      stockCode: stock.code,
+      orderType: priceType === 'market' ? 'MARKET' : 'LIMIT',
+      price: priceType === 'market' ? null : effPrice,
+      quantity: qty,
+    };
+    try {
+      const order = isBuy ? await placeBuyOrder(body) : await placeSellOrder(body);
+      setToast({ ok: true, text: `${order.stockName} ${order.quantity}주 ${isBuy ? '매수' : '매도'} 체결 완료` });
+      setQty(0);
+      refresh();
+      refreshPortfolio(); // "내 자산" 페이지의 잔액·보유(state.holdings/funds)도 즉시 갱신
+    } catch (e) {
+      setToast({ ok: false, text: e.response?.data?.message || `${isBuy ? '매수' : '매도'} 주문에 실패했어요.` });
+    } finally {
+      setSubmitting(false);
+    }
     setTimeout(() => setToast(null), 2600);
   };
 
   const accent = isBuy ? UP : DOWN;
-  const accentBg = isBuy ? '#FEF0F1' : '#EFF5FF';
+  const errColor = '#E03131';
   const lblStyle = { fontSize: 14, color: '#4E5968', fontWeight: 600, flexShrink: 0, width: 72 };
   const obStep = { width: 44, height: 48, flexShrink: 0, borderRadius: 10, border: '1px solid #E5E8EB', background: '#fff', fontSize: 20, fontWeight: 700, color: '#4E5968', cursor: 'pointer' };
 
   return (
     <Card style={{ padding: 20 }}>
-      <PanelTitle right={<span style={{ fontSize: 12, color: SUB, whiteSpace: 'nowrap' }}>모의 · 즉시 체결</span>}>일반주문</PanelTitle>
+      <PanelTitle right={<span style={{ fontSize: 12, color: SUB, whiteSpace: 'nowrap' }}>모의투자</span>}>일반주문</PanelTitle>
 
       <div style={{ display: 'flex', background: '#F2F4F6', borderRadius: 12, padding: 4, marginBottom: 18 }}>
-        {[['BUY', '매수', UP], ['SELL', '매도', DOWN]].map(([k, l, c]) => (
-          <button key={k} onClick={() => { setSide(k); setQty(0); }} disabled={k === 'SELL' && !holding}
-            style={{ flex: 1, height: 40, borderRadius: 9, border: 'none', cursor: (k === 'SELL' && !holding) ? 'not-allowed' : 'pointer', fontSize: 15, fontWeight: 800,
-              background: side === k ? '#fff' : 'transparent', color: side === k ? c : (k === 'SELL' && !holding ? '#C5CBD3' : '#8B95A1'),
-              boxShadow: side === k ? '0 1px 3px rgba(0,0,0,0.08)' : 'none' }}>{l}</button>
+        {[['BUY', '매수', UP], ['SELL', '매도', DOWN], ['HOLDING', '내 보유', INK]].map(([k, l, c]) => (
+          <button key={k} onClick={() => setTab(k)}
+            style={{ flex: 1, height: 40, borderRadius: 9, border: 'none', cursor: 'pointer', fontSize: 15, fontWeight: 800,
+              background: tab === k ? '#fff' : 'transparent', color: tab === k ? c : '#8B95A1',
+              boxShadow: tab === k ? '0 1px 3px rgba(0,0,0,0.08)' : 'none' }}>{l}</button>
         ))}
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'center', marginBottom: 14 }}>
-        <span style={lblStyle}>주문 유형</span>
-        <div style={{ flex: 1, height: 44, borderRadius: 10, border: '1px solid #E5E8EB', display: 'flex', alignItems: 'center', padding: '0 14px', fontSize: 14, fontWeight: 700, color: INK, justifyContent: 'space-between' }}>
-          정규장 주문
-        </div>
-      </div>
-
-      <div style={{ display: 'flex', alignItems: 'center', marginBottom: 10 }}>
-        <span style={lblStyle}>{isBuy ? '구매' : '판매'} 가격</span>
-        <div style={{ flex: 1, display: 'flex', background: '#F2F4F6', borderRadius: 10, padding: 3 }}>
-          {[['limit', '지정가'], ['market', '시장가']].map(([k, l]) => (
-            <button key={k} onClick={() => setPriceType(k)} style={{ flex: 1, height: 34, borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 700,
-              background: priceType === k ? '#fff' : 'transparent', color: priceType === k ? INK : '#8B95A1', boxShadow: priceType === k ? '0 1px 2px rgba(0,0,0,0.08)' : 'none' }}>{l}</button>
-          ))}
-        </div>
-      </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
-        <span style={{ width: 72, flexShrink: 0 }} />
-        {priceType === 'market' ? (
-          <div style={{ flex: 1, height: 48, borderRadius: 10, background: '#F9FAFB', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, color: SUB }}>시장가 ({won(stock.price)})</div>
+      {tab === 'HOLDING' ? (
+        ownedQty > 0 ? (
+          <div>
+            <Row label="보유 수량" value={holding.quantity + '주'} />
+            <Row label="평균 매수가" value={won(holding.avgBuyPrice)} />
+            <Row label="평가 손익" value={`${signNum(holding.valuationPnl)}원 (${signPct(holding.valuationPnlRate)})`} color={tone(holding.valuationPnlRate)} bold />
+          </div>
         ) : (
-          <>
-            <button onClick={() => stepPrice(-1)} style={obStep}>−</button>
-            <div style={{ flex: 1, height: 48, borderRadius: 10, border: '1px solid #E5E8EB', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', padding: '0 12px' }}>
-              <input value={wonShort(price)} onChange={e => { const n = parseInt(e.target.value.replace(/\D/g, '')) || 0; setPrice(n); }}
-                style={{ width: '100%', border: 'none', outline: 'none', textAlign: 'right', fontSize: 18, fontWeight: 800, color: INK, background: 'transparent' }} />
-              <span style={{ fontSize: 14, color: SUB, marginLeft: 4 }}>원</span>
+          <div style={{ textAlign: 'center', color: SUB, fontSize: 14, padding: '40px 0' }}>보유 종목 없음</div>
+        )
+      ) : (
+        <>
+          <div style={{ display: 'flex', alignItems: 'center', marginBottom: 14 }}>
+            <span style={lblStyle}>주문 유형</span>
+            <div style={{ flex: 1, height: 44, borderRadius: 10, border: '1px solid #E5E8EB', display: 'flex', alignItems: 'center', padding: '0 14px', fontSize: 14, fontWeight: 700, color: INK, justifyContent: 'space-between' }}>
+              정규장 주문
             </div>
-            <button onClick={() => stepPrice(1)} style={obStep}>＋</button>
-          </>
-        )}
-      </div>
+          </div>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-        <span style={lblStyle}>수량</span>
-        <button onClick={() => setQty(q => Math.max(0, q - 1))} style={obStep}>−</button>
-        <div style={{ flex: 1, height: 48, borderRadius: 10, border: '1px solid #E5E8EB', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', padding: '0 12px' }}>
-          <input value={qty === 0 ? '' : qty} placeholder="수량 입력" onChange={e => { const n = parseInt(e.target.value.replace(/\D/g, '')) || 0; setQty(n); }}
-            style={{ width: '100%', border: 'none', outline: 'none', textAlign: 'right', fontSize: 18, fontWeight: 800, color: INK, background: 'transparent' }} />
-          <span style={{ fontSize: 14, color: SUB, marginLeft: 4 }}>주</span>
-        </div>
-        <button onClick={() => setQty(q => q + 1)} style={obStep}>＋</button>
-      </div>
-      <div style={{ display: 'flex', gap: 8, marginBottom: 18 }}>
-        {[[0.1, '10%'], [0.25, '25%'], [0.5, '50%'], [1, '최대']].map(([r, l]) => (
-          <button key={l} onClick={() => ratio(r)} style={{ flex: 1, height: 36, borderRadius: 10, border: '1px solid #E5E8EB', background: '#fff', cursor: 'pointer', fontSize: 13, fontWeight: 700, color: '#4E5968' }}>{l}</button>
-        ))}
-      </div>
+          <div style={{ display: 'flex', alignItems: 'center', marginBottom: 10 }}>
+            <span style={lblStyle}>{isBuy ? '구매' : '판매'} 가격</span>
+            <div style={{ flex: 1, display: 'flex', background: '#F2F4F6', borderRadius: 10, padding: 3 }}>
+              {[['limit', '지정가'], ['market', '시장가']].map(([k, l]) => (
+                <button key={k} onClick={() => setPriceType(k)} style={{ flex: 1, height: 34, borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 700,
+                  background: priceType === k ? '#fff' : 'transparent', color: priceType === k ? INK : '#8B95A1', boxShadow: priceType === k ? '0 1px 2px rgba(0,0,0,0.08)' : 'none' }}>{l}</button>
+              ))}
+            </div>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+            <span style={{ width: 72, flexShrink: 0 }} />
+            {priceType === 'market' ? (
+              <div style={{ flex: 1, height: 48, borderRadius: 10, background: '#F9FAFB', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, color: SUB }}>시장가 ({won(stock.price)})</div>
+            ) : (
+              <>
+                <button onClick={() => stepPrice(-1)} style={obStep}>−</button>
+                <div style={{ flex: 1, height: 48, borderRadius: 10, border: '1px solid #E5E8EB', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', padding: '0 12px' }}>
+                  <input value={wonShort(price)} onChange={e => { const n = parseInt(e.target.value.replace(/\D/g, '')) || 0; setPrice(n); }}
+                    style={{ width: '100%', border: 'none', outline: 'none', textAlign: 'right', fontSize: 18, fontWeight: 800, color: INK, background: 'transparent' }} />
+                  <span style={{ fontSize: 14, color: SUB, marginLeft: 4 }}>원</span>
+                </div>
+                <button onClick={() => stepPrice(1)} style={obStep}>＋</button>
+              </>
+            )}
+          </div>
 
-      <div style={{ display: 'flex', alignItems: 'center', marginBottom: 6 }}>
-        <span style={lblStyle}>총 주문 금액</span>
-        <div style={{ flex: 1, height: 48, borderRadius: 10, background: '#F9FAFB', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', padding: '0 14px', fontSize: 18, fontWeight: 800, color: total > 0 ? INK : '#C5CBD3' }}>
-          {total > 0 ? won(total) : '금액 입력'}
-        </div>
-      </div>
-      <div style={{ textAlign: 'right', fontSize: 13, color: SUB, marginBottom: 16 }}>
-        {isBuy ? `주문 가능 금액 ${won(cash)}` : `보유 수량 ${ownedQty}주`}
-      </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+            <span style={lblStyle}>수량</span>
+            <button onClick={() => setQty(q => Math.max(0, q - 1))} style={obStep}>−</button>
+            <div style={{ flex: 1, height: 48, borderRadius: 10, border: '1px solid #E5E8EB', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', padding: '0 12px' }}>
+              <input value={qty === 0 ? '' : qty} placeholder="수량 입력" onChange={e => { const n = parseInt(e.target.value.replace(/\D/g, '')) || 0; setQty(n); }}
+                style={{ width: '100%', border: 'none', outline: 'none', textAlign: 'right', fontSize: 18, fontWeight: 800, color: INK, background: 'transparent' }} />
+              <span style={{ fontSize: 14, color: SUB, marginLeft: 4 }}>주</span>
+            </div>
+            <button onClick={() => setQty(q => q + 1)} style={obStep}>＋</button>
+          </div>
+          <div style={{ display: 'flex', gap: 8, marginBottom: 18 }}>
+            {[[0.1, '10%'], [0.25, '25%'], [0.5, '50%'], [1, '최대']].map(([r, l]) => (
+              <button key={l} onClick={() => ratio(r)} style={{ flex: 1, height: 36, borderRadius: 10, border: '1px solid #E5E8EB', background: '#fff', cursor: 'pointer', fontSize: 13, fontWeight: 700, color: '#4E5968' }}>{l}</button>
+            ))}
+          </div>
 
-      {!canSubmit && qty > 0 && (
-        <div style={{ fontSize: 13, color: UP, fontWeight: 600, marginBottom: 12, textAlign: 'center' }}>
-          {isBuy ? '주문 가능 금액이 부족해요.' : '보유 수량을 초과했어요.'}
-        </div>
-      )}
+          <div style={{ display: 'flex', alignItems: 'center', marginBottom: 6 }}>
+            <span style={lblStyle}>총 주문 금액</span>
+            <div style={{ flex: 1, height: 48, borderRadius: 10, background: '#F9FAFB', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', padding: '0 14px', fontSize: 18, fontWeight: 800, color: total > 0 ? INK : '#C5CBD3' }}>
+              {total > 0 ? won(total) : '금액 입력'}
+            </div>
+          </div>
+          <div style={{ textAlign: 'right', fontSize: 13, color: SUB, marginBottom: 16 }}>
+            {isBuy ? `주문 가능 금액 ${won(cash)}` : `보유 수량 ${ownedQty}주`}
+          </div>
 
-      <button onClick={submit} disabled={!canSubmit} style={{
-        width: '100%', height: 54, borderRadius: 14, border: 'none', fontSize: 17, fontWeight: 800, cursor: canSubmit ? 'pointer' : 'not-allowed',
-        background: canSubmit ? accent : '#E5E8EB', color: canSubmit ? '#fff' : '#B0B8C1' }}>
-        {qty > 0 ? `${won(total)} ${isBuy ? '매수하기' : '매도하기'}` : `${isBuy ? '매수' : '매도'}하기`}
-      </button>
+          {!canSubmit && qty > 0 && (
+            <div style={{ fontSize: 13, color: UP, fontWeight: 600, marginBottom: 12, textAlign: 'center' }}>
+              {isBuy ? '주문 가능 금액이 부족해요.' : '보유 수량을 초과했어요.'}
+            </div>
+          )}
 
-      {holding && (
-        <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid #F2F4F6' }}>
-          <div style={{ fontSize: 13, color: SUB, marginBottom: 8 }}>내 보유</div>
-          <Row label="보유 수량" value={holding.qty + '주'} />
-          <Row label="평균 매수가" value={won(holding.avgPrice)} />
-          <Row label="평가 손익" value={signNum((stock.price - holding.avgPrice) * holding.qty) + '원'} />
-        </div>
+          <button onClick={submit} disabled={!canSubmit} style={{
+            width: '100%', height: 54, borderRadius: 14, border: 'none', fontSize: 17, fontWeight: 800, cursor: canSubmit ? 'pointer' : 'not-allowed',
+            background: canSubmit ? accent : '#E5E8EB', color: canSubmit ? '#fff' : '#B0B8C1' }}>
+            {submitting ? '주문 처리 중…' : qty > 0 ? `${won(total)} ${isBuy ? '매수하기' : '매도하기'}` : `${isBuy ? '매수' : '매도'}하기`}
+          </button>
+        </>
       )}
 
       {toast && (
-        <div style={{ marginTop: 14, display: 'flex', alignItems: 'center', gap: 8, background: accentBg, borderRadius: 12, padding: '12px 14px' }}>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={accent} strokeWidth="2.4"><path d="M5 12l5 5L20 7" strokeLinecap="round" strokeLinejoin="round" /></svg>
-          <span style={{ fontSize: 14, fontWeight: 700, color: accent }}>{toast}</span>
+        <div style={{ marginTop: 14, display: 'flex', alignItems: 'center', gap: 8, background: toast.ok ? (isBuy ? '#FEF0F1' : '#EFF5FF') : '#FDEDED', borderRadius: 12, padding: '12px 14px' }}>
+          {toast.ok ? (
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={accent} strokeWidth="2.4"><path d="M5 12l5 5L20 7" strokeLinecap="round" strokeLinejoin="round" /></svg>
+          ) : (
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={errColor} strokeWidth="2.4"><path d="M12 8v5M12 16h.01M12 3l9 16H3l9-16z" strokeLinecap="round" strokeLinejoin="round" /></svg>
+          )}
+          <span style={{ fontSize: 14, fontWeight: 700, color: toast.ok ? accent : errColor }}>{toast.text}</span>
         </div>
       )}
     </Card>
@@ -279,6 +331,17 @@ export function Detail() {
   const [priceType, setPriceType] = useState('limit');
   const [apiCandles, setApiCandles] = useState(null);        // 일봉: null=로딩, []=실패, [...]=성공
   const [candlesLoading, setCandlesLoading] = useState(true);
+  const [stockInfo, setStockInfo] = useState(undefined);     // 종목 개요: undefined=로딩("...") | null=404·에러("-") | { marketCap, week52High, week52Low, per, sector }
+
+  // 종목 개요 API 호출 (종목 변경 시 1회) — 404(데이터 없음)면 '-' 표시
+  useEffect(() => {
+    let cancelled = false;
+    setStockInfo(undefined);
+    fetchStockInfo(code)
+      .then(data => { if (!cancelled) setStockInfo(data); })
+      .catch(() => { if (!cancelled) setStockInfo(null); });
+    return () => { cancelled = true; };
+  }, [code]);
 
   // 종목 변경 시 주문가 리셋
   useEffect(() => { setOrderPrice(stock?.price || 0); }, [code]);
@@ -428,16 +491,17 @@ export function Detail() {
 
   if (!stock) return <Stub name="종목" />;
   const col = tone(stock.pct);
-  const holding = state.holdings.find(h => h.code === code);
   const watched = state.watchlist.includes(code);
 
+  const infoLoading = stockInfo === undefined;
+  const infoField = (val, formatter) => infoLoading ? '...' : (val == null ? '-' : formatter(val));
   const info = [
-    ['시가총액', stock.value >= 100 ? (stock.value * 9.2 / 10).toFixed(1) + '조' : (stock.value * 92).toLocaleString() + '억'],
+    ['시가총액', infoField(stockInfo?.marketCap, formatMarketCap)],
     ['거래대금', (stock.value ?? 0).toLocaleString() + '억원'],
-    ['52주 최고', won(Math.round(stock.price * 1.34))],
-    ['52주 최저', won(Math.round(stock.price * 0.72))],
-    ['PER', stock.value > 0 ? (8 + ((stock.value ?? 0) % 17)).toFixed(1) + '배' : '-'],
-    ['업종', stock.sector ?? '-'],
+    ['52주 최고', infoField(stockInfo?.week52High, won)],
+    ['52주 최저', infoField(stockInfo?.week52Low, won)],
+    ['PER', infoField(stockInfo?.per, v => v.toFixed(2) + '배')],
+    ['업종', infoField(stockInfo?.sector, v => v)],
   ];
 
   return (
@@ -507,7 +571,7 @@ export function Detail() {
         </div>
 
         <div style={{ position: 'sticky', top: 84, display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <OrderPanel stock={stock} holding={holding} price={orderPrice} setPrice={setOrderPrice} priceType={priceType} setPriceType={setPriceType} />
+          <OrderPanel stock={stock} price={orderPrice} setPrice={setOrderPrice} priceType={priceType} setPriceType={setPriceType} />
         </div>
       </div>
     </div>

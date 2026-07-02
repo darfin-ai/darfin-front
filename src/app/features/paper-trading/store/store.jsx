@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router';
-import { fetchMarketIndices, fetchInvestorSentiment, fetchIndustryRanks, fetchWatchlist, addWatchlistItem, removeWatchlistItem, fetchPortfolio, paperBuy, paperSell, paperCharge, paperReset, paperInitAmount } from '../lib/stockApi';
+import { fetchMarketIndices, fetchInvestorSentiment, fetchIndustryRanks, fetchWatchlist, addWatchlistItem, removeWatchlistItem, fetchPortfolio, paperCharge, paperReset, paperInitAmount } from '../lib/stockApi';
 // ===== Darfin global store + seed data =====
 // Korean finance convention: 상승=빨강(red), 하락=파랑(blue)
 
@@ -212,15 +212,11 @@ export function StoreProvider({ children, initialLoggedIn, onLogout }) {
     return () => { cancelled = true; };
   }, [initialLoggedIn]);
 
-  // 모의투자 포트폴리오: 로그인 시 DB에서 불러와 로컬 상태를 덮어씀.
-  // 비로그인 시 holdings/trades 초기화, funds는 기본값 유지.
-  useEffect(() => {
-    if (!initialLoggedIn) {
-      setState(s => ({ ...s, holdings: [], trades: [],
-        funds: { initialized: false, initialAmount: 10000000, cashBalance: 10000000, chargeCountToday: 0 } }));
-      return;
-    }
-    fetchPortfolio()
+  // 모의투자 포트폴리오 조회 — 로그인 시 + 상세 페이지 주문 성공 후 재호출해 로컬 상태를 덮어씀.
+  // /funds/paper/* 와 /funds/paper-trading/*는 같은 계좌/테이블을 쓰므로, 상세 페이지에서
+  // 주문해도 이걸 다시 불러줘야 "내 자산" 페이지 잔액·보유가 즉시 갱신된다.
+  const refreshPortfolio = useCallback(() => {
+    return fetchPortfolio()
       .then(portfolio => {
         setState(s => ({
           ...s,
@@ -238,7 +234,17 @@ export function StoreProvider({ children, initialLoggedIn, onLogout }) {
         }));
       })
       .catch(e => console.warn('포트폴리오 조회 실패', e));
-  }, [initialLoggedIn]);
+  }, []);
+
+  // 비로그인 시 holdings/trades 초기화, funds는 기본값 유지. 로그인 시 서버에서 로드.
+  useEffect(() => {
+    if (!initialLoggedIn) {
+      setState(s => ({ ...s, holdings: [], trades: [],
+        funds: { initialized: false, initialAmount: 10000000, cashBalance: 10000000, chargeCountToday: 0 } }));
+      return;
+    }
+    refreshPortfolio();
+  }, [initialLoggedIn, refreshPortfolio]);
 
   // WebSocket 1회 연결: RANK / PRICE / WATCHLIST 수신
   useEffect(() => {
@@ -460,49 +466,6 @@ export function StoreProvider({ children, initialLoggedIn, onLogout }) {
     else ws.addEventListener('open', send, { once: true });
   }, []);
 
-  const buy = useCallback((code, qty, price) => {
-    // 낙관적 갱신
-    setState(s => {
-      const cost = qty * price;
-      if (cost > s.funds.cashBalance) return s;
-      const holdings = [...s.holdings];
-      const idx = holdings.findIndex(h => h.code === code);
-      if (idx >= 0) {
-        const h = holdings[idx];
-        const totalQty = h.qty + qty;
-        const avg = Math.round((h.avgPrice * h.qty + price * qty) / totalQty);
-        holdings[idx] = { ...h, qty: totalQty, avgPrice: avg };
-      } else holdings.push({ code, qty, avgPrice: price });
-      const trades = [{ id: 't' + Date.now(), code, type: 'BUY', qty, price, ts: Date.now(), pnl: null }, ...s.trades];
-      return { ...s, holdings, trades, funds: { ...s.funds, cashBalance: s.funds.cashBalance - cost } };
-    });
-    // 서버 동기화 (로그인 시에만)
-    if (initialLoggedIn) {
-      paperBuy(code, qty, price).catch(e => console.warn('매수 서버 동기화 실패', e));
-    }
-  }, [initialLoggedIn]);
-
-  const sell = useCallback((code, qty, price) => {
-    // 낙관적 갱신
-    setState(s => {
-      const idx = s.holdings.findIndex(h => h.code === code);
-      if (idx < 0) return s;
-      const h = s.holdings[idx];
-      const sellQty = Math.min(qty, h.qty);
-      const proceeds = sellQty * price;
-      const pnl = Math.round((price - h.avgPrice) * sellQty);
-      let holdings = [...s.holdings];
-      if (sellQty >= h.qty) holdings.splice(idx, 1);
-      else holdings[idx] = { ...h, qty: h.qty - sellQty };
-      const trades = [{ id: 't' + Date.now(), code, type: 'SELL', qty: sellQty, price, ts: Date.now(), pnl }, ...s.trades];
-      return { ...s, holdings, trades, funds: { ...s.funds, cashBalance: s.funds.cashBalance + proceeds } };
-    });
-    // 서버 동기화
-    if (initialLoggedIn) {
-      paperSell(code, qty, price).catch(e => console.warn('매도 서버 동기화 실패', e));
-    }
-  }, [initialLoggedIn]);
-
   const chargeFunds = useCallback((amount) => {
     setState(s => {
       if (s.funds.chargeCountToday >= 3) return s; // 1일 3회 제한
@@ -571,7 +534,7 @@ export function StoreProvider({ children, initialLoggedIn, onLogout }) {
     market, industries, schedule: SCHEDULE, aiComments: AI_COMMENTS,
     marketError,
     genCandles, genSpark, seedRand,
-    navigate, goToLogin, toggleWatch, buy, sell, chargeFunds, resetFunds, setInitialFunds, addAiReport,
+    navigate, goToLogin, toggleWatch, refreshPortfolio, chargeFunds, resetFunds, setInitialFunds, addAiReport,
     addPost, togglePostLike, addComment,
     lastExecution, lastOrderBook, subscribeDetail,
   };

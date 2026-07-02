@@ -64,6 +64,15 @@ export async function fetchStockSummary(code) {
 }
 
 /**
+ * 종목 개요 (시가총액/52주 최고·최저/PER/업종).
+ * 반환: { marketCap, week52High, week52Low, per, sector } — per/sector는 데이터 없으면 null.
+ */
+export async function fetchStockInfo(code) {
+  const { data } = await client.get(`/funds/stocks/${code}/info`);
+  return data;
+}
+
+/**
  * 일봉 차트 데이터 (최대 ~200개, oldest-first).
  * 반환: [{ date, open, high, low, close, volume }, ...]
  */
@@ -178,16 +187,6 @@ export async function fetchPortfolio() {
   return data;
 }
 
-export async function paperBuy(code, qty, price) {
-  const { data } = await client.post('/funds/paper/buy', { code, qty, price }, { headers: authHeaders() });
-  return data;
-}
-
-export async function paperSell(code, qty, price) {
-  const { data } = await client.post('/funds/paper/sell', { code, qty, price }, { headers: authHeaders() });
-  return data;
-}
-
 export async function paperCharge(amount) {
   const { data } = await client.post('/funds/paper/charge', { amount }, { headers: authHeaders() });
   return data;
@@ -217,4 +216,44 @@ export async function addWatchlistItem(code) {
 
 export async function removeWatchlistItem(code) {
   await client.delete(`/funds/watchlist/${code}`, { headers: authHeaders() });
+}
+
+// ── 모의투자 매수/매도 (로그인 사용자별 가상 계좌) ──
+// 인증 필요 — /funds/paper-trading/** 는 SecurityConfig에서 authenticated()로 보호됨.
+
+/**
+ * 주문 가능 금액 조회. 최초 호출 시 1천만원으로 계좌 자동 생성됨.
+ * 반환: { availableBalance }
+ */
+export async function fetchPaperTradingBalance() {
+  const { data } = await client.get('/funds/paper-trading/balance', { headers: authHeaders() });
+  return data;
+}
+
+/**
+ * 종목별 보유 현황. 보유 없으면 quantity:0/avgBuyPrice:0/valuationPnl:0 (에러 아님).
+ * 반환: { stockCode, stockName, quantity, avgBuyPrice, currentPrice, valuationPnl, valuationPnlRate }
+ */
+export async function fetchPaperTradingHolding(code) {
+  const { data } = await client.get(`/funds/paper-trading/holdings/${code}`, { headers: authHeaders() });
+  return data;
+}
+
+/**
+ * 매수 주문. orderType: 'LIMIT'|'MARKET'. MARKET이면 price는 null.
+ * 반환: { tradeId, stockCode, stockName, side, orderType, price, quantity, totalAmount, realizedPnl, tradedAt }
+ */
+export async function placeBuyOrder({ stockCode, orderType, price, quantity }) {
+  const { data } = await client.post('/funds/paper-trading/orders/buy',
+    { stockCode, orderType, price, quantity }, { headers: authHeaders() });
+  return data;
+}
+
+/**
+ * 매도 주문. 요청/응답 구조는 매수와 동일하되 realizedPnl에 실현 손익이 채워짐.
+ */
+export async function placeSellOrder({ stockCode, orderType, price, quantity }) {
+  const { data } = await client.post('/funds/paper-trading/orders/sell',
+    { stockCode, orderType, price, quantity }, { headers: authHeaders() });
+  return data;
 }
