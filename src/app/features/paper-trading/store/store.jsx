@@ -10,6 +10,13 @@ const STOCK_META = {
   // 필요한 종목만 최소한으로
 };
 
+// 자금 이력 ts(epoch ms)가 오늘(KST 자정 기준)인지 판단 — 서버의 일일 충전 한도 판정과 동일 기준
+function isTodayKst(ts) {
+  const KST_OFFSET = 9 * 60 * 60 * 1000;
+  const dayIndex = (t) => Math.floor((t + KST_OFFSET) / 86400000);
+  return dayIndex(ts) === dayIndex(Date.now());
+}
+
 // deterministic pseudo-random seeded by string
 export function seedRand(seed) {
   let h = 2166136261;
@@ -99,9 +106,7 @@ function defaultState() {
     holdings: [],
     trades: [],
     watchlist: [], // 로그인 사용자의 DB 관심종목을 StoreProvider에서 별도로 불러와 채운다
-    fundHistory: [
-      { id: 'f1', type: 'INIT',   amount: 10000000, ts: Date.now() - 86400000 * 12 },
-    ],
+    fundHistory: [], // 로그인 사용자의 DB 자금 이력을 refreshPortfolio에서 별도로 불러와 채운다
     aiReports: [],
     community: {
       '000660': [
@@ -215,26 +220,30 @@ export function StoreProvider({ children, initialLoggedIn, onLogout }) {
   // 모의투자 포트폴리오 조회 — 로그인 시 + 상세 페이지 주문 성공 후 재호출해 로컬 상태를 덮어씀.
   // /funds/paper/* 와 /funds/paper-trading/*는 같은 계좌/테이블을 쓰므로, 상세 페이지에서
   // 주문해도 이걸 다시 불러줘야 "내 자산" 페이지 잔액·보유가 즉시 갱신된다.
+  const applyPortfolio = useCallback((portfolio) => {
+    setState(s => ({
+      ...s,
+      funds: {
+        initialized: true,
+        initialAmount: portfolio.funds.initialAmount,
+        cashBalance: portfolio.funds.cashBalance,
+        // 서버가 오늘 자정(KST) 이후 CHARGE 이력 수로 일일 한도를 강제하므로, 화면 표시용 카운트도 그 이력에서 계산한다.
+        chargeCountToday: (portfolio.fundHistory || []).filter(h => h.type === 'CHARGE' && isTodayKst(h.ts)).length,
+      },
+      holdings: portfolio.holdings.map(h => ({ code: h.code, qty: h.qty, avgPrice: h.avgPrice })),
+      trades: portfolio.trades.map(t => ({
+        id: String(t.id), code: t.code, type: t.type,
+        qty: t.qty, price: t.price, ts: t.ts, pnl: t.pnl,
+      })),
+      fundHistory: (portfolio.fundHistory || []).map(h => ({ id: String(h.id), type: h.type, amount: h.amount, ts: h.ts })),
+    }));
+  }, []);
+
   const refreshPortfolio = useCallback(() => {
     return fetchPortfolio()
-      .then(portfolio => {
-        setState(s => ({
-          ...s,
-          funds: {
-            initialized: true,
-            initialAmount: portfolio.funds.initialAmount,
-            cashBalance: portfolio.funds.cashBalance,
-            chargeCountToday: 0, // 서버 미관리 — 로그인마다 초기화
-          },
-          holdings: portfolio.holdings.map(h => ({ code: h.code, qty: h.qty, avgPrice: h.avgPrice })),
-          trades: portfolio.trades.map(t => ({
-            id: String(t.id), code: t.code, type: t.type,
-            qty: t.qty, price: t.price, ts: t.ts, pnl: t.pnl,
-          })),
-        }));
-      })
+      .then(applyPortfolio)
       .catch(e => console.warn('포트폴리오 조회 실패', e));
-  }, []);
+  }, [applyPortfolio]);
 
   // 비로그인 시 holdings/trades 초기화, funds는 기본값 유지. 로그인 시 서버에서 로드.
   useEffect(() => {
@@ -466,43 +475,28 @@ export function StoreProvider({ children, initialLoggedIn, onLogout }) {
     else ws.addEventListener('open', send, { once: true });
   }, []);
 
+  // 충전/초기화/초기금액 설정은 DB가 유일한 출처(서버가 일일 한도도 강제)이므로,
+  // 낙관적으로 화면을 먼저 갱신한 뒤 서버 응답으로 즉시 덮어써 동기화한다.
   const chargeFunds = useCallback((amount) => {
+    if (!initialLoggedIn) return;
     setState(s => {
       if (s.funds.chargeCountToday >= 3) return s; // 1일 3회 제한
-      return {
-        ...s,
-        funds: { ...s.funds, cashBalance: s.funds.cashBalance + amount, chargeCountToday: s.funds.chargeCountToday + 1 },
-        fundHistory: [{ id: 'f' + Date.now(), type: 'CHARGE', amount, ts: Date.now() }, ...s.fundHistory],
-      };
+      return { ...s, funds: { ...s.funds, cashBalance: s.funds.cashBalance + amount, chargeCountToday: s.funds.chargeCountToday + 1 } };
     });
-    if (initialLoggedIn) {
-      paperCharge(amount).catch(e => console.warn('충전 서버 동기화 실패', e));
-    }
-  }, [initialLoggedIn]);
+    paperCharge(amount).then(applyPortfolio).catch(e => { console.warn('충전 실패', e); refreshPortfolio(); });
+  }, [initialLoggedIn, applyPortfolio, refreshPortfolio]);
 
   const resetFunds = useCallback(() => {
-    setState(s => ({
-      ...s,
-      holdings: [],
-      trades: [],
-      funds: { ...s.funds, cashBalance: s.funds.initialAmount, chargeCountToday: 0 },
-      fundHistory: [{ id: 'f' + Date.now(), type: 'RESET', amount: s.funds.initialAmount, ts: Date.now() }, ...s.fundHistory],
-    }));
-    if (initialLoggedIn) {
-      paperReset().catch(e => console.warn('초기화 서버 동기화 실패', e));
-    }
-  }, [initialLoggedIn]);
+    if (!initialLoggedIn) return;
+    setState(s => ({ ...s, holdings: [], trades: [], funds: { ...s.funds, cashBalance: s.funds.initialAmount, chargeCountToday: 0 } }));
+    paperReset().then(applyPortfolio).catch(e => { console.warn('초기화 실패', e); refreshPortfolio(); });
+  }, [initialLoggedIn, applyPortfolio, refreshPortfolio]);
 
   const setInitialFunds = useCallback((amount) => {
-    setState(s => ({
-      ...s,
-      funds: { initialized: true, initialAmount: amount, cashBalance: amount, chargeCountToday: 0 },
-      fundHistory: [{ id: 'f' + Date.now(), type: 'INIT', amount, ts: Date.now() }, ...s.fundHistory],
-    }));
-    if (initialLoggedIn) {
-      paperInitAmount(amount).catch(e => console.warn('초기금액 서버 동기화 실패', e));
-    }
-  }, [initialLoggedIn]);
+    if (!initialLoggedIn) return;
+    setState(s => ({ ...s, funds: { initialized: true, initialAmount: amount, cashBalance: amount, chargeCountToday: 0 } }));
+    paperInitAmount(amount).then(applyPortfolio).catch(e => { console.warn('초기금액 설정 실패', e); refreshPortfolio(); });
+  }, [initialLoggedIn, applyPortfolio, refreshPortfolio]);
 
   const addAiReport = useCallback((report) => {
     setState(s => ({ ...s, aiReports: [{ id: 'r' + Date.now(), ts: Date.now(), ...report }, ...s.aiReports] }));
