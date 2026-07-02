@@ -47,4 +47,16 @@ export function getTopKosdaqCompanies() {
     .slice(0, 15);
 }
 
+/**
+ * Other companies in the same sector, for the detail page's "similar companies" panel.
+ * @param {string} id
+ * @param {number} [limit]
+ * @returns {Company[]}
+ */
+export function getSimilarCompanies(id, limit = 4) {
+  const target = DETAILS_BY_ID[id]?.company ?? ALL_COMPANIES.find((c) => c.id === id);
+  if (!target) return [];
+  return ALL_COMPANIES.filter((c) => c.id !== id && c.sector === target.sector).slice(0, limit);
+}
+
 export * from './types';

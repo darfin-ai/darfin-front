@@ -207,36 +207,208 @@ export const samsungElectronics = {
     },
   ],
 
+  // Grouped/rendered by DIFF_SECTION_CONFIG (lib/comparison.js) — every
+  // (section, QoQ/YoY) row in that config has at least one entry here.
+  // Q4 2025 QoQ-baseline figures for numeric entries are illustrative
+  // (derived quarterly figures a real pipeline would compute as
+  // FY2025 사업보고서 minus 9M cumulative from the Q3 분기보고서); YoY
+  // figures reuse the exact values already shown in `financials` above.
   diffs: [
     {
-      sectionLabel: 'IV. 이사의 경영진단 및 분석의견 > 사업 부문별 실적',
-      changeType: 'modified',
-      before:
-        '2025년(제57기) 1분기 DS 부문 영업이익은 1조 1,055억원으로 전년 동기 대비 개선세를 유지하였으나, HBM 고객사 퀄리피케이션 지연으로 성장 속도는 제한적이었습니다.',
+      sectionLabel: '회사의 개요',
+      sourceLabel: 'I. 회사의 개요 > 2. 회사의 연혁 및 조직',
+      comparisonType: 'QoQ',
+      changeType: 'added',
+      before: '2025년 사업보고서 기준 DS 부문은 메모리·시스템LSI·파운드리 3개 사업부로 편제되어 있었습니다.',
       after:
-        '2026년(제58기) 1분기 DS 부문이 81조 7,156억원(전체 매출의 61%)을 기록하며 AI 반도체 수요 급증에 따라 HBM 및 데이터센터용 DRAM 매출이 대폭 확대되었습니다.',
-      sourceRef: 'DART-20260515-000660#mdna-segment',
+        '2026년 1분기 보고서에서 HBM·AI 인프라向 메모리를 전담하는 "AI Memory" 사업부가 메모리 사업부 산하에 신규 편제되었습니다.',
+      sourceRef: 'DART-20260515-000660#company-overview-org',
     },
     {
-      sectionLabel: 'II. 사업의 내용 > 1. 사업의 개요 > 부문별 매출 비중',
+      sectionLabel: '사업의 내용',
+      sourceLabel: 'II. 사업의 내용 > 1. 사업의 개요 > 부문별 매출 비중',
+      comparisonType: 'QoQ',
       changeType: 'modified',
-      before: 'DX 부문 65.8%, DS 부문 32.2% (2024년 1분기 기준)',
-      after:  'DS 부문 61%, DX 부문 33% (2026년 1분기 기준) — 처음으로 DS 부문이 DX를 추월',
+      before: '2025년 사업보고서(연간) 기준 DX 부문 매출 비중 약 64%, DS 부문 약 33% 수준으로 기술되었습니다.',
+      after: '2026년 1분기 DS 부문이 61%로 확대되며 DX(33%)를 처음으로 역전하였습니다.',
       sourceRef: 'DART-20260515-000660#biz-segment-mix',
     },
     {
-      sectionLabel: 'II. 사업의 내용 > 5. 위험관리 및 파생거래 > 주요 위험 요인',
+      sectionLabel: '사업의 내용',
+      sourceLabel: 'II. 사업의 내용 > 2. 주요 제품 및 서비스 > DS 부문',
+      comparisonType: 'YoY',
+      changeType: 'modified',
+      before: 'DRAM, NAND Flash, 모바일AP 등을 생산·판매 (2025년 1분기 기준)',
+      after: 'HBM(고대역폭메모리), 데이터센터용 고용량 DRAM·SSD를 주력으로 하며 모바일 DRAM·범용 NAND 비중은 상대적으로 축소 (2026년 1분기 기준)',
+      sourceRef: 'DART-20260515-000660#products-ds',
+    },
+    {
+      sectionLabel: '위험요인',
+      sourceLabel: 'II. 사업의 내용 > 5. 위험관리 및 파생거래 > 주요 위험 요인',
+      comparisonType: 'QoQ',
       changeType: 'added',
       after:
         'AI 반도체 수요 집중에 따른 주요 고객 익스포저 모니터링 강화 및 HBM 판가 변동성 위험을 신규 위험 요인으로 추가 공시하였습니다.',
       sourceRef: 'DART-20260515-000660#risk-new',
     },
     {
-      sectionLabel: 'II. 사업의 내용 > 2. 주요 제품 및 서비스 > DS 부문',
+      sectionLabel: '위험요인',
+      sourceLabel: 'II. 사업의 내용 > 5. 위험관리 및 파생거래',
+      comparisonType: 'YoY',
       changeType: 'modified',
-      before: 'DRAM, NAND Flash, 모바일AP 등을 생산·판매 (2023년 1분기)',
-      after:  'HBM(고대역폭메모리), 데이터센터용 고용량 DRAM·SSD를 주력으로 하며, 모바일 DRAM·범용 NAND 비중은 상대적으로 축소 (2026년 1분기)',
-      sourceRef: 'DART-20260515-000660#products-ds',
+      before: '2025년 1분기 보고서는 메모리 업황 회복 지연 및 HBM 고객사 퀄리피케이션 지연을 주요 위험으로 기술하였습니다.',
+      after:
+        '2026년 1분기 보고서는 위험의 초점이 "성장 둔화"에서 "특정 고객 집중 및 판가 변동성"으로 이동 — 위험의 성격이 하방 리스크에서 집중 리스크로 전환되었습니다.',
+      sourceRef: 'DART-20260515-000660#risk-management',
+    },
+    {
+      sectionLabel: '재무상태표',
+      sourceLabel: 'III. 재무에 관한 사항 > 1. 요약재무정보 > 연결 재무상태표',
+      comparisonType: 'QoQ',
+      metrics: [
+        { label: '자산총계', current: 512_600_000_000_000, baseline: 478_300_000_000_000, unit: 'KRW' },
+        { label: '부채총계', current: 120_400_000_000_000, baseline: 101_200_000_000_000, unit: 'KRW' },
+        { label: '유동자산', current: 306_220_075_000_000, baseline: 258_900_000_000_000, unit: 'KRW' },
+      ],
+      sourceRef: 'DART-20260515-000660#bs-qoq',
+    },
+    {
+      sectionLabel: '재무상태표',
+      sourceLabel: 'III. 재무에 관한 사항 > 1. 요약재무정보 > 연결 재무상태표',
+      comparisonType: 'YoY',
+      metrics: [
+        { label: '자산총계', current: 512_600_000_000_000, baseline: 448_900_000_000_000, unit: 'KRW' },
+        { label: '유동자산', current: 306_220_075_000_000, baseline: 222_685_717_000_000, unit: 'KRW' },
+        { label: '재고자산', current: 58_278_373_000_000, baseline: 53_220_267_000_000, unit: 'KRW' },
+      ],
+      sourceRef: 'DART-20260515-000660#bs-yoy',
+    },
+    {
+      sectionLabel: '손익계산서',
+      sourceLabel: 'III. 재무에 관한 사항 > 1. 요약재무정보 > 연결 손익계산서',
+      comparisonType: 'YoY',
+      metrics: [
+        { label: '매출액', current: 133_873_444_000_000, baseline: 79_140_503_000_000, unit: 'KRW' },
+        { label: '영업이익', current: 57_232_797_000_000, baseline: 6_685_272_000_000, unit: 'KRW' },
+        { label: '영업이익률', current: 42.75, baseline: 8.45, unit: '%' },
+      ],
+      sourceRef: 'DART-20260515-000660#is-yoy',
+    },
+    {
+      sectionLabel: '손익계산서',
+      sourceLabel: 'III. 재무에 관한 사항 > 1. 요약재무정보 > 연결 손익계산서',
+      comparisonType: 'QoQ',
+      metrics: [
+        { label: '매출액', current: 133_873_444_000_000, baseline: 95_420_000_000_000, unit: 'KRW' },
+        { label: '영업이익', current: 57_232_797_000_000, baseline: 18_150_000_000_000, unit: 'KRW' },
+        { label: '당기순이익', current: 41_800_000_000_000, baseline: 13_200_000_000_000, unit: 'KRW' },
+      ],
+      sourceRef: 'DART-20260515-000660#is-qoq',
+    },
+    {
+      sectionLabel: '현금흐름표',
+      sourceLabel: 'III. 재무에 관한 사항 > 1. 요약재무정보 > 연결 현금흐름표',
+      comparisonType: 'YoY',
+      metrics: [
+        { label: '영업활동현금흐름', current: 40_274_106_000_000, baseline: 16_580_866_000_000, unit: 'KRW' },
+      ],
+      sourceRef: 'DART-20260515-000660#cf-yoy',
+    },
+    {
+      sectionLabel: '현금흐름표',
+      sourceLabel: 'III. 재무에 관한 사항 > 1. 요약재무정보 > 연결 현금흐름표',
+      comparisonType: 'QoQ',
+      metrics: [
+        { label: '영업활동현금흐름', current: 40_274_106_000_000, baseline: 24_680_000_000_000, unit: 'KRW' },
+      ],
+      sourceRef: 'DART-20260515-000660#cf-qoq',
+    },
+    {
+      sectionLabel: '주석',
+      sourceLabel: '연결재무제표 주석 > 재고자산 평가충당금',
+      comparisonType: 'QoQ',
+      changeType: 'modified',
+      before: '2025년 사업보고서 주석은 재고자산 평가충당금을 범용 D램·낸드 중심으로 설명하였습니다.',
+      after: 'HBM 및 고부가 제품 비중 확대에 따라 재고자산 평가충당금 산정 기준에 HBM 전용 라인 관련 주석이 추가되었습니다.',
+      metrics: [
+        { label: '재고자산평가충당금', current: 1_820_000_000_000, baseline: 2_140_000_000_000, unit: 'KRW' },
+      ],
+      sourceRef: 'DART-20260515-000660#note-inventory',
+    },
+    {
+      sectionLabel: '주석',
+      sourceLabel: '연결재무제표 주석 > 우발부채와 약정사항',
+      comparisonType: 'YoY',
+      changeType: 'added',
+      after: 'HBM 생산 캐파 확대를 위한 신규 설비투자 약정(약 12조원)이 우발채무·약정사항 주석에 신규 반영되었습니다.',
+      metrics: [
+        { label: '설비투자 약정액', current: 12_000_000_000_000, baseline: 0, unit: 'KRW' },
+      ],
+      sourceRef: 'DART-20260515-000660#note-commitments',
+    },
+    {
+      sectionLabel: '계열회사 현황',
+      sourceLabel: 'VIII. 계열회사 등에 관한 사항 > 1. 계열회사 현황',
+      comparisonType: 'QoQ',
+      changeType: 'added',
+      after: 'HBM 패키징 협력을 위한 해외 종속법인 1개사(베트남 소재)가 신규 편입되었습니다.',
+      sourceRef: 'DART-20260515-000660#affiliates-new',
+    },
+    {
+      sectionLabel: '중요한 계약',
+      sourceLabel: 'X. 대주주 등과의 거래내용 > 중요한 계약 등',
+      comparisonType: 'QoQ',
+      changeType: 'added',
+      after: '글로벌 AI 반도체 고객사와 다년간 HBM 공급계약을 신규 체결하였다고 공시하였습니다.',
+      sourceRef: 'DART-20260515-000660#contracts-new',
+    },
+    {
+      sectionLabel: '임원 및 직원',
+      sourceLabel: 'VII. 임원 및 직원 등에 관한 사항 > 1. 임원 및 직원 현황',
+      comparisonType: 'QoQ',
+      metrics: [
+        { label: '직원 수', current: 128_400, baseline: 125_900, unit: 'count', unitLabel: '명' },
+        { label: '임원 수', current: 132, baseline: 128, unit: 'count', unitLabel: '명' },
+      ],
+      sourceRef: 'DART-20260515-000660#headcount-qoq',
+    },
+    {
+      sectionLabel: '임원 및 직원',
+      sourceLabel: 'VII. 임원 및 직원 등에 관한 사항 > 1. 임원 및 직원 현황',
+      comparisonType: 'YoY',
+      metrics: [
+        { label: '직원 수', current: 128_400, baseline: 121_700, unit: 'count', unitLabel: '명' },
+        { label: '평균 근속연수', current: 12.4, baseline: 11.8, unit: 'count', unitLabel: '년' },
+      ],
+      sourceRef: 'DART-20260515-000660#headcount-yoy',
+    },
+    {
+      sectionLabel: '주주현황',
+      sourceLabel: 'V. 주주에 관한 사항 > 1. 주주 현황',
+      comparisonType: 'QoQ',
+      metrics: [
+        { label: '최대주주 및 특수관계인 지분율', current: 21.7, baseline: 21.6, unit: '%' },
+        { label: '국민연금공단 지분율', current: 7.8, baseline: 7.4, unit: '%' },
+      ],
+      sourceRef: 'DART-20260515-000660#shareholders-qoq',
+    },
+    {
+      sectionLabel: '주주현황',
+      sourceLabel: 'V. 주주에 관한 사항 > 1. 주주 현황',
+      comparisonType: 'YoY',
+      metrics: [
+        { label: '최대주주 및 특수관계인 지분율', current: 21.7, baseline: 21.2, unit: '%' },
+        { label: '외국인 지분율', current: 54.3, baseline: 51.6, unit: '%' },
+      ],
+      sourceRef: 'DART-20260515-000660#shareholders-yoy',
+    },
+    {
+      sectionLabel: '지배구조',
+      sourceLabel: 'VI. 이사회 등 회사의 기관에 관한 사항',
+      comparisonType: 'QoQ',
+      changeType: 'added',
+      after: 'AI·반도체 전문성을 보유한 사외이사 1인이 신규 선임되어 이사회가 사내이사 4인, 사외이사 7인으로 확대되었습니다.',
+      sourceRef: 'DART-20260515-000660#governance-new',
     },
   ],
 
@@ -264,14 +436,6 @@ export const samsungElectronics = {
       quarter: '2026Q1',
       from: '스마트폰·가전 중심 DX 사업 (매출 비중 72.5%, 2023Q1)',
       to:   'HBM·AI 반도체 중심 DS 사업 (매출 비중 61%, 2026Q1)',
-      evidence:
-          'DS 부문 매출 비중 2023Q1 21.5% → 2026Q1 61%로 역전. 같은 기간 영업이익률은 1.0% → 42.75%로 상승. 영업현금흐름 6.3조원 → 40.3조원으로 6배 증가. 재고자산은 5.4조원대로 안정적 — HBM 수요가 생산 즉시 소진되는 구조.',
-      bullets: [
-        'DS 부문 매출 비중이 DX를 역전해 61%로 상승',
-        '영업이익률 1.0% → 42.75% — 역대 최고치 달성',
-        '영업현금흐름 6배 증가 (6.3조 → 40.3조원)',
-        'HBM 재고 5.4조원대 — 생산 즉시 소진되는 구조',
-      ],
       metrics: [
         { label: 'DS 매출 비중', from: '21.5%', to: '61%' },
         { label: '영업이익률',   from: '1.0%',  to: '42.75%' },
@@ -286,13 +450,6 @@ export const samsungElectronics = {
       quarter: '2024Q1',
       from: 'DS 부문 적자·감산 (영업손실 △4.58조, 2023Q1)',
       to:   'DS 부문 흑자 전환 및 고부가 제품 Mix 전환 (영업이익 +6.6조, 2024Q1)',
-      evidence:
-          '2023Q1 DS 부문 영업손실 △4조 5,819억원 → 2024Q1 DS 흑자 전환. 전사 영업이익 6,402억원 → 6조 6,060억원으로 급반등. 2023년부터 시행한 DRAM 감산(생산량 조정) 및 HBM 생산 라인 전환이 2024Q1 결과로 가시화.',
-      bullets: [
-        'DS 부문 영업손실 △4.58조 → 흑자 전환',
-        '전사 영업이익 6,402억 → 6조 6,060억으로 급반등',
-        'DRAM 감산·HBM 라인 전환이 2024Q1에 가시화',
-      ],
       metrics: [
         { label: 'DS 영업이익',  from: '△4.58조', to: '+6.6조' },
         { label: '전사 영업이익', from: '6,402억',  to: '6.6조' },
@@ -305,13 +462,6 @@ export const samsungElectronics = {
       quarter: '2025Q1',
       from: 'DS 부문 흑자 전환 및 고부가 제품 Mix 전환 (영업이익 +6.6조, 2024Q1)',
       to:   'HBM3E 양산 본격화 및 Nvidia 퀄 지연 극복 (2025Q1)',
-      evidence:
-          '전사 영업이익 6.6조원 수준 유지(2024Q1 대비 +0.3%). HBM3E 12단 적층 양산 본격화. Nvidia 공급 승인 취득으로 HBM 매출 가시화.',
-      bullets: [
-        'HBM3E 12단 양산 — Nvidia 공급 승인 획득',
-        '전사 영업이익 6.7조원으로 전년 수준 유지',
-        'DS 영업이익률 28%대로 안정화',
-      ],
       metrics: [
         { label: '전사 영업이익', from: '6.6조', to: '6.7조' },
         { label: 'DS 이익률',    from: null,    to: '28%' },

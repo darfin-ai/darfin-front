@@ -31,6 +31,9 @@ function MetricCard({ label, value, sub, delay }) {
   );
 }
 
+/**
+ * @param {{ overview: import('../../../../mocks/companyAnalysis/types').CompanyOverview }} props
+ */
 export function DividendPanel({ overview }) {
   const div = overview.dividend;
   if (!div) return null;
@@ -56,72 +59,71 @@ export function DividendPanel({ overview }) {
         )}
       </div>
       <div className="rounded-lg border border-slate-200 bg-white p-4">
-
-      {/* Key metrics */}
-      <div className="grid grid-cols-3 gap-3">
-        <MetricCard
-          label="주당 배당금 (연간)"
-          value={`${div.perShareKrw.toLocaleString()}원`}
-          sub="보통주 기준"
-          delay={0}
-        />
-        <MetricCard
-          label="배당수익률"
-          value={`${div.yieldPct}%`}
-          sub="현재 주가 기준 추정"
-          delay={0.06}
-        />
-        <MetricCard
-          label="배당성향"
-          value={`${div.payoutRatioPct}%`}
-          sub="순이익 대비 배당 비율"
-          delay={0.12}
-        />
-      </div>
-
-      {/* History bar chart */}
-      <div className="mt-4">
-        <p className="mb-2 text-xs font-medium text-slate-500">연간 주당 배당금 추이 (원)</p>
-        <div className="h-24">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={chartData} barSize={28} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
-              <YAxis domain={[0, maxVal * 1.3]} hide />
-              <Tooltip content={<HistoryTooltip />} cursor={{ fill: '#f1f5f9' }} />
-              <Bar dataKey="displayValue" radius={[4, 4, 0, 0]}>
-                {chartData.map((entry) => (
-                  <Cell
-                    key={entry.year}
-                    fill={entry.perShareKrw == null ? '#e2e8f0' : '#3b82f6'}
-                    opacity={entry.perShareKrw == null ? 0.5 : 1}
-                  />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
+        {/* Key metrics */}
+        <div className="grid grid-cols-3 gap-3">
+          <MetricCard
+            label="주당 배당금 (연간)"
+            value={`${div.perShareKrw.toLocaleString()}원`}
+            sub="보통주 기준"
+            delay={0}
+          />
+          <MetricCard
+            label="배당수익률"
+            value={`${div.yieldPct}%`}
+            sub="현재 주가 기준 추정"
+            delay={0.06}
+          />
+          <MetricCard
+            label="배당성향"
+            value={`${div.payoutRatioPct}%`}
+            sub="순이익 대비 배당 비율"
+            delay={0.12}
+          />
         </div>
-        {/* X-axis labels */}
-        <div className="flex justify-around px-1">
-          {chartData.map((d) => (
-            <span
-              key={d.year}
-              className={`text-xs tabular-nums ${d.perShareKrw == null ? 'text-slate-300' : 'text-slate-500'}`}
-            >
-              {d.year}
-            </span>
-          ))}
-        </div>
-      </div>
 
-      {/* So what */}
-      {div.insight && (
-        <div className="mt-4 flex gap-3 rounded-lg border border-blue-100 bg-blue-50/60 px-3 py-2.5">
-          <Lightbulb size={15} className="mt-0.5 shrink-0 text-blue-500" />
-          <p className="text-sm leading-relaxed text-slate-700">
-            <span className="font-semibold text-blue-700">So what? </span>
-            {div.insight}
-          </p>
+        {/* History bar chart */}
+        <div className="mt-4">
+          <p className="mb-2 text-xs font-medium text-slate-500">연간 주당 배당금 추이 (원)</p>
+          <div className="h-24">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={chartData} barSize={28} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
+                <YAxis domain={[0, maxVal * 1.3]} hide />
+                <Tooltip content={<HistoryTooltip />} cursor={{ fill: '#f1f5f9' }} />
+                <Bar dataKey="displayValue" radius={[4, 4, 0, 0]}>
+                  {chartData.map((entry) => (
+                    <Cell
+                      key={entry.year}
+                      fill={entry.perShareKrw == null ? '#e2e8f0' : '#3b82f6'}
+                      opacity={entry.perShareKrw == null ? 0.5 : 1}
+                    />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+          {/* X-axis labels */}
+          <div className="flex justify-around px-1">
+            {chartData.map((d) => (
+              <span
+                key={d.year}
+                className={`text-xs tabular-nums ${d.perShareKrw == null ? 'text-slate-300' : 'text-slate-500'}`}
+              >
+                {d.year}
+              </span>
+            ))}
+          </div>
         </div>
-      )}
+
+        {/* So what */}
+        {div.insight && (
+          <div className="mt-4 flex gap-3 rounded-lg border border-blue-100 bg-blue-50/60 px-3 py-2.5">
+            <Lightbulb size={15} className="mt-0.5 shrink-0 text-blue-500" />
+            <p className="text-sm leading-relaxed text-slate-700">
+              <span className="font-semibold text-blue-700">So what? </span>
+              {div.insight}
+            </p>
+          </div>
+        )}
       </div>
     </section>
   );

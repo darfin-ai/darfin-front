@@ -37,7 +37,7 @@ function DonutCenterLabel({ segments, activeIdx }) {
 }
 
 /**
- * @param {{ overview: import('../../../../mocks/companyAnalysis/types').CompanyOverview }} props
+ * @param {{ overview: import('../../../../mocks/companyAnalysis/types').CompanyOverview, profile: import('../../../../mocks/companyAnalysis/types').CompanyProfile }} props
  */
 export function BusinessSegmentPanel({ overview, profile }) {
   const segments = overview.segments ?? [];

@@ -57,12 +57,6 @@ function deriveNodes(strategyShifts) {
   ];
 }
 
-/**
- * @param {{
- *   profile: import('../../../../mocks/companyAnalysis/types').CompanyProfile,
- *   strategyShifts: import('../../../../mocks/companyAnalysis/types').StrategyShift[],
- * }} props
- */
 const PAGE_SIZE = 3;
 
 const slideVariants = {
@@ -71,6 +65,12 @@ const slideVariants = {
   exit: (dir) => ({ x: dir * -50, opacity: 0 }),
 };
 
+/**
+ * @param {{
+ *   profile: import('../../../../mocks/companyAnalysis/types').CompanyProfile,
+ *   strategyShifts: import('../../../../mocks/companyAnalysis/types').StrategyShift[],
+ * }} props
+ */
 export function BusinessEvolutionTimeline({ profile, strategyShifts }) {
   const nodes = deriveNodes(strategyShifts);
 
@@ -126,53 +126,53 @@ export function BusinessEvolutionTimeline({ profile, strategyShifts }) {
               transition={{ duration: 0.22, ease: 'easeOut' }}
               className="relative flex items-start"
             >
-          {/* Connecting line */}
-          <div className="absolute left-[22px] right-[22px] top-[21px] h-px bg-slate-200" />
+              {/* Connecting line */}
+              <div className="absolute left-[22px] right-[22px] top-[21px] h-px bg-slate-200" />
 
-          {visibleNodes.map((node) => {
-            const i = nodes.indexOf(node);
-            const isPast = i < nodes.length - 1;
-            const isSelected = i === selectedIdx;
+              {visibleNodes.map((node) => {
+                const i = nodes.indexOf(node);
+                const isPast = i < nodes.length - 1;
+                const isSelected = i === selectedIdx;
 
-            return (
-              <button
-                key={node.id}
-                onClick={() => setSelectedIdx(i)}
-                className="group relative z-10 flex flex-1 flex-col items-center gap-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
-              >
-                {/* Circle */}
-                <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full border-2 transition-colors duration-200 ${
-                  isSelected
-                    ? 'border-blue-600 bg-blue-600 text-white'
-                    : isPast
-                    ? 'border-slate-300 bg-slate-300 text-white'
-                    : 'border-slate-200 bg-slate-200 text-slate-400 group-hover:border-blue-300 group-hover:bg-blue-100 group-hover:text-blue-500'
-                }`}>
-                  {node.isCurrent ? (
-                    <span className="text-xs font-bold">현재</span>
-                  ) : isPast ? (
-                    <Check size={16} strokeWidth={2.5} />
-                  ) : (
-                    <span className="text-sm font-semibold">{i + 1}</span>
-                  )}
-                </div>
+                return (
+                  <button
+                    key={node.id}
+                    onClick={() => setSelectedIdx(i)}
+                    className="group relative z-10 flex flex-1 flex-col items-center gap-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+                  >
+                    {/* Circle */}
+                    <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full border-2 transition-colors duration-200 ${
+                      isSelected
+                        ? 'border-blue-600 bg-blue-600 text-white'
+                        : isPast
+                        ? 'border-slate-300 bg-slate-300 text-white'
+                        : 'border-slate-200 bg-slate-200 text-slate-400 group-hover:border-blue-300 group-hover:bg-blue-100 group-hover:text-blue-500'
+                    }`}>
+                      {node.isCurrent ? (
+                        <span className="text-xs font-bold">현재</span>
+                      ) : isPast ? (
+                        <Check size={16} strokeWidth={2.5} />
+                      ) : (
+                        <span className="text-sm font-semibold">{i + 1}</span>
+                      )}
+                    </div>
 
-                {/* Quarter */}
-                <span className={`text-xs font-medium tabular-nums ${
-                  isSelected ? 'text-blue-500' : 'text-slate-400'
-                }`}>
-                  {node.quarter ? fmtQuarter(node.quarter) : '기준 시점'}
-                </span>
+                    {/* Quarter */}
+                    <span className={`text-xs font-medium tabular-nums ${
+                      isSelected ? 'text-blue-500' : 'text-slate-400'
+                    }`}>
+                      {node.quarter ? fmtQuarter(node.quarter) : '기준 시점'}
+                    </span>
 
-                {/* Label */}
-                <span className={`max-w-[120px] text-center text-sm font-semibold leading-snug ${
-                  isSelected ? 'text-blue-700' : 'text-slate-500'
-                }`}>
-                  {node.label}
-                </span>
-              </button>
-            );
-          })}
+                    {/* Label */}
+                    <span className={`max-w-[120px] text-center text-sm font-semibold leading-snug ${
+                      isSelected ? 'text-blue-700' : 'text-slate-500'
+                    }`}>
+                      {node.label}
+                    </span>
+                  </button>
+                );
+              })}
             </motion.div>
           </AnimatePresence>
         </div>
@@ -247,7 +247,6 @@ export function BusinessEvolutionTimeline({ profile, strategyShifts }) {
           )}
         </AnimatePresence>
       </div>
-
     </div>
   );
 }

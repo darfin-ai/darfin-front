@@ -43,3 +43,39 @@ export function formatFilingDate(isoDate) {
   if (!isoDate) return '-';
   return isoDate.replaceAll('-', '.');
 }
+
+/**
+ * Formats one series point's value for a FinancialMetric (see mocks/companyAnalysis/types.js) —
+ * shared by the trend charts and the trend table so both render the same number the same way.
+ * @param {import('../../../../mocks/companyAnalysis/types').FinancialMetric} metric @param {number} value
+ */
+export function formatFinancialMetricValue(metric, value) {
+  return metric.unit === '%' ? formatPercent(value) : formatKrwCompact(value);
+}
+
+/**
+ * Formats a single value from a NumericDeltaMetric (see mocks/companyAnalysis/types.js)
+ * according to its unit — 'count' is a plain integer plus an optional Korean suffix.
+ * @param {'KRW'|'%'|'count'} unit @param {number} value @param {string} [unitLabel]
+ */
+export function formatMetricValue(unit, value, unitLabel = '') {
+  if (value == null || Number.isNaN(value)) return '-';
+  if (unit === 'KRW') return formatKrwCompact(value);
+  if (unit === '%') return `${value.toFixed(1)}%`;
+  return `${value.toLocaleString('ko-KR')}${unitLabel}`;
+}
+
+/**
+ * Formats a current-vs-baseline delta for a NumericDeltaMetric. Percent-unit
+ * deltas are expressed in percentage points ("p") rather than run through
+ * formatPercent's relative-change semantics, since a swing from e.g. 30% to
+ * 35% is a 5%p move, not a 16.7% one.
+ * @param {'KRW'|'%'|'count'} unit @param {number} delta @param {string} [unitLabel]
+ */
+export function formatMetricDelta(unit, delta, unitLabel = '') {
+  if (delta == null || Number.isNaN(delta)) return '-';
+  const sign = delta > 0 ? '+' : '';
+  if (unit === 'KRW') return `${sign}${formatKrwCompact(delta)}`;
+  if (unit === '%') return `${sign}${delta.toFixed(1)}%p`;
+  return `${sign}${delta.toLocaleString('ko-KR')}${unitLabel}`;
+}

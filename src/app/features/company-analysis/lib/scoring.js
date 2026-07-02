@@ -1,17 +1,4 @@
-export { SCORE_COMPONENT_LABELS, SCORE_COMPONENT_MAX } from '../../../../mocks/companyAnalysis';
-
-/**
- * Deliberately informational hues (blue/violet/teal/slate) rather than a
- * red/green good-bad scale — these four numbers are computed signal
- * strength, not a verdict, so nothing here should read as "good" or "bad"
- * on its own.
- */
-export const SCORE_COMPONENT_COLORS = {
-  financialChange: '#2563eb',
-  riskEscalation: '#7c3aed',
-  managementEmphasis: '#0d9488',
-  governance: '#64748b',
-};
+export { SCORE_COMPONENT_LABELS } from '../../../../mocks/companyAnalysis';
 
 export const HOP_TYPE_LABELS = {
   financial_anomaly: '재무제표',
@@ -55,15 +42,6 @@ export function latestValue(component) {
 export function previousValue(component) {
   const h = component.history;
   return h[h.length - 2]?.value ?? h[h.length - 1]?.value ?? 0;
-}
-
-/** Sum of the four components' latest values — a computed fact, not a stored field. */
-export function totalScore(scores) {
-  return scores.reduce((sum, c) => sum + latestValue(c), 0);
-}
-
-export function totalMaxScore(scores) {
-  return scores.reduce((sum, c) => sum + c.maxPoints, 0);
 }
 
 /**

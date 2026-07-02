@@ -37,6 +37,9 @@ function DonutCenter({ shareholders, activeIdx }) {
   );
 }
 
+/**
+ * @param {{ overview: import('../../../../mocks/companyAnalysis/types').CompanyOverview }} props
+ */
 export function ShareholderPanel({ overview }) {
   const shareholders = overview.shareholders ?? [];
   const [activeIdx, setActiveIdx] = useState(null);

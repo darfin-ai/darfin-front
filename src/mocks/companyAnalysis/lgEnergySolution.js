@@ -111,19 +111,200 @@ export const lgEnergySolution = {
     },
   ],
 
+  // Grouped/rendered by DIFF_SECTION_CONFIG (lib/comparison.js) — every
+  // (section, QoQ/YoY) row in that config has an entry here except 주주현황
+  // QoQ, deliberately left with no matching entries to show what the "no
+  // change detected" state looks like. QoQ/YoY numeric baselines reuse the
+  // exact 2025Q4 / 2025Q1 points already in `financials` above (this
+  // company's QUARTERS series happens to include 2025Q4 directly, unlike
+  // Samsung's Q1-only series).
   diffs: [
     {
-      sectionLabel: 'II. 사업의 내용 > 5. 위험관리 및 파생거래',
+      sectionLabel: '회사의 개요',
+      sourceLabel: 'I. 회사의 개요 > 2. 회사의 연혁 및 조직',
+      comparisonType: 'QoQ',
+      changeType: 'added',
+      before: '2025년 사업보고서 기준 배터리 부문은 EV향 단일 사업부로 편제되어 있었습니다.',
+      after: '2026년 1분기 보고서에서 ESS(에너지저장시스템) 전담 사업부가 신규 편제되었습니다.',
+      sourceRef: 'DART-20260514-000512#company-overview-org',
+    },
+    {
+      sectionLabel: '사업의 내용',
+      sourceLabel: 'II. 사업의 내용 > 1. 사업의 개요 > 부문별 매출 비중',
+      comparisonType: 'QoQ',
       changeType: 'modified',
-      before: '미국 IRA 관련 세액공제 정책은 안정적으로 유지되고 있는 것으로 판단된다.',
-      after: '미국 IRA 관련 세액공제 정책의 변경 가능성이 제기되고 있어 지속적인 모니터링이 필요하다.',
+      before: '2025년 사업보고서 기준 ESS 매출 비중은 약 18% 수준으로 기술되었습니다.',
+      after: '2026년 1분기 ESS 매출 비중이 23%로 확대되었으며, EV 고객 집중도 완화 추세가 지속되고 있다고 기술하였습니다.',
+      sourceRef: 'DART-20260514-000512#biz-segment-mix',
+    },
+    {
+      sectionLabel: '사업의 내용',
+      sourceLabel: 'II. 사업의 내용 > 1. 사업의 개요 > 부문별 매출 비중',
+      comparisonType: 'YoY',
+      changeType: 'modified',
+      before: '2025년 1분기 ESS 부문 매출 비중은 12% 수준이었습니다.',
+      after: '2026년 1분기 ESS 부문 매출 비중이 23%로 확대되며 신규 사업의 핵심 축으로 부상하였습니다.',
+      sourceRef: 'DART-20260514-000512#biz-mix-yoy',
+    },
+    {
+      sectionLabel: '위험요인',
+      sourceLabel: 'II. 사업의 내용 > 5. 위험관리 및 파생거래',
+      comparisonType: 'QoQ',
+      changeType: 'modified',
+      before: '미국 IRA 관련 세액공제 정책은 안정적으로 유지되고 있는 것으로 판단된다. (2025년 사업보고서)',
+      after: '미국 IRA 관련 세액공제 정책의 변경 가능성이 제기되고 있어 지속적인 모니터링이 필요하다. (2026년 1분기)',
       sourceRef: 'DART-20260514-000512#risk-ira-policy',
     },
     {
-      sectionLabel: 'IV. 이사의 경영진단 및 분석의견',
+      sectionLabel: '위험요인',
+      sourceLabel: 'II. 사업의 내용 > 5. 위험관리 및 파생거래',
+      comparisonType: 'YoY',
+      changeType: 'modified',
+      before: '2025년 1분기 보고서는 IRA 세액공제를 안정적 수익원으로 기술하였으며, 정책 리스크 언급은 없었습니다.',
+      after: '2026년 1분기 보고서는 정책 변경 가능성을 명시적 위험 요인으로 신규 기술 — 영업이익의 57%를 차지하는 AMPC 의존도 리스크가 부각되었습니다.',
+      sourceRef: 'DART-20260514-000512#risk-ira-yoy',
+    },
+    {
+      sectionLabel: '재무상태표',
+      sourceLabel: 'III. 재무에 관한 사항 > 1. 요약재무정보 > 연결 재무상태표',
+      comparisonType: 'QoQ',
+      metrics: [
+        { label: '유동자산', current: 14_200_000_000_000, baseline: 13_800_000_000_000, unit: 'KRW' },
+        { label: '부채비율', current: 118, baseline: 121, unit: '%' },
+      ],
+      sourceRef: 'DART-20260514-000512#bs-qoq',
+    },
+    {
+      sectionLabel: '재무상태표',
+      sourceLabel: 'III. 재무에 관한 사항 > 1. 요약재무정보 > 연결 재무상태표',
+      comparisonType: 'YoY',
+      metrics: [
+        { label: '유동자산', current: 14_200_000_000_000, baseline: 12_400_000_000_000, unit: 'KRW' },
+        { label: '부채비율', current: 118, baseline: 128, unit: '%' },
+      ],
+      sourceRef: 'DART-20260514-000512#bs-yoy',
+    },
+    {
+      sectionLabel: '손익계산서',
+      sourceLabel: 'III. 재무에 관한 사항 > 1. 요약재무정보 > 연결 손익계산서',
+      comparisonType: 'YoY',
+      metrics: [
+        { label: '매출액', current: 7_600_000_000_000, baseline: 6_100_000_000_000, unit: 'KRW' },
+        { label: '영업이익', current: 410_400_000_000, baseline: 91_500_000_000, unit: 'KRW' },
+        { label: '영업이익률', current: 5.4, baseline: 1.5, unit: '%' },
+      ],
+      sourceRef: 'DART-20260514-000512#is-yoy',
+    },
+    {
+      sectionLabel: '손익계산서',
+      sourceLabel: 'III. 재무에 관한 사항 > 1. 요약재무정보 > 연결 손익계산서',
+      comparisonType: 'QoQ',
+      metrics: [
+        { label: '매출액', current: 7_600_000_000_000, baseline: 7_300_000_000_000, unit: 'KRW' },
+        { label: '영업이익', current: 410_400_000_000, baseline: 379_600_000_000, unit: 'KRW' },
+        { label: '영업이익률', current: 5.4, baseline: 5.2, unit: '%' },
+      ],
+      sourceRef: 'DART-20260514-000512#is-qoq',
+    },
+    {
+      sectionLabel: '현금흐름표',
+      sourceLabel: 'III. 재무에 관한 사항 > 1. 요약재무정보 > 연결 현금흐름표',
+      comparisonType: 'YoY',
+      metrics: [
+        { label: '영업활동현금흐름', current: 1_500_000_000_000, baseline: 700_000_000_000, unit: 'KRW' },
+      ],
+      sourceRef: 'DART-20260514-000512#cf-yoy',
+    },
+    {
+      sectionLabel: '현금흐름표',
+      sourceLabel: 'III. 재무에 관한 사항 > 1. 요약재무정보 > 연결 현금흐름표',
+      comparisonType: 'QoQ',
+      metrics: [
+        { label: '영업활동현금흐름', current: 1_500_000_000_000, baseline: 1_400_000_000_000, unit: 'KRW' },
+      ],
+      sourceRef: 'DART-20260514-000512#cf-qoq',
+    },
+    {
+      sectionLabel: '주석',
+      sourceLabel: '연결재무제표 주석 18. 정부보조금',
+      comparisonType: 'QoQ',
+      changeType: 'modified',
+      before: '2025년 사업보고서 기준 4분기 AMPC(첨단제조생산세액공제) 인식액은 1,980억원이었습니다.',
+      after: '2026년 1분기 AMPC 세액공제 인식액이 2,350억원으로 증가하였습니다.',
+      metrics: [
+        { label: 'AMPC 세액공제 인식액', current: 235_000_000_000, baseline: 198_000_000_000, unit: 'KRW' },
+      ],
+      sourceRef: 'DART-20260514-000512#note-18-ampc',
+    },
+    {
+      sectionLabel: '주석',
+      sourceLabel: '연결재무제표 주석 18. 정부보조금',
+      comparisonType: 'YoY',
+      changeType: 'modified',
+      before: '2025년 1분기 AMPC 세액공제 인식액은 1,020억원으로 영업이익 대비 비중이 크지 않았습니다.',
+      after: '2026년 1분기 AMPC 세액공제 인식액이 2,350억원으로 급증하며 영업이익(4,100억원)의 57%를 차지 — 정책 의존적 이익구조로 전환되었습니다.',
+      metrics: [
+        { label: 'AMPC 세액공제 인식액', current: 235_000_000_000, baseline: 102_000_000_000, unit: 'KRW' },
+        { label: '영업이익 대비 AMPC 비중', current: 57, baseline: 11, unit: '%' },
+      ],
+      sourceRef: 'DART-20260514-000512#note-18-ampc-yoy',
+    },
+    {
+      sectionLabel: '계열회사 현황',
+      sourceLabel: 'VIII. 계열회사 등에 관한 사항 > 1. 계열회사 현황',
+      comparisonType: 'QoQ',
       changeType: 'added',
-      after: '고객사 다변화를 통해 특정 정책 변화에 대한 민감도를 낮추기 위한 전략을 추진하고 있다.',
-      sourceRef: 'DART-20260514-000512#note-18-ampc-detail',
+      after: '북미 ESS 전용 생산법인(미국 애리조나 소재)이 종속회사로 신규 편입되었습니다.',
+      sourceRef: 'DART-20260514-000512#affiliates-new',
+    },
+    {
+      sectionLabel: '중요한 계약',
+      sourceLabel: 'X. 대주주 등과의 거래내용 > 중요한 계약 등',
+      comparisonType: 'QoQ',
+      changeType: 'added',
+      after: '글로벌 ESS 통합업체와 대규모 ESS 공급계약을 신규 체결하였다고 공시하였습니다.',
+      sourceRef: 'DART-20260514-000512#contracts-new',
+    },
+    {
+      sectionLabel: '임원 및 직원',
+      sourceLabel: 'VII. 임원 및 직원 등에 관한 사항 > 1. 임원 및 직원 현황',
+      comparisonType: 'QoQ',
+      metrics: [
+        { label: '직원 수', current: 12_400, baseline: 12_050, unit: 'count', unitLabel: '명' },
+      ],
+      sourceRef: 'DART-20260514-000512#headcount-qoq',
+    },
+    {
+      sectionLabel: '임원 및 직원',
+      sourceLabel: 'VII. 임원 및 직원 등에 관한 사항 > 1. 임원 및 직원 현황',
+      comparisonType: 'YoY',
+      metrics: [
+        { label: '직원 수', current: 12_400, baseline: 11_300, unit: 'count', unitLabel: '명' },
+        { label: '평균 근속연수', current: 5.1, baseline: 4.6, unit: 'count', unitLabel: '년' },
+      ],
+      sourceRef: 'DART-20260514-000512#headcount-yoy',
+    },
+    // 주주현황 QoQ: intentionally no entries — the largest shareholder's
+    // stake didn't move between the 2025 사업보고서 and this filing, and the
+    // page should show that "no change detected" state honestly rather
+    // than manufacturing one.
+    {
+      sectionLabel: '주주현황',
+      sourceLabel: 'V. 주주에 관한 사항 > 1. 주주 현황',
+      comparisonType: 'YoY',
+      metrics: [
+        { label: '최대주주(LG화학) 지분율', current: 81.8, baseline: 82.4, unit: '%' },
+        { label: '국민연금공단 지분율', current: 6.1, baseline: 5.3, unit: '%' },
+      ],
+      sourceRef: 'DART-20260514-000512#shareholders-yoy',
+    },
+    {
+      sectionLabel: '지배구조',
+      sourceLabel: 'VI. 이사회 등 회사의 기관에 관한 사항',
+      comparisonType: 'QoQ',
+      changeType: 'added',
+      after: 'ESG 및 배터리 안전 전문성을 보유한 사외이사 1인이 신규 선임되었습니다.',
+      sourceRef: 'DART-20260514-000512#governance-new',
     },
   ],
 
@@ -148,13 +329,6 @@ export const lgEnergySolution = {
       quarter: '2026Q1',
       from: '전기차(EV) 배터리 단일 의존 구조',
       to: 'ESS·에너지저장시스템으로 고객 다변화',
-      evidence:
-        'ESS 부문 매출 비중이 2024Q4 12% → 2026Q1 23%로 확대. EV 고객사 집중도(상위 3사 비중)는 71% → 58%로 감소. IRA 세액공제(AMPC)가 영업이익의 57%를 차지해 정책 의존도가 구조적 위험 요인으로 부상.',
-      bullets: [
-        'ESS 매출 비중 12% → 23%로 2배 가까이 확대',
-        'EV 고객 집중도 완화 — 상위 3사 비중 71% → 58%',
-        'IRA AMPC 세액공제가 영업이익의 57% 차지',
-      ],
       metrics: [
         { label: 'ESS 매출 비중',   from: '12%', to: '23%' },
         { label: 'EV 고객 집중도',  from: '71%', to: '58%' },

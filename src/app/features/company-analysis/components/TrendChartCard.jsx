@@ -1,10 +1,6 @@
 import { LineChart, Line, Tooltip, ResponsiveContainer, XAxis, YAxis } from 'recharts';
 import { motion } from 'motion/react';
-import { formatKrwCompact, formatPercent, formatQuarterAxis, formatQuarterFull } from '../lib/format';
-
-function formatMetricValue(metric, value) {
-  return metric.unit === '%' ? formatPercent(value) : formatKrwCompact(value);
-}
+import { formatPercent, formatQuarterAxis, formatQuarterFull, formatFinancialMetricValue } from '../lib/format';
 
 function TrendTooltip({ active, payload, metric }) {
   if (!active || !payload?.length) return null;
@@ -12,7 +8,7 @@ function TrendTooltip({ active, payload, metric }) {
   return (
     <div className="rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-xs shadow-md">
       <div className="font-medium text-slate-500">{formatQuarterFull(point.quarter)}</div>
-      <div className="font-semibold text-slate-900">{formatMetricValue(metric, point.value)}</div>
+      <div className="font-semibold text-slate-900">{formatFinancialMetricValue(metric, point.value)}</div>
     </div>
   );
 }
@@ -42,7 +38,7 @@ export function TrendChartCard({ metric, index = 0 }) {
           </span>
         )}
       </div>
-      <div className="mt-1 text-xl font-bold text-slate-900">{formatMetricValue(metric, latest.value)}</div>
+      <div className="mt-1 text-xl font-bold text-slate-900">{formatFinancialMetricValue(metric, latest.value)}</div>
 
       <div className="mt-2 h-32 w-full">
         <ResponsiveContainer width="100%" height="100%">

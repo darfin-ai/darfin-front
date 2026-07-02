@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { useParams, Link } from 'react-router';
-import { getCompanies, getCompanyDetail } from '../../../../mocks/companyAnalysis';
+import { getCompanies, getCompanyDetail, getSimilarCompanies } from '../../../../mocks/companyAnalysis';
 import { IdentityStrip } from '../components/IdentityStrip';
-import { ScoreOverview } from '../components/ScoreOverview';
+import { SimilarCompaniesPanel } from '../components/SimilarCompaniesPanel';
 import { FinancialTrendCharts } from '../components/FinancialTrendCharts';
 import { ReasoningChainFeed } from '../components/ReasoningChainFeed';
 import { SectionDiffList } from '../components/SectionDiffList';
@@ -13,8 +13,6 @@ import { BusinessSegmentPanel } from '../components/BusinessSegmentPanel';
 import { ProductRevenuePanel } from '../components/ProductRevenuePanel';
 import { CustomerRegionPanel } from '../components/CustomerRegionPanel';
 import { KeyRisksPanel } from '../components/KeyRisksPanel';
-import { ChangeSignalPanel } from '../components/ChangeSignalPanel';
-import { AiAnalysisTab } from '../components/AiAnalysisTab';
 import { ShareholderPanel } from '../components/ShareholderPanel';
 import { DividendPanel } from '../components/DividendPanel';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '../../../shared/components/ui/tabs';
@@ -52,9 +50,9 @@ export function CompanyDetailPage() {
     );
   }
 
-  const { company, scores, financials, findings, diffs, profile, strategyShifts, overview, recentFilings } = detail;
+  const { company, financials, findings, diffs, profile, strategyShifts, overview, recentFilings } = detail;
 
-  const latestQuarter = scores[0]?.history.at(-1)?.quarter ?? '';
+  const similarCompanies = getSimilarCompanies(company.id);
 
   return (
     <div className="w-full">
@@ -67,19 +65,17 @@ export function CompanyDetailPage() {
             <TabsTrigger value="overview">개요</TabsTrigger>
             <TabsTrigger value="financials">재무 추이</TabsTrigger>
             <TabsTrigger value="diffs">공시 변경</TabsTrigger>
-            <TabsTrigger value="ai">AI 분석</TabsTrigger>
           </TabsList>
 
           {/* ── 개요 ──────────────────────────────────────────────── */}
           <TabsContent value="overview">
             <div className="space-y-8">
-              {/* Zone 1 — 사업 변화 흐름 + 최근 보고서 */}
               <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[1fr_280px]">
                 <BusinessEvolutionTimeline profile={profile} strategyShifts={strategyShifts ?? []} />
                 <RecentFilingsPanel filings={recentFilings} />
               </div>
 
-              {/* Zone 2 — 개요 panels (only when overview data exists) */}
+              {/* Structured 사업의 내용 breakdown — only present for companies with a full CompanyDetail */}
               {overview && (
                 <>
                   <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
@@ -95,22 +91,17 @@ export function CompanyDetailPage() {
                 </>
               )}
 
-              <ChangeSignalPanel scores={scores} quarter={latestQuarter} />
-
-              {/* Zone 2 + sidebar */}
               <div className={`grid grid-cols-1 gap-6 ${selection ? 'lg:grid-cols-[1fr_320px]' : ''}`}>
                 <div className="min-w-0 space-y-8">
-                  {/* Zone 2 — What changed & why */}
                   <ReasoningChainFeed
                     findings={findings}
                     selectedHopSourceRef={selection?.hop.sourceRef ?? null}
                     onSelectHop={(finding, hop) => setSelection({ finding, hop })}
                   />
-                  {/* Zone 3 — Score breakdown */}
-                  <ScoreOverview scores={scores} />
+                  <SimilarCompaniesPanel companies={similarCompanies} sector={company.sector} />
                 </div>
 
-                {/* Sidebar — only shown after a hop is selected */}
+                {/* Sidebar — only shown after a hop is selected in the reasoning chain */}
                 {selection && (
                   <aside className="space-y-4 lg:sticky lg:top-32 lg:self-start">
                     <VerificationRail selection={selection} />
@@ -127,12 +118,7 @@ export function CompanyDetailPage() {
 
           {/* ── 공시 변경 ─────────────────────────────────────────── */}
           <TabsContent value="diffs">
-            <SectionDiffList diffs={diffs} />
-          </TabsContent>
-
-          {/* ── AI 분석 ──────────────────────────────────────────── */}
-          <TabsContent value="ai">
-            <AiAnalysisTab companyName={company.name} />
+            <SectionDiffList diffs={diffs} recentFilings={recentFilings} />
           </TabsContent>
         </Tabs>
       </div>

@@ -1,4 +1,5 @@
 import { TrendChartCard } from './TrendChartCard';
+import { FinancialTrendTable } from './FinancialTrendTable';
 
 /**
  * @param {{ financials: import('../../../../mocks/companyAnalysis/types').FinancialMetric[] }} props
@@ -13,6 +14,10 @@ export function FinancialTrendCharts({ financials }) {
         {financials.map((metric, index) => (
           <TrendChartCard key={metric.concept} metric={metric} index={index} />
         ))}
+      </div>
+
+      <div className="mt-6">
+        <FinancialTrendTable financials={financials} />
       </div>
     </section>
   );
