@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router';
-import { fetchMarketIndices, fetchWatchlist, addWatchlistItem, removeWatchlistItem } from '../lib/stockApi';
+import { fetchMarketIndices, fetchInvestorSentiment, fetchIndustryRanks, fetchWatchlist, addWatchlistItem, removeWatchlistItem, fetchPortfolio, paperBuy, paperSell, paperCharge, paperReset, paperInitAmount } from '../lib/stockApi';
 // ===== Darfin global store + seed data =====
 // Korean finance convention: 상승=빨강(red), 하락=파랑(blue)
 
@@ -95,21 +95,9 @@ function defaultState() {
   return {
     route: { name: 'home', params: {} },
     isLoggedIn: false,
-    funds: { initialized: true, initialAmount: 10000000, cashBalance: 4156000, chargeCountToday: 0 },
-    holdings: [
-      { code: '005930', qty: 10, avgPrice: 295000 },
-      { code: '240810', qty: 8,  avgPrice: 118000 },
-      { code: '000660', qty: 1,  avgPrice: 1950000 },
-    ],
-    trades: [
-      { id: 't6', code: '319400', type: 'SELL', qty: 20, price: 39700,   ts: Date.now() - 86400000 * 1, pnl: 96000 },
-      { id: 't5', code: '066570', type: 'SELL', qty: 5,  price: 221500,  ts: Date.now() - 86400000 * 4, pnl: -47500 },
-      { id: 't4', code: '319400', type: 'BUY',  qty: 20, price: 34900,   ts: Date.now() - 86400000 * 14, pnl: null },
-      { id: 't3b', code: '066570', type: 'BUY', qty: 5,  price: 231000,  ts: Date.now() - 86400000 * 18, pnl: null },
-      { id: 't3', code: '000660', type: 'BUY',  qty: 1,  price: 1950000, ts: Date.now() - 86400000 * 2, pnl: null },
-      { id: 't2', code: '240810', type: 'BUY',  qty: 8,  price: 118000,  ts: Date.now() - 86400000 * 5, pnl: null },
-      { id: 't1', code: '005930', type: 'BUY',  qty: 10, price: 295000,  ts: Date.now() - 86400000 * 9, pnl: null },
-    ],
+    funds: { initialized: false, initialAmount: 10000000, cashBalance: 10000000, chargeCountToday: 0 },
+    holdings: [],
+    trades: [],
     watchlist: [], // 로그인 사용자의 DB 관심종목을 StoreProvider에서 별도로 불러와 채운다
     fundHistory: [
       { id: 'f1', type: 'INIT',   amount: 10000000, ts: Date.now() - 86400000 * 12 },
@@ -157,6 +145,7 @@ export function StoreProvider({ children, initialLoggedIn, onLogout }) {
   const [state, setState] = useState(loadState);
   const [market, setMarket] = useState(MARKET);
   const [marketError, setMarketError] = useState(false);
+  const [industries, setIndustries] = useState(INDUSTRIES);
   const routerNavigate = useNavigate();
 
   // ── 홈 화면 왼쪽: 4개 탭(거래대금/거래량/급상승/급하락) 순위 ──
@@ -189,6 +178,16 @@ export function StoreProvider({ children, initialLoggedIn, onLogout }) {
     setMarketError(false);
   }, []);
 
+  const applyInvestorSentiment = useCallback((raw) => {
+    const list = toSentimentList(raw);
+    if (list) setMarket(prev => ({ ...prev, invSentiment: list }));
+  }, []);
+
+  const applyIndustryRanks = useCallback((raw) => {
+    const list = toIndustryList(raw);
+    if (list) setIndustries(list);
+  }, []);
+
   // 구독 코드 목록을 ref로 항상 최신값 유지 (WebSocket onopen에서 stale closure 방지)
   useEffect(() => {
     subscribedCodesRef.current = subscribedCodes;
@@ -211,6 +210,34 @@ export function StoreProvider({ children, initialLoggedIn, onLogout }) {
       .then(codes => { if (!cancelled) setState(s => ({ ...s, watchlist: codes })); })
       .catch(e => console.warn('관심종목 조회 실패', e));
     return () => { cancelled = true; };
+  }, [initialLoggedIn]);
+
+  // 모의투자 포트폴리오: 로그인 시 DB에서 불러와 로컬 상태를 덮어씀.
+  // 비로그인 시 holdings/trades 초기화, funds는 기본값 유지.
+  useEffect(() => {
+    if (!initialLoggedIn) {
+      setState(s => ({ ...s, holdings: [], trades: [],
+        funds: { initialized: false, initialAmount: 10000000, cashBalance: 10000000, chargeCountToday: 0 } }));
+      return;
+    }
+    fetchPortfolio()
+      .then(portfolio => {
+        setState(s => ({
+          ...s,
+          funds: {
+            initialized: true,
+            initialAmount: portfolio.funds.initialAmount,
+            cashBalance: portfolio.funds.cashBalance,
+            chargeCountToday: 0, // 서버 미관리 — 로그인마다 초기화
+          },
+          holdings: portfolio.holdings.map(h => ({ code: h.code, qty: h.qty, avgPrice: h.avgPrice })),
+          trades: portfolio.trades.map(t => ({
+            id: String(t.id), code: t.code, type: t.type,
+            qty: t.qty, price: t.price, ts: t.ts, pnl: t.pnl,
+          })),
+        }));
+      })
+      .catch(e => console.warn('포트폴리오 조회 실패', e));
   }, [initialLoggedIn]);
 
   // WebSocket 1회 연결: RANK / PRICE / WATCHLIST 수신
@@ -242,6 +269,9 @@ export function StoreProvider({ children, initialLoggedIn, onLogout }) {
             usd: msg.marketOverview.usdKrw,
           });
         }
+        // 60초 캐시 주기로 포함될 때만 갱신 (없으면 REST 초기값 유지)
+        if (msg.investorSentiment) applyInvestorSentiment(msg.investorSentiment);
+        if (msg.industries) applyIndustryRanks(msg.industries);
         setSimPrices({}); // 실제 데이터 수신 시 시뮬레이션 오프셋 초기화
       }
 
@@ -272,13 +302,22 @@ export function StoreProvider({ children, initialLoggedIn, onLogout }) {
     let cancelled = false;
 
     const loadMarket = async () => {
-      try {
-        const data = await fetchMarketIndices();
-        if (!cancelled) applyMarketIndices(data);
-      } catch (e) {
-        console.warn('시장 지표 조회 실패', e);
-        if (!cancelled) setMarketError(true);
-      }
+      const [indicesRes, sentimentRes, industriesRes] = await Promise.allSettled([
+        fetchMarketIndices(),
+        fetchInvestorSentiment(),
+        fetchIndustryRanks(),
+      ]);
+
+      if (cancelled) return;
+
+      if (indicesRes.status === 'fulfilled') applyMarketIndices(indicesRes.value);
+      else { console.warn('시장 지표 조회 실패', indicesRes.reason); setMarketError(true); }
+
+      if (sentimentRes.status === 'fulfilled') applyInvestorSentiment(sentimentRes.value);
+      else console.warn('투자자 동향 조회 실패', sentimentRes.reason);
+
+      if (industriesRes.status === 'fulfilled') applyIndustryRanks(industriesRes.value);
+      else console.warn('산업 순위 조회 실패', industriesRes.reason);
     };
 
     loadMarket();
@@ -288,7 +327,7 @@ export function StoreProvider({ children, initialLoggedIn, onLogout }) {
       cancelled = true;
       clearInterval(timer);
     };
-  }, [applyMarketIndices]);
+  }, [applyMarketIndices, applyInvestorSentiment, applyIndustryRanks]);
 
   // 관심종목/보유종목이 바뀌면 WebSocket으로 구독 갱신 (REST 폴링 불필요)
   useEffect(() => {
@@ -422,9 +461,10 @@ export function StoreProvider({ children, initialLoggedIn, onLogout }) {
   }, []);
 
   const buy = useCallback((code, qty, price) => {
+    // 낙관적 갱신
     setState(s => {
       const cost = qty * price;
-      if (cost > s.funds.cashBalance) return s; // insufficient
+      if (cost > s.funds.cashBalance) return s;
       const holdings = [...s.holdings];
       const idx = holdings.findIndex(h => h.code === code);
       if (idx >= 0) {
@@ -436,9 +476,14 @@ export function StoreProvider({ children, initialLoggedIn, onLogout }) {
       const trades = [{ id: 't' + Date.now(), code, type: 'BUY', qty, price, ts: Date.now(), pnl: null }, ...s.trades];
       return { ...s, holdings, trades, funds: { ...s.funds, cashBalance: s.funds.cashBalance - cost } };
     });
-  }, []);
+    // 서버 동기화 (로그인 시에만)
+    if (initialLoggedIn) {
+      paperBuy(code, qty, price).catch(e => console.warn('매수 서버 동기화 실패', e));
+    }
+  }, [initialLoggedIn]);
 
   const sell = useCallback((code, qty, price) => {
+    // 낙관적 갱신
     setState(s => {
       const idx = s.holdings.findIndex(h => h.code === code);
       if (idx < 0) return s;
@@ -452,7 +497,11 @@ export function StoreProvider({ children, initialLoggedIn, onLogout }) {
       const trades = [{ id: 't' + Date.now(), code, type: 'SELL', qty: sellQty, price, ts: Date.now(), pnl }, ...s.trades];
       return { ...s, holdings, trades, funds: { ...s.funds, cashBalance: s.funds.cashBalance + proceeds } };
     });
-  }, []);
+    // 서버 동기화
+    if (initialLoggedIn) {
+      paperSell(code, qty, price).catch(e => console.warn('매도 서버 동기화 실패', e));
+    }
+  }, [initialLoggedIn]);
 
   const chargeFunds = useCallback((amount) => {
     setState(s => {
@@ -463,7 +512,10 @@ export function StoreProvider({ children, initialLoggedIn, onLogout }) {
         fundHistory: [{ id: 'f' + Date.now(), type: 'CHARGE', amount, ts: Date.now() }, ...s.fundHistory],
       };
     });
-  }, []);
+    if (initialLoggedIn) {
+      paperCharge(amount).catch(e => console.warn('충전 서버 동기화 실패', e));
+    }
+  }, [initialLoggedIn]);
 
   const resetFunds = useCallback(() => {
     setState(s => ({
@@ -472,9 +524,11 @@ export function StoreProvider({ children, initialLoggedIn, onLogout }) {
       trades: [],
       funds: { ...s.funds, cashBalance: s.funds.initialAmount, chargeCountToday: 0 },
       fundHistory: [{ id: 'f' + Date.now(), type: 'RESET', amount: s.funds.initialAmount, ts: Date.now() }, ...s.fundHistory],
-      // ai_reports 유지
     }));
-  }, []);
+    if (initialLoggedIn) {
+      paperReset().catch(e => console.warn('초기화 서버 동기화 실패', e));
+    }
+  }, [initialLoggedIn]);
 
   const setInitialFunds = useCallback((amount) => {
     setState(s => ({
@@ -482,7 +536,10 @@ export function StoreProvider({ children, initialLoggedIn, onLogout }) {
       funds: { initialized: true, initialAmount: amount, cashBalance: amount, chargeCountToday: 0 },
       fundHistory: [{ id: 'f' + Date.now(), type: 'INIT', amount, ts: Date.now() }, ...s.fundHistory],
     }));
-  }, []);
+    if (initialLoggedIn) {
+      paperInitAmount(amount).catch(e => console.warn('초기금액 서버 동기화 실패', e));
+    }
+  }, [initialLoggedIn]);
 
   const addAiReport = useCallback((report) => {
     setState(s => ({ ...s, aiReports: [{ id: 'r' + Date.now(), ts: Date.now(), ...report }, ...s.aiReports] }));
@@ -511,7 +568,7 @@ export function StoreProvider({ children, initialLoggedIn, onLogout }) {
 
   const value = {
     state, getStock, stocks, watchStocks, stockMap, rankTab, setRankTab,
-    market, industries: INDUSTRIES, schedule: SCHEDULE, aiComments: AI_COMMENTS,
+    market, industries, schedule: SCHEDULE, aiComments: AI_COMMENTS,
     marketError,
     genCandles, genSpark, seedRand,
     navigate, goToLogin, toggleWatch, buy, sell, chargeFunds, resetFunds, setInitialFunds, addAiReport,
@@ -541,6 +598,31 @@ function toMarketItem(raw, fallbackName) {
     up: pct >= 0,
     spark,
   };
+}
+
+// 백엔드 투자자 동향 응답 → { who, val, buy }[] 변환
+// 백엔드가 이미 정규화한 형태(who 필드 존재) 또는 KIS invType 코드(01/02/03) 형태 모두 처리
+const INV_LABEL = { '01': '개인', '02': '외국인', '03': '기관', '04': '기타' };
+function toSentimentList(raw) {
+  if (!Array.isArray(raw) || raw.length === 0) return null;
+  const list = raw.map(s => {
+    const who = s.who ?? INV_LABEL[s.invType] ?? s.invType ?? '';
+    const val = Number(s.val ?? s.netBuy ?? s.buyAmt ?? 0);
+    return { who, val, buy: val >= 0 };
+  }).filter(s => s.who);
+  return list.length > 0 ? list : null;
+}
+
+// 백엔드 산업 순위 응답 → { name, pct, code?, value? }[] 변환
+function toIndustryList(raw) {
+  if (!Array.isArray(raw) || raw.length === 0) return null;
+  const list = raw.map(ind => ({
+    name: ind.name ?? ind.industryName ?? ind.upjong_nm ?? '',
+    pct: Number(ind.pct ?? ind.changeRate ?? ind.prdy_ctrt ?? 0),
+    code: ind.code ?? ind.industryCode ?? undefined,
+    value: ind.value != null ? Number(ind.value) : undefined,
+  })).filter(ind => ind.name);
+  return list.length > 0 ? list : null;
 }
 
 // RAW_STOCKS 제거하여 런타임 ReferenceError 방지

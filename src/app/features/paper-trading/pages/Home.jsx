@@ -470,7 +470,7 @@ function InvestorTrendCard({ market }) {
     <Card>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
         <span style={{ fontSize: 17, fontWeight: 800, color: INK, whiteSpace: 'nowrap' }}>국내 투자자 동향</span>
-        <span style={{ fontSize: 12, fontWeight: 600, color: SUB, whiteSpace: 'nowrap' }}>오늘 · 백만원</span>
+        <span style={{ fontSize: 12, fontWeight: 600, color: SUB, whiteSpace: 'nowrap' }}>오늘 · 억원</span>
       </div>
       {market.invSentiment.map((s, i) => {
         const col = s.buy ? UP : DOWN;
@@ -515,11 +515,11 @@ function WatchRail() {
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 14, fontWeight: 700, color: INK, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.short || s.name}</div>
                 </div>
-                <div style={{ textAlign: 'right' }}>
+                <div style={{ textAlign: 'right', flexShrink: 0, whiteSpace: 'nowrap' }}>
                   <div style={{ fontSize: 14, fontWeight: 700, color: INK }}>{wonShort(s.price)}</div>
                   <div style={{ fontSize: 12, fontWeight: 700, color: tone(s.pct) }}>{signNum(changeAmt)} ({signPct(s.pct)})</div>
                 </div>
-                <Heart filled onClick={(e) => { e.stopPropagation(); toggleWatch(s.code); }} size={18} />
+                <Heart filled onClick={() => toggleWatch(s.code)} size={18} />
               </div>
             );
           })}

@@ -325,7 +325,7 @@ export function Heart({ filled, onClick, size = 22 }) {
   return (
     <button onClick={(e) => { e.stopPropagation(); onClick && onClick(); }} style={{ ...iconBtn, width: size + 12, height: size + 12, flexShrink: 0 }}>
       <svg width={size} height={size} viewBox="0 0 24 24" fill={filled ? UP : 'none'} stroke={filled ? UP : '#C5CBD3'} strokeWidth="2">
-        <path d="M12 21s-7-4.6-9.3-8.4C1 9.5 2.4 6 5.6 6c2 0 3.2 1.2 4.4 2.6C11.2 7.2 12.4 6 14.4 6c3.2 0 4.6 3.5 2.9 6.6C19 16.4 12 21 12 21z" strokeLinejoin="round" />
+        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" strokeLinejoin="round" strokeLinecap="round" />
       </svg>
     </button>
   );

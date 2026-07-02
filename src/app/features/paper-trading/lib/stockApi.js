@@ -170,6 +170,39 @@ export async function fetchInvestorSentiment() {
   return data;
 }
 
+// ── 모의투자 포트폴리오 (로그인 사용자별 DB 영속) ──
+// 인증 필요 — /funds/paper/** 는 SecurityConfig에서 authenticated()로 보호됨.
+
+export async function fetchPortfolio() {
+  const { data } = await client.get('/funds/paper/portfolio', { headers: authHeaders() });
+  return data;
+}
+
+export async function paperBuy(code, qty, price) {
+  const { data } = await client.post('/funds/paper/buy', { code, qty, price }, { headers: authHeaders() });
+  return data;
+}
+
+export async function paperSell(code, qty, price) {
+  const { data } = await client.post('/funds/paper/sell', { code, qty, price }, { headers: authHeaders() });
+  return data;
+}
+
+export async function paperCharge(amount) {
+  const { data } = await client.post('/funds/paper/charge', { amount }, { headers: authHeaders() });
+  return data;
+}
+
+export async function paperReset() {
+  const { data } = await client.post('/funds/paper/reset', null, { headers: authHeaders() });
+  return data;
+}
+
+export async function paperInitAmount(amount) {
+  const { data } = await client.post('/funds/paper/init-amount', { amount }, { headers: authHeaders() });
+  return data;
+}
+
 // ── 관심종목 (로그인 사용자별 DB 영속) ──
 // 인증 필요 — /funds/watchlist/** 는 SecurityConfig에서 authenticated()로 보호됨.
 
