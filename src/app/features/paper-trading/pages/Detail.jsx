@@ -127,15 +127,22 @@ function OrderPanel({ stock, price, setPrice, priceType, setPriceType }) {
     fetchPaperTradingBalance().then(setBalance).catch(() => setBalance(null));
     fetchPaperTradingHolding(stock.code).then(setHolding).catch(() => setHolding(null));
   };
-  useEffect(() => { refresh(); }, [tab, stock.code]);
-  useEffect(() => { setQty(0); }, [tab]);
+  // stock.code가 빠르게 바뀌면(연속 탐색) 이전 종목 응답이 늦게 도착해 새 종목 값을 덮어쓸 수 있어 취소 가드 필요
+  useEffect(() => {
+    let cancelled = false;
+    fetchPaperTradingBalance().then(data => { if (!cancelled) setBalance(data); }).catch(() => { if (!cancelled) setBalance(null); });
+    fetchPaperTradingHolding(stock.code).then(data => { if (!cancelled) setHolding(data); }).catch(() => { if (!cancelled) setHolding(null); });
+    return () => { cancelled = true; };
+  }, [tab, stock.code]);
+  useEffect(() => { setQty(0); }, [tab, stock.code]);
 
   const effPrice = priceType === 'market' ? stock.price : price;
+  const priceValid = effPrice > 0; // 지정가를 0으로 지웠을 때 최대수량/제출이 뚫리는 걸 방지
   const cash = balance?.availableBalance ?? 0;
   const ownedQty = holding?.quantity ?? 0;
-  const maxQty = isBuy ? Math.floor(cash / (effPrice || 1)) : ownedQty;
+  const maxQty = isBuy ? (priceValid ? Math.floor(cash / effPrice) : 0) : ownedQty;
   const total = qty * effPrice;
-  const canSubmit = !submitting && qty > 0 && (isBuy ? total <= cash : qty <= ownedQty);
+  const canSubmit = !submitting && qty > 0 && priceValid && (isBuy ? total <= cash : qty <= ownedQty);
 
   const stepPrice = (d) => setPrice(p => Math.max(ts, Math.round((p + d * ts) / ts) * ts));
   const ratio = (r) => setQty(Math.max(0, Math.floor(maxQty * r)));
@@ -255,7 +262,7 @@ function OrderPanel({ stock, price, setPrice, priceType, setPriceType }) {
 
           {!canSubmit && qty > 0 && (
             <div style={{ fontSize: 13, color: UP, fontWeight: 600, marginBottom: 12, textAlign: 'center' }}>
-              {isBuy ? '주문 가능 금액이 부족해요.' : '보유 수량을 초과했어요.'}
+              {!priceValid ? '주문 가격을 입력해주세요.' : isBuy ? '주문 가능 금액이 부족해요.' : '보유 수량을 초과했어요.'}
             </div>
           )}
 
