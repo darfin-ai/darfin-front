@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router';
-import { fetchMarketIndices, fetchInvestorSentiment, fetchIndustryRanks, fetchWatchlist, addWatchlistItem, removeWatchlistItem, fetchPortfolio, paperCharge, paperReset, paperInitAmount } from '../lib/stockApi';
+import { fetchMarketIndices, fetchInvestorSentiment, fetchIndustryRanks, fetchWatchlist, addWatchlistItem, removeWatchlistItem, fetchPortfolio, paperCharge, paperReset, paperInitAmount, fetchStockSummaries } from '../lib/stockApi';
+import { subscribe as stompSubscribe } from '../lib/stompClient';
 // ===== Darfin global store + seed data =====
 // Korean finance convention: 상승=빨강(red), 하락=파랑(blue)
 
@@ -156,22 +157,19 @@ export function StoreProvider({ children, initialLoggedIn, onLogout }) {
   // ── 홈 화면 왼쪽: 4개 탭(거래대금/거래량/급상승/급하락) 순위 ──
   const [rankTab, setRankTab] = useState('tradeValue'); // 'tradeValue' | 'volume' | 'topGainers' | 'topLosers'
   const [allRanks, setAllRanks] = useState({ tradeValue: [], volume: [], topGainers: [], topLosers: [] }); // 4개 탭 데이터 전부 보관
-  const [priceMap, setPriceMap] = useState({}); // PRICE 메시지로 덮어쓰는 실시간 가격 { code: { price, pct } }
-  const [simPrices, setSimPrices] = useState({}); // 시뮬레이션 가격 { code: { price, pct } } — RANK 수신 시 리셋
+  const [priceMap, setPriceMap] = useState({}); // /topic/price/{code} 실시간 틱 { code: { price, pct, value, volume } }
 
   // ── 홈 화면 오른쪽: 관심종목 10개 실시간 시세 ──
   const [watchStocks, setWatchStocks] = useState([]);
 
-  // ── 종목 상세 페이지: SUBSCRIBE_DETAIL 구독 중인 종목의 실시간 체결/호가 ──
-  const [lastExecution, setLastExecution] = useState(null); // 가장 최근 EXECUTION 메시지 1건
-  const [lastOrderBook, setLastOrderBook] = useState(null); // 가장 최근 ORDERBOOK 메시지(asks/bids 전체 교체용)
+  // ── 종목 상세 페이지: /topic/detail/{code}/* 구독 중인 종목의 실시간 체결/호가 ──
+  const [lastExecution, setLastExecution] = useState(null); // 가장 최근 체결 메시지 1건
+  const [lastOrderBook, setLastOrderBook] = useState(null); // 가장 최근 호가 메시지(asks/bids 전체 교체용)
 
-  const wsRef = useRef(null);
-  // 관심종목 + 보유종목(모의투자) 코드를 합쳐서 구독 — 보유종목도 실시간(10초) 실제가로 갱신되게 한다
+  // 관심종목 + 보유종목(모의투자) 코드를 합쳐서 실시간 구독 — 보유종목도 실제 KIS 틱으로 갱신되게 한다
   const subscribedCodes = useMemo(() => {
     return Array.from(new Set([...state.watchlist, ...state.holdings.map(h => h.code)]));
   }, [state.watchlist, state.holdings]);
-  const subscribedCodesRef = useRef(subscribedCodes);
 
   const applyMarketIndices = useCallback((data) => {
     setMarket(prev => ({
@@ -193,11 +191,6 @@ export function StoreProvider({ children, initialLoggedIn, onLogout }) {
     if (list) setIndustries(list);
   }, []);
 
-  // 구독 코드 목록을 ref로 항상 최신값 유지 (WebSocket onopen에서 stale closure 방지)
-  useEffect(() => {
-    subscribedCodesRef.current = subscribedCodes;
-  }, [subscribedCodes]);
-
   // 실제 로그인 상태(AuthContext/JWT)를 state.isLoggedIn에 반영 — 이전에는 이 prop이
   // 버려져서 로그인 여부와 무관하게 항상 로그인된 것처럼 보이는 버그가 있었다.
   useEffect(() => {
@@ -212,7 +205,20 @@ export function StoreProvider({ children, initialLoggedIn, onLogout }) {
     }
     let cancelled = false;
     fetchWatchlist()
-      .then(codes => { if (!cancelled) setState(s => ({ ...s, watchlist: codes })); })
+      .then(items => {
+        if (cancelled) return;
+        const list = Array.isArray(items) ? items : [];
+        const codes = list.map(item => typeof item === 'string' ? item : item.code).filter(Boolean);
+        const namedStocks = list
+          .filter(item => item && typeof item === 'object' && item.code)
+          .map(item => ({
+            code: item.code,
+            name: item.name || item.stockName || item.code,
+            short: item.name || item.stockName || item.code,
+          }));
+        setState(s => ({ ...s, watchlist: codes }));
+        if (namedStocks.length > 0) setWatchStocks(namedStocks);
+      })
       .catch(e => console.warn('관심종목 조회 실패', e));
     return () => { cancelled = true; };
   }, [initialLoggedIn]);
@@ -230,7 +236,16 @@ export function StoreProvider({ children, initialLoggedIn, onLogout }) {
         // 서버가 오늘 자정(KST) 이후 CHARGE 이력 수로 일일 한도를 강제하므로, 화면 표시용 카운트도 그 이력에서 계산한다.
         chargeCountToday: (portfolio.fundHistory || []).filter(h => h.type === 'CHARGE' && isTodayKst(h.ts)).length,
       },
-      holdings: portfolio.holdings.map(h => ({ code: h.code, qty: h.qty, avgPrice: h.avgPrice })),
+      holdings: portfolio.holdings.map(h => ({
+        code: h.code,
+        name: h.name || h.stockName || h.code,
+        short: h.name || h.stockName || h.code,
+        qty: h.qty,
+        avgPrice: h.avgPrice,
+        currentPrice: h.currentPrice,
+        valuationPnl: h.valuationPnl,
+        valuationPnlRate: h.valuationPnlRate,
+      })),
       trades: portfolio.trades.map(t => ({
         id: String(t.id), code: t.code, type: t.type,
         qty: t.qty, price: t.price, ts: t.ts, pnl: t.pnl,
@@ -255,63 +270,81 @@ export function StoreProvider({ children, initialLoggedIn, onLogout }) {
     refreshPortfolio();
   }, [initialLoggedIn, refreshPortfolio]);
 
-  // WebSocket 1회 연결: RANK / PRICE / WATCHLIST 수신
+  // STOMP 구독 1회: /app/rank(캐시 스냅샷, 구독 즉시 1회) + /topic/rank(10초 주기 실시간 갱신)
   useEffect(() => {
-    const ws = new WebSocket('ws://localhost:8080/ws/stocks');
-    wsRef.current = ws;
-
-    ws.onopen = () => {
-      const codes = subscribedCodesRef.current;
-      if (codes.length > 0) {
-        ws.send(JSON.stringify({ type: 'SUBSCRIBE', codes }));
-      }
-    };
-
-    ws.onmessage = (e) => {
-      const msg = JSON.parse(e.data);
-
-      if (msg.type === 'RANK') {
-        setAllRanks({
-          tradeValue: msg.tradeValue,
-          volume: msg.volume,
-          topGainers: msg.topGainers,
-          topLosers: msg.topLosers,
+    const handleRank = (msg) => {
+      if (!msg) return;
+      setAllRanks({
+        tradeValue: msg.tradeValue,
+        volume: msg.volume,
+        topGainers: msg.topGainers,
+        topLosers: msg.topLosers,
+      });
+      if (msg.marketOverview) {
+        applyMarketIndices({
+          kospi: msg.marketOverview.indices?.find(item => item.code === '0001'),
+          kosdaq: msg.marketOverview.indices?.find(item => item.code === '1001'),
+          usd: msg.marketOverview.usdKrw,
         });
-        if (msg.marketOverview) {
-          applyMarketIndices({
-            kospi: msg.marketOverview.indices?.find(item => item.code === '0001'),
-            kosdaq: msg.marketOverview.indices?.find(item => item.code === '1001'),
-            usd: msg.marketOverview.usdKrw,
-          });
-        }
-        // 60초 캐시 주기로 포함될 때만 갱신 (없으면 REST 초기값 유지)
-        if (msg.investorSentiment) applyInvestorSentiment(msg.investorSentiment);
-        if (msg.industries) applyIndustryRanks(msg.industries);
-        setSimPrices({}); // 실제 데이터 수신 시 시뮬레이션 오프셋 초기화
       }
-
-      if (msg.type === 'PRICE') {
-        setPriceMap(prev => ({ ...prev, [msg.code]: { price: msg.price, pct: msg.pct } }));
-      }
-
-      if (msg.type === 'WATCHLIST') {
-        setWatchStocks(msg.stocks);
-      }
-
-      if (msg.type === 'EXECUTION') {
-        setLastExecution({ price: msg.price, quantity: msg.quantity, changeRate: msg.changeRate, time: msg.time });
-      }
-
-      if (msg.type === 'ORDERBOOK') {
-        setLastOrderBook({ asks: msg.asks, bids: msg.bids });
-      }
+      // 60초 캐시 주기로 포함될 때만 갱신 (없으면 REST 초기값 유지)
+      if (msg.investorSentiment) applyInvestorSentiment(msg.investorSentiment);
+      if (msg.industries) applyIndustryRanks(msg.industries);
     };
 
-    ws.onerror = (e) => console.error('WS 오류', e);
-    ws.onclose = () => console.warn('WS 종료');
+    const unsubSnapshot = stompSubscribe('/app/rank', handleRank);
+    const unsubTopic = stompSubscribe('/topic/rank', handleRank);
 
-    return () => ws.close();
-  }, [applyMarketIndices]); // 마운트 시 1회 연결
+    return () => { unsubSnapshot(); unsubTopic(); };
+  }, [applyMarketIndices, applyInvestorSentiment, applyIndustryRanks]); // 마운트 시 1회 구독
+
+  const summaryCodes = useMemo(() => {
+    return Array.from(new Set([...state.watchlist, ...state.holdings.map(h => h.code)]));
+  }, [state.watchlist, state.holdings]);
+
+  // 관심종목/보유종목 초기 스냅샷 — REST로 이름/로고/기준가 로드 (실시간 갱신은 아래 /topic/price/{code} 구독이 담당)
+  useEffect(() => {
+    if (summaryCodes.length === 0) { setWatchStocks([]); return; }
+    let cancelled = false;
+
+    fetchStockSummaries(summaryCodes)
+      .then(stocks => { if (!cancelled) setWatchStocks(stocks); })
+      .catch(e => console.warn('관심/보유 종목 시세 조회 실패', e));
+    return () => { cancelled = true; };
+  }, [summaryCodes]);
+
+  // 순위표(4탭) + 관심종목/보유종목 코드 전체에 대해 /topic/price/{code} 실시간 틱 구독을 동기화
+  const priceTargetCodes = useMemo(() => {
+    const set = new Set(subscribedCodes);
+    [...allRanks.tradeValue, ...allRanks.volume, ...allRanks.topGainers, ...allRanks.topLosers].forEach(s => {
+      if (s) set.add(s.code);
+    });
+    return set;
+  }, [allRanks, subscribedCodes]);
+
+  const priceSubsRef = useRef(new Map()); // code -> unsubscribe fn
+  useEffect(() => {
+    const subs = priceSubsRef.current;
+
+    priceTargetCodes.forEach(code => {
+      if (subs.has(code)) return;
+      const unsub = stompSubscribe(`/topic/price/${code}`, (tick) => {
+        if (!tick) return;
+        setPriceMap(prev => ({
+          ...prev,
+          [tick.code]: { price: tick.price, pct: tick.pct, value: tick.tradeValue, volume: tick.volume },
+        }));
+      });
+      subs.set(code, unsub);
+    });
+
+    for (const code of Array.from(subs.keys())) {
+      if (!priceTargetCodes.has(code)) {
+        subs.get(code)();
+        subs.delete(code);
+      }
+    }
+  }, [priceTargetCodes]);
 
   useEffect(() => {
     let cancelled = false;
@@ -344,76 +377,25 @@ export function StoreProvider({ children, initialLoggedIn, onLogout }) {
     };
   }, [applyMarketIndices, applyInvestorSentiment, applyIndustryRanks]);
 
-  // 관심종목/보유종목이 바뀌면 WebSocket으로 구독 갱신 (REST 폴링 불필요)
-  useEffect(() => {
-    const ws = wsRef.current;
-    if (!ws || ws.readyState !== WebSocket.OPEN || subscribedCodes.length === 0) return;
-    ws.send(JSON.stringify({ type: 'SUBSCRIBE', codes: subscribedCodes }));
-  }, [subscribedCodes]);
-
-  // 랭크 종목 마이크로 시뮬레이션: KIS WebSocket 구독 한도 우회
-  // - 실제 KIS 틱(priceMap)이 있는 종목은 스킵 — stocks useMemo에서 priceMap이 우선
-  // - RANK 수신(allRanks 변경) 시 useEffect 재실행 → 이전 타이머 정리 + 오프셋 초기화
-  useEffect(() => {
-    const allStocks = Object.values(
-      [...allRanks.tradeValue, ...allRanks.volume, ...allRanks.topGainers, ...allRanks.topLosers]
-        .reduce((acc, s) => { acc[s.code] = s; return acc; }, {})
-    );
-    if (allStocks.length === 0) return;
-
-    // 종목마다 독립적인 다음 틱 시각 — 초기 스태거로 첫 업데이트도 분산
-    const nextTickAt = {};
-    const now = Date.now();
-    allStocks.forEach(s => {
-      nextTickAt[s.code] = now + Math.random() * 2000; // 0~2초 내 랜덤 첫 틱
-    });
-
-    // 300ms마다 "업데이트 시간이 된 종목만" 틱 처리
-    const timer = setInterval(() => {
-      const t = Date.now();
-      setSimPrices(prev => {
-        const next = { ...prev };
-        let changed = false;
-        for (const s of allStocks) {
-          if (t < nextTickAt[s.code]) continue; // 아직 아님
-
-          const cur = next[s.code] || { price: s.price, pct: Number(s.pct) };
-          const tickRange = cur.price * 0.0004;
-          const trendBias = cur.pct >= 0 ? 0.08 : -0.08;
-          const delta = (Math.random() - 0.5 + trendBias) * tickRange;
-          const newPrice = Math.max(1, Math.round(cur.price + delta));
-
-          if (Math.abs((newPrice - s.price) / s.price) < 0.005) {
-            next[s.code] = { price: newPrice, pct: cur.pct + (delta / cur.price * 100) };
-            changed = true;
-          }
-
-          // 다음 틱은 1~4초 사이 랜덤
-          nextTickAt[s.code] = t + 1000 + Math.random() * 3000;
-        }
-        return changed ? next : prev;
-      });
-    }, 300);
-
-    return () => clearInterval(timer);
-  }, [allRanks]); // RANK 갱신 시 타이머 재시작
-
-  // 현재 탭 데이터: 실시간 KIS 틱 > 시뮬레이션 > RANK 스냅샷 순 우선순위
+  // 현재 탭 데이터: 실제 KIS 틱(priceMap)이 있으면 우선 반영
   const stocks = useMemo(() => {
     const base = allRanks[rankTab] ?? [];
     return base.map(s => {
-      const live = priceMap[s.code]; // 실제 KIS WebSocket 틱
-      if (live) return { ...s, price: live.price, pct: live.pct };
-      const sim = simPrices[s.code]; // 시뮬레이션
-      if (sim) return { ...s, price: sim.price, pct: sim.pct };
-      return s;
+      const live = priceMap[s.code]; // 실제 KIS 실시간 틱
+      if (!live) return s;
+      return {
+        ...s,
+        price: live.price,
+        pct: live.pct,
+        value: live.value ?? s.value,
+        volume: live.volume ?? s.volume,
+      };
     });
-  }, [allRanks, rankTab, priceMap, simPrices]);
+  }, [allRanks, rankTab, priceMap]);
  
   // ----- derived helpers -----
 
-  // 4개 탭 전체 + 관심종목을 하나의 맵으로 통합
-  // watchStocks가 마지막이라 rank보다 최신 가격으로 덮어씀
+  // 4개 탭 전체 + 관심종목 + 보유종목 + 직접 수신한 틱을 하나의 맵으로 통합
   const stockMap = useMemo(() => {
     const m = {};
     [
@@ -422,19 +404,51 @@ export function StoreProvider({ children, initialLoggedIn, onLogout }) {
       ...allRanks.topGainers,
       ...allRanks.topLosers,
       ...watchStocks,
+      ...state.holdings.map(h => ({
+        code: h.code,
+        name: h.name || h.code,
+        short: h.short || h.name || h.code,
+        price: h.currentPrice ?? h.avgPrice ?? 0,
+        pct: 0,
+      })),
+      ...Object.entries(priceMap).map(([code, live]) => ({ code, price: live.price, pct: live.pct })),
     ].forEach(s => {
-      if (!s) return;
+      if (!s || !s.code) return;
       const live = priceMap[s.code];
-      const sim = simPrices[s.code];
-      const price = live?.price ?? sim?.price ?? s.price ?? 0;
-      const pct = Number(live?.pct != null ? live.pct : sim?.pct != null ? sim.pct : (s.pct ?? 0)) || 0;
+      const price = live?.price ?? s.price ?? 0;
+      const pct = Number(live?.pct != null ? live.pct : (s.pct ?? 0)) || 0;
+      const value = live?.value ?? s.value;
+      const volume = live?.volume ?? s.volume;
       const changeAmt = Math.round(price - price / (1 + pct / 100));
-      // snapPrice/snapPct: 실시간 틱·시뮬레이션을 섞지 않은 10초 주기 실측값 그대로.
-      // 모의투자 "내 자산" 계산처럼 10초에 한 번만 바뀌어야 하는 곳에서 사용한다.
-      m[s.code] = { ...s, price, pct, changeAmt, snapPrice: s.price ?? 0, snapPct: Number(s.pct ?? 0) || 0 };
+      const prev = m[s.code] || {};
+      const isLiveOnly = Object.prototype.hasOwnProperty.call(priceMap, s.code)
+        && s.price === priceMap[s.code]?.price
+        && s.value == null
+        && s.volume == null;
+      const name = s.name ?? s.stockName ?? prev.name ?? prev.stockName ?? s.code;
+      const snapPrice = isLiveOnly
+        ? (prev.snapPrice ?? prev.price ?? s.price ?? 0)
+        : (s.price ?? prev.snapPrice ?? 0);
+      const snapPct = isLiveOnly
+        ? (prev.snapPct ?? 0)
+        : (Number(s.pct ?? prev.snapPct ?? 0) || 0);
+      m[s.code] = {
+        ...prev,
+        ...s,
+        name,
+        stockName: name,
+        short: s.short ?? prev.short ?? name,
+        price,
+        pct,
+        value,
+        volume,
+        changeAmt,
+        snapPrice,
+        snapPct,
+      };
     });
     return m;
-  }, [allRanks, watchStocks, priceMap, simPrices]);
+  }, [allRanks, watchStocks, state.holdings, priceMap]);
  
   // 중복된 선언 축소 (하나만 남김)
   const getStock = useCallback((code) => stockMap[code], [stockMap]);
@@ -464,15 +478,26 @@ export function StoreProvider({ children, initialLoggedIn, onLogout }) {
     });
   }, [initialLoggedIn, goToLogin]);
 
-  // 종목 상세 페이지 마운트(또는 종목 변경) 시 1회 호출 — 해당 종목의 실시간 체결(EXECUTION)/호가(ORDERBOOK)만 이 세션으로 수신
+  // 종목 상세 페이지 마운트(또는 종목 변경) 시 1회 호출 — 해당 종목의 실시간 체결/호가만 이 세션으로 수신
+  const detailSubsRef = useRef(null); // { unsubExec, unsubBook } | null
   const subscribeDetail = useCallback((code) => {
     setLastExecution(null);
     setLastOrderBook(null);
-    const ws = wsRef.current;
-    if (!ws) return;
-    const send = () => ws.send(JSON.stringify({ type: 'SUBSCRIBE_DETAIL', code }));
-    if (ws.readyState === WebSocket.OPEN) send();
-    else ws.addEventListener('open', send, { once: true });
+    if (detailSubsRef.current) {
+      detailSubsRef.current.unsubExec();
+      detailSubsRef.current.unsubBook();
+      detailSubsRef.current = null;
+    }
+    if (!code) return;
+    const unsubExec = stompSubscribe(`/topic/detail/${code}/execution`, (msg) => {
+      if (!msg) return;
+      setLastExecution({ price: msg.price, quantity: msg.quantity, changeRate: msg.changeRate, time: msg.time });
+    });
+    const unsubBook = stompSubscribe(`/topic/detail/${code}/orderbook`, (msg) => {
+      if (!msg) return;
+      setLastOrderBook({ asks: msg.asks, bids: msg.bids });
+    });
+    detailSubsRef.current = { unsubExec, unsubBook };
   }, []);
 
   // 충전/초기화/초기금액 설정은 DB가 유일한 출처(서버가 일일 한도도 강제)이므로,

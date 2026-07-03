@@ -291,9 +291,7 @@ function OrderPanel({ stock, price, setPrice, priceType, setPriceType }) {
 function DetailTabs({ stock, info }) {
   const [tab, setTab] = useState('info');
   const tabs = [
-    { key: 'info', label: '종목 정보' },
-    { key: 'fin', label: '정기공시·재무' },
-    { key: 'community', label: '커뮤니티' },
+    { key: 'info', label: '종목 정보' }
   ];
   return (
     <Card style={{ padding: 0, overflow: 'hidden' }}>
@@ -363,7 +361,8 @@ export function Detail() {
     setCandlesLoading(true);
     setApiCandles(null);
     fetchCandleData(code)
-      .then(data => { if (!cancelled) setApiCandles(data); })
+      .then(data => { console.log(data);
+        if (!cancelled) setApiCandles(data); })
       .catch(() => { if (!cancelled) setApiCandles([]); })
       .finally(() => { if (!cancelled) setCandlesLoading(false); });
     return () => { cancelled = true; };

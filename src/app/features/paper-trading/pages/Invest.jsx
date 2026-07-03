@@ -14,12 +14,9 @@ function usePortfolio() {
   return useMemo(() => {
     const rows = state.holdings.map(h => {
       const s = getStock(h.code);
-      // snapPrice/snapPct: 실시간 틱·시뮬레이션을 섞지 않은 10초 주기 실측값.
-      // "내 모의투자 자산"은 이 값만 써서 10초에 한 번만 바뀌게 한다.
-      // 구독 직후(첫 10초 브로드캐스트 전)처럼 아직 데이터가 없으면 매수평균가로 대체.
-      const price = s ? s.snapPrice : h.avgPrice;
-      const pct = s ? s.snapPct : 0;
-      const stock = s ? { ...s, price, pct } : { code: h.code, name: h.code, price, pct };
+      const price = s ? s.price : h.currentPrice ?? h.avgPrice;
+      const pct = s ? s.pct : 0;
+      const stock = s ? { ...s, price, pct } : { code: h.code, name: h.name || h.code, short: h.short || h.name || h.code, price, pct };
       const cost = h.avgPrice * h.qty;
       const eval_ = price * h.qty;
       const pnl = eval_ - cost;

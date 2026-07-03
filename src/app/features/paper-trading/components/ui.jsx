@@ -46,9 +46,11 @@ function avatarColor(code) {
 
 export function Avatar({ stock, size = 40 }) {
   const [imgFailed, setImgFailed] = useState(false);
-  const logoUrl = stock.logoUrl || `https://file.alphasquare.co.kr/media/images/stock_logo/kr/${stock.code}.png`;
-  const ch = stock.name.replace(/^(KODEX|SOL|TIGER|KBSTAR)\s*/, '').charAt(0);
-  const bg = stock.color || avatarColor(stock.code || '0');
+  const code = stock?.code || '0';
+  const name = stock?.name || stock?.short || stock?.stockName || code;
+  const logoUrl = stock?.logoUrl || `https://file.alphasquare.co.kr/media/images/stock_logo/kr/${code}.png`;
+  const ch = name.replace(/^(KODEX|SOL|TIGER|KBSTAR)\s*/, '').charAt(0);
+  const bg = stock?.color || avatarColor(code);
 
   if (!imgFailed) {
     return (
@@ -56,7 +58,7 @@ export function Avatar({ stock, size = 40 }) {
         background: '#F2F4F6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <img
           src={logoUrl}
-          alt={stock.name}
+          alt={name}
           onError={() => setImgFailed(true)}
           style={{ width: '100%', height: '100%', objectFit: 'contain' }}
         />
