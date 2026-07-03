@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { Outlet, Link, useNavigate, useLocation } from "react-router";
-import { Search, BookOpen, BarChart2, TrendingUp, MessageSquare, UserCircle, Bell, MessageCircle, AlertCircle, LogOut } from "lucide-react";
+import { motion, AnimatePresence } from "motion/react";
+import { Search, BookOpen, BarChart2, TrendingUp, MessageSquare, UserCircle, Bell, MessageCircle, AlertCircle, LogOut, Menu, X } from "lucide-react";
 import { Toaster } from "sonner";
 import { useAuth } from "../../features/auth";
 import { toast } from "sonner";
@@ -15,6 +16,7 @@ export function Layout() {
   const location = useLocation();
   const { isLoggedIn, logout } = useAuth();
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const notificationRef = useRef(null);
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -25,6 +27,9 @@ export function Layout() {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+  useEffect(() => {
+    setIsMobileMenuOpen(false);
+  }, [location.pathname]);
   const handleSearch = (e) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
@@ -53,11 +58,11 @@ export function Layout() {
       <header className="bg-white border-b border-slate-200 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
-            <div className="flex items-center gap-8">
+            <div className="flex items-center gap-8 min-w-0">
               {
     /* Logo */
   }
-              <Link to="/" className="flex items-center gap-2 group">
+              <Link to="/" className="flex items-center gap-2 group flex-shrink-0">
                 <span className="text-2xl font-bold text-slate-900">
                   Darfin
                 </span>
@@ -68,10 +73,12 @@ export function Layout() {
   }
               {!(location.pathname === "/" || location.pathname.startsWith("/company") || location.pathname === "/disclosure" || location.pathname.startsWith("/trading")) && <div className="hidden md:block">
                   <form onSubmit={handleSearch} className="relative">
+                    <label htmlFor="header-company-search" className="sr-only">기업명 또는 종목코드 검색</label>
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <Search className="h-4 w-4 text-slate-400" />
+                      <Search className="h-4 w-4 text-slate-400" aria-hidden="true" />
                     </div>
                     <input
+    id="header-company-search"
     type="text"
     name="query"
     className="block w-96 pl-10 pr-3 py-2 border border-slate-200 rounded-full text-sm placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 bg-slate-50 transition-shadow"
@@ -82,9 +89,23 @@ export function Layout() {
             </div>
 
           {
+    /* Mobile controls — hamburger toggle */
+  }
+          <div className="flex md:hidden items-center gap-1 flex-shrink-0">
+            <button
+    onClick={() => setIsMobileMenuOpen((v) => !v)}
+    className="p-2 text-slate-600 hover:text-blue-600 transition-colors"
+    aria-label={isMobileMenuOpen ? "메뉴 닫기" : "메뉴 열기"}
+    aria-expanded={isMobileMenuOpen}
+  >
+              {isMobileMenuOpen ? <X size={22} /> : <Menu size={22} />}
+            </button>
+          </div>
+
+          {
     /* Navigation Links */
   }
-          <nav className="flex items-center gap-6">
+          <nav className="hidden md:flex items-center gap-6">
             {[
     { to: "/company", icon: <BarChart2 size={16} />, label: "\uAE30\uC5C5 \uBD84\uC11D" },
     { to: "/disclosure", icon: <BookOpen size={16} />, label: "\uACF5\uC2DC \uC5F4\uB78C" },
@@ -166,6 +187,82 @@ export function Layout() {
             </nav>
           </div>
         </div>
+
+        {
+    /* Mobile menu panel — absolutely positioned so opening/closing never reflows page content */
+  }
+        <AnimatePresence>
+          {isMobileMenuOpen && <motion.div
+    initial={{ opacity: 0, y: -8 }}
+    animate={{ opacity: 1, y: 0 }}
+    exit={{ opacity: 0, y: -8 }}
+    transition={{ duration: 0.2, ease: "easeOut" }}
+    className="md:hidden absolute left-0 right-0 top-full border-t border-slate-200 bg-white shadow-lg max-h-[calc(100vh-4rem)] overflow-y-auto custom-scrollbar"
+  >
+            <div className="px-4 py-4 space-y-4">
+              <form onSubmit={handleSearch} className="relative">
+                <label htmlFor="mobile-company-search" className="sr-only">기업명 또는 종목코드 검색</label>
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Search className="h-4 w-4 text-slate-400" aria-hidden="true" />
+                </div>
+                <input
+    id="mobile-company-search"
+    type="text"
+    name="query"
+    className="block w-full pl-10 pr-3 py-2.5 border border-slate-200 rounded-full text-sm placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 bg-slate-50"
+    placeholder="기업명 또는 종목코드 검색"
+  />
+              </form>
+
+              <nav className="flex flex-col gap-1">
+                {[
+    { to: "/company", icon: <BarChart2 size={18} />, label: "기업 분석" },
+    { to: "/disclosure", icon: <BookOpen size={18} />, label: "공시 열람" },
+    { to: "/trading", icon: <TrendingUp size={18} />, label: "모의투자" },
+    { to: "/community", icon: <MessageSquare size={18} />, label: "커뮤니티" }
+  ].map(({ to, icon, label }) => <Link
+    key={to}
+    to={to}
+    onClick={(e) => handleServiceClick(e, to)}
+    className="flex items-center gap-3 px-2 py-2.5 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50 hover:text-blue-600 transition-colors"
+  >
+                    {icon}
+                    {label}
+                  </Link>)}
+                {isLoggedIn && <Link
+    to="/notifications"
+    className="flex items-center gap-3 px-2 py-2.5 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50 hover:text-blue-600 transition-colors"
+  >
+                    <Bell size={18} />
+                    알림
+                    {mockNotifications.some((n) => !n.isRead) && <span className="w-2 h-2 bg-red-500 rounded-full" />}
+                  </Link>}
+                {isLoggedIn && <Link
+    to="/mypage"
+    className="flex items-center gap-3 px-2 py-2.5 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50 hover:text-blue-600 transition-colors"
+  >
+                    <UserCircle size={18} />
+                    마이페이지
+                  </Link>}
+              </nav>
+
+              <div className="pt-2 border-t border-slate-100">
+                {isLoggedIn ? <button
+    onClick={handleLogout}
+    className="w-full flex items-center justify-center gap-1.5 text-sm font-medium text-slate-600 hover:text-red-600 border border-slate-200 hover:border-red-200 px-4 py-2.5 rounded-full transition-colors"
+  >
+                    <LogOut size={15} />
+                    로그아웃
+                  </button> : <Link
+    to="/login"
+    className="block w-full text-center text-sm font-medium text-white bg-blue-600 px-4 py-2.5 rounded-full hover:bg-blue-700 transition-colors"
+  >
+                    로그인
+                  </Link>}
+              </div>
+            </div>
+          </motion.div>}
+        </AnimatePresence>
       </header>
 
       {
