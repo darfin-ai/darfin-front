@@ -91,8 +91,7 @@ export function InvestHero() {
 
   const rows = state.holdings.map(h => {
     const s = getStock(h.code);
-    // snapPrice: 실시간 틱/시뮬레이션을 섞지 않은 10초 주기 실측값 — "내 모의투자 자산"은 10초마다만 갱신
-    const currentPrice = s ? s.snapPrice : h.avgPrice;
+    const currentPrice = s ? s.price : h.currentPrice ?? h.avgPrice;
     return { eval: currentPrice * h.qty, cost: h.avgPrice * h.qty };
   });
   const totalEval = rows.reduce((a, r) => a + r.eval, 0);
@@ -151,10 +150,9 @@ const heroBtn = (solid) => ({ flex: 1, height: 44, borderRadius: 12, border: 'no
 
 const RANK_COLS = '28px 28px 40px 1fr 112px 86px 120px 96px';
 
-function StockRow({ rank, stock, onClick, watched, onWatch, maxValue, onHover, rankTab }) {
+function StockRow({ rank, stock, onClick, watched, onWatch, onHover, rankTab }) {
   const col = tone(stock.pct);
   const displayValue = (rankTab === 'volume' ? stock.volume : stock.value) || 0;
-  const barW = maxValue > 0 ? Math.round((displayValue / maxValue) * 100) : 0;
 
   let valText = `${displayValue.toLocaleString()}억원`;
   if (rankTab === 'volume') valText = `${displayValue.toLocaleString()}주`;
@@ -199,12 +197,17 @@ function StockRow({ rank, stock, onClick, watched, onWatch, maxValue, onHover, r
       {/* 거래대금/거래량 */}
       <div style={{ textAlign: 'right', fontSize: 13, fontWeight: 600, color: '#4E5968' }}>{valText}</div>
 
-      {/* 비중 바 */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-        <div style={{ flex: 1, height: 6, background: '#F2F4F6', borderRadius: 3, overflow: 'hidden' }}>
-          <div style={{ width: barW + '%', height: '100%', background: col, opacity: 0.85 }} />
-        </div>
-        <span style={{ fontSize: 12, fontWeight: 700, color: SUB, width: 24, textAlign: 'right' }}>{Math.min(99, barW)}</span>
+      {/* 업종 태그 (stock_info DB 기반 — 없으면 미표시) */}
+      <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+        {stock.sector ? (
+          <span style={{ fontSize: 11, fontWeight: 700, color: '#4E5968', background: '#F2F4F6',
+            padding: '3px 8px', borderRadius: 6, whiteSpace: 'nowrap', overflow: 'hidden',
+            textOverflow: 'ellipsis', maxWidth: '100%' }}>
+            {stock.sector}
+          </span>
+        ) : (
+          <span style={{ fontSize: 12, color: '#C5CBD3' }}>-</span>
+        )}
       </div>
     </div>
   );
@@ -215,11 +218,6 @@ function HomeMain() {
   const [tab, setTab] = useState('chart');
 
   const [hoveredCode, setHoveredCode] = useState('');
-  
-  const maxValue = useMemo(() => {
-    if (!stocks || stocks.length === 0) return 0;
-    return Math.max(...stocks.map(s => (rankTab === 'volume' ? s.volume : s.value) || 0));
-  }, [stocks, rankTab]);
 
   const displayStocks = useMemo(() => {
     if (!stocks || stocks.length === 0) return [];
@@ -290,12 +288,12 @@ function HomeMain() {
               <span style={{ textAlign: 'right' }}>
                 {rankTab === 'tradeValue' ? '거래대금' : rankTab === 'volume' ? '거래량' : '당일변동'}
               </span>
-              <span style={{ textAlign: 'right' }}>비중비율</span>
+              <span style={{ textAlign: 'right' }}>업종</span>
             </div>
             
             {displayStocks.length > 0 ? (
               displayStocks.map((s, i) => (
-                <StockRow key={s.code} rank={i + 1} stock={s} maxValue={maxValue} rankTab={rankTab}
+                <StockRow key={s.code} rank={i + 1} stock={s} rankTab={rankTab}
                   watched={state.watchlist.includes(s.code)} onWatch={() => toggleWatch(s.code)}
                   onHover={() => setHoveredCode(s.code)}
                   onClick={() => navigate('detail', { code: s.code })} />

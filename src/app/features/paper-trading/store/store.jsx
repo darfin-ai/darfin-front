@@ -205,7 +205,20 @@ export function StoreProvider({ children, initialLoggedIn, onLogout }) {
     }
     let cancelled = false;
     fetchWatchlist()
-      .then(codes => { if (!cancelled) setState(s => ({ ...s, watchlist: codes })); })
+      .then(items => {
+        if (cancelled) return;
+        const list = Array.isArray(items) ? items : [];
+        const codes = list.map(item => typeof item === 'string' ? item : item.code).filter(Boolean);
+        const namedStocks = list
+          .filter(item => item && typeof item === 'object' && item.code)
+          .map(item => ({
+            code: item.code,
+            name: item.name || item.stockName || item.code,
+            short: item.name || item.stockName || item.code,
+          }));
+        setState(s => ({ ...s, watchlist: codes }));
+        if (namedStocks.length > 0) setWatchStocks(namedStocks);
+      })
       .catch(e => console.warn('관심종목 조회 실패', e));
     return () => { cancelled = true; };
   }, [initialLoggedIn]);
@@ -223,7 +236,16 @@ export function StoreProvider({ children, initialLoggedIn, onLogout }) {
         // 서버가 오늘 자정(KST) 이후 CHARGE 이력 수로 일일 한도를 강제하므로, 화면 표시용 카운트도 그 이력에서 계산한다.
         chargeCountToday: (portfolio.fundHistory || []).filter(h => h.type === 'CHARGE' && isTodayKst(h.ts)).length,
       },
-      holdings: portfolio.holdings.map(h => ({ code: h.code, qty: h.qty, avgPrice: h.avgPrice })),
+      holdings: portfolio.holdings.map(h => ({
+        code: h.code,
+        name: h.name || h.stockName || h.code,
+        short: h.name || h.stockName || h.code,
+        qty: h.qty,
+        avgPrice: h.avgPrice,
+        currentPrice: h.currentPrice,
+        valuationPnl: h.valuationPnl,
+        valuationPnlRate: h.valuationPnlRate,
+      })),
       trades: portfolio.trades.map(t => ({
         id: String(t.id), code: t.code, type: t.type,
         qty: t.qty, price: t.price, ts: t.ts, pnl: t.pnl,
@@ -276,15 +298,20 @@ export function StoreProvider({ children, initialLoggedIn, onLogout }) {
     return () => { unsubSnapshot(); unsubTopic(); };
   }, [applyMarketIndices, applyInvestorSentiment, applyIndustryRanks]); // 마운트 시 1회 구독
 
-  // 관심종목 초기 스냅샷 — REST로 이름/로고/기준가 로드 (실시간 갱신은 아래 /topic/price/{code} 구독이 담당)
+  const summaryCodes = useMemo(() => {
+    return Array.from(new Set([...state.watchlist, ...state.holdings.map(h => h.code)]));
+  }, [state.watchlist, state.holdings]);
+
+  // 관심종목/보유종목 초기 스냅샷 — REST로 이름/로고/기준가 로드 (실시간 갱신은 아래 /topic/price/{code} 구독이 담당)
   useEffect(() => {
-    if (state.watchlist.length === 0) { setWatchStocks([]); return; }
+    if (summaryCodes.length === 0) { setWatchStocks([]); return; }
     let cancelled = false;
-    fetchStockSummaries(state.watchlist)
+
+    fetchStockSummaries(summaryCodes)
       .then(stocks => { if (!cancelled) setWatchStocks(stocks); })
-      .catch(e => console.warn('관심종목 시세 조회 실패', e));
+      .catch(e => console.warn('관심/보유 종목 시세 조회 실패', e));
     return () => { cancelled = true; };
-  }, [state.watchlist]);
+  }, [summaryCodes]);
 
   // 순위표(4탭) + 관심종목/보유종목 코드 전체에 대해 /topic/price/{code} 실시간 틱 구독을 동기화
   const priceTargetCodes = useMemo(() => {
@@ -368,8 +395,7 @@ export function StoreProvider({ children, initialLoggedIn, onLogout }) {
  
   // ----- derived helpers -----
 
-  // 4개 탭 전체 + 관심종목을 하나의 맵으로 통합
-  // watchStocks가 마지막이라 rank보다 최신 가격으로 덮어씀
+  // 4개 탭 전체 + 관심종목 + 보유종목 + 직접 수신한 틱을 하나의 맵으로 통합
   const stockMap = useMemo(() => {
     const m = {};
     [
@@ -378,20 +404,51 @@ export function StoreProvider({ children, initialLoggedIn, onLogout }) {
       ...allRanks.topGainers,
       ...allRanks.topLosers,
       ...watchStocks,
+      ...state.holdings.map(h => ({
+        code: h.code,
+        name: h.name || h.code,
+        short: h.short || h.name || h.code,
+        price: h.currentPrice ?? h.avgPrice ?? 0,
+        pct: 0,
+      })),
+      ...Object.entries(priceMap).map(([code, live]) => ({ code, price: live.price, pct: live.pct })),
     ].forEach(s => {
-      if (!s) return;
+      if (!s || !s.code) return;
       const live = priceMap[s.code];
       const price = live?.price ?? s.price ?? 0;
       const pct = Number(live?.pct != null ? live.pct : (s.pct ?? 0)) || 0;
       const value = live?.value ?? s.value;
       const volume = live?.volume ?? s.volume;
       const changeAmt = Math.round(price - price / (1 + pct / 100));
-      // snapPrice/snapPct: 실시간 틱을 섞지 않은 10초 주기 실측값 그대로.
-      // 모의투자 "내 자산" 계산처럼 10초에 한 번만 바뀌어야 하는 곳에서 사용한다.
-      m[s.code] = { ...s, price, pct, value, volume, changeAmt, snapPrice: s.price ?? 0, snapPct: Number(s.pct ?? 0) || 0 };
+      const prev = m[s.code] || {};
+      const isLiveOnly = Object.prototype.hasOwnProperty.call(priceMap, s.code)
+        && s.price === priceMap[s.code]?.price
+        && s.value == null
+        && s.volume == null;
+      const name = s.name ?? s.stockName ?? prev.name ?? prev.stockName ?? s.code;
+      const snapPrice = isLiveOnly
+        ? (prev.snapPrice ?? prev.price ?? s.price ?? 0)
+        : (s.price ?? prev.snapPrice ?? 0);
+      const snapPct = isLiveOnly
+        ? (prev.snapPct ?? 0)
+        : (Number(s.pct ?? prev.snapPct ?? 0) || 0);
+      m[s.code] = {
+        ...prev,
+        ...s,
+        name,
+        stockName: name,
+        short: s.short ?? prev.short ?? name,
+        price,
+        pct,
+        value,
+        volume,
+        changeAmt,
+        snapPrice,
+        snapPct,
+      };
     });
     return m;
-  }, [allRanks, watchStocks, priceMap]);
+  }, [allRanks, watchStocks, state.holdings, priceMap]);
  
   // 중복된 선언 축소 (하나만 남김)
   const getStock = useCallback((code) => stockMap[code], [stockMap]);
