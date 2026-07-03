@@ -153,7 +153,7 @@ const RANK_COLS = '28px 28px 40px 1fr 112px 86px 120px 96px';
 
 function StockRow({ rank, stock, onClick, watched, onWatch, maxValue, onHover, rankTab }) {
   const col = tone(stock.pct);
-  const displayValue = stock.value || 0;
+  const displayValue = (rankTab === 'volume' ? stock.volume : stock.value) || 0;
   const barW = maxValue > 0 ? Math.round((displayValue / maxValue) * 100) : 0;
 
   let valText = `${displayValue.toLocaleString()}억원`;
@@ -218,8 +218,8 @@ function HomeMain() {
   
   const maxValue = useMemo(() => {
     if (!stocks || stocks.length === 0) return 0;
-    return Math.max(...stocks.map(s => s.value || 0));
-  }, [stocks]);
+    return Math.max(...stocks.map(s => (rankTab === 'volume' ? s.volume : s.value) || 0));
+  }, [stocks, rankTab]);
 
   const displayStocks = useMemo(() => {
     if (!stocks || stocks.length === 0) return [];
