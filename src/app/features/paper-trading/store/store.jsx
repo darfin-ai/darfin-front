@@ -109,21 +109,6 @@ function defaultState() {
     watchlist: [], // 로그인 사용자의 DB 관심종목을 StoreProvider에서 별도로 불러와 채운다
     fundHistory: [], // 로그인 사용자의 DB 자금 이력을 refreshPortfolio에서 별도로 불러와 채운다
     aiReports: [],
-    community: {
-      '000660': [
-        { id: 'c1', author: '반도체러버', ts: Date.now() - 3600000 * 5, text: 'HBM4 양산 일정이 예상보다 빠른 것 같은데, 다들 어떻게 보세요? 3분기 실적 기대해도 될까요?', likes: 24, liked: false,
-          comments: [
-            { id: 'cc1', author: '존버중', ts: Date.now() - 3600000 * 4, text: '엔비디아향 공급 비중이 커서 저는 긍정적으로 봅니다.' },
-            { id: 'cc2', author: '소심한개미', ts: Date.now() - 3600000 * 2, text: '단기 과열 구간이라 분할 접근이 안전할 듯해요.' },
-          ] },
-        { id: 'c2', author: '모의왕', ts: Date.now() - 86400000, text: '52주 신고가 갱신했네요. 추격 매수 들어가신 분 계신가요?', likes: 11, liked: false, comments: [] },
-      ],
-      '240810': [
-        { id: 'c3', author: '장비주전문', ts: Date.now() - 3600000 * 8, text: '원익IPS 수주잔고가 계속 늘고 있어서 내년 실적 기대됩니다. 업종 전체가 같이 가네요.', likes: 8, liked: false, comments: [
-          { id: 'cc3', author: '뉴비투자', ts: Date.now() - 3600000 * 6, text: '저도 모의로 담아봤어요. 변동성은 감안해야 할 듯!' },
-        ] },
-      ],
-    },
   };
 }
 
@@ -135,9 +120,9 @@ function loadState() {
     const saved = JSON.parse(raw);
     const base = defaultState();
     const merged = { ...base, ...saved, route: base.route }; // route always starts at home
-    // migrate: drop legacy AI reports (old format without .health) and ensure community exists
+    // migrate: drop legacy AI reports (old format without .health) and remove old local community mock cache
     merged.aiReports = (merged.aiReports || []).filter(r => r && r.health);
-    if (!merged.community) merged.community = base.community;
+    delete merged.community;
     // isLoggedIn/watchlist는 서버가 실제 출처(auth 세션 / DB) — 캐시된 값을 신뢰하지 않는다
     merged.isLoggedIn = false;
     merged.watchlist = [];
@@ -552,34 +537,12 @@ export function StoreProvider({ children, initialLoggedIn, onLogout }) {
     });
   }, []);
 
-  const addPost = useCallback((code, text) => {
-    setState(s => {
-      const list = s.community[code] || [];
-      const post = { id: 'c' + Date.now(), author: '나', ts: Date.now(), text, likes: 0, liked: false, comments: [] };
-      return { ...s, community: { ...s.community, [code]: [post, ...list] } };
-    });
-  }, []);
-  const togglePostLike = useCallback((code, postId) => {
-    setState(s => {
-      const list = (s.community[code] || []).map(p => p.id === postId ? { ...p, liked: !p.liked, likes: p.likes + (p.liked ? -1 : 1) } : p);
-      return { ...s, community: { ...s.community, [code]: list } };
-    });
-  }, []);
-  const addComment = useCallback((code, postId, text) => {
-    setState(s => {
-      const list = (s.community[code] || []).map(p => p.id === postId
-        ? { ...p, comments: [...p.comments, { id: 'cc' + Date.now(), author: '나', ts: Date.now(), text }] } : p);
-      return { ...s, community: { ...s.community, [code]: list } };
-    });
-  }, []);
-
   const value = {
     state, getStock, stocks, watchStocks, stockMap, rankTab, setRankTab,
     market, industries, schedule: SCHEDULE, aiComments: AI_COMMENTS,
     marketError,
     genCandles, genSpark, seedRand,
     navigate, goToLogin, toggleWatch, refreshPortfolio, chargeFunds, resetFunds, setInitialFunds, addAiReport, setAiReports,
-    addPost, togglePostLike, addComment,
     lastExecution, lastOrderBook, subscribeDetail,
   };
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;

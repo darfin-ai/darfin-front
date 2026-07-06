@@ -1,5 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
+import { useNavigate as useRouterNavigate } from 'react-router';
 import { useStore } from '../store/store.jsx';
+import { getQuestions } from '../../community/api/communityApi.js';
 import {
   UP, DOWN, SUB, INK, BRAND,
   won, wonShort, signPct, signNum, tone, timeAgo,
@@ -148,7 +150,7 @@ function HeroGlow() {
 const heroBtn = (solid) => ({ flex: 1, height: 44, borderRadius: 12, border: 'none', cursor: 'pointer', fontSize: 14, fontWeight: 800, whiteSpace: 'nowrap',
   background: solid ? '#fff' : 'rgba(255,255,255,0.16)', color: solid ? BRAND : '#fff' });
 
-const RANK_COLS = '28px 28px 40px 1fr 112px 86px 120px 96px';
+const RANK_COLS = '28px 28px 40px minmax(108px, 1fr) 100px 76px 100px 72px';
 
 function StockRow({ rank, stock, onClick, watched, onWatch, onHover, rankTab }) {
   const col = tone(stock.pct);
@@ -179,7 +181,7 @@ function StockRow({ rank, stock, onClick, watched, onWatch, onHover, rankTab }) 
       </div>
 
       {/* 종목명 */}
-      <span style={{ fontSize: 15, fontWeight: 700, color: INK, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+      <span title={stock.name || stock.short || stock.code} style={{ fontSize: 15, fontWeight: 700, color: INK, minWidth: 108, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
         {stock.short || stock.name}
       </span>
 
@@ -368,14 +370,18 @@ function toWeekly(daily) {
 const weeklyCache = {};
 
 function StockPreviewCard({ stock: rawStock }) {
-  const { navigate, state, getStock } = useStore();
+  const { navigate, getStock } = useStore();
+  const routerNavigate = useRouterNavigate();
   // 모든 훅을 조건 분기 전에 선언 (Rules of Hooks)
   const [candles, setCandles] = useState([]);
   const [dates,   setDates]   = useState([]);
   const [status,  setStatus]  = useState('idle'); // idle | loading | ok | error
+  const [communityPosts, setCommunityPosts] = useState([]);
+  const [communityStatus, setCommunityStatus] = useState('idle'); // idle | loading | ok | error
 
   const stock     = rawStock ? (getStock(rawStock.code) || rawStock) : null;
   const stockCode = stock?.code ?? null;
+  const stockName = stock?.name || stock?.short || stockCode || '';
 
   useEffect(() => {
     if (!stockCode) return;
@@ -406,11 +412,46 @@ function StockPreviewCard({ stock: rawStock }) {
     return () => ctrl.abort();
   }, [stockCode]);
 
+  useEffect(() => {
+    if (!stockCode) return;
+    let cancelled = false;
+    const terms = [...new Set([stockName, stock?.short, stockCode].filter(Boolean))];
+
+    async function loadCommunity() {
+      setCommunityStatus('loading');
+      setCommunityPosts([]);
+      try {
+        let questions = [];
+        for (const term of terms) {
+          const data = await getQuestions(term);
+          const list = Array.isArray(data) ? data : [];
+          questions = list.filter(q => {
+            const qCode = q.stock?.stockCode || q.stockCode;
+            const qName = q.stock?.companyName || q.stockName || '';
+            return qCode === stockCode || (qName && (qName.includes(stockName) || stockName.includes(qName) || qName.includes(term)));
+          });
+          if (questions.length) break;
+        }
+        if (!cancelled) {
+          setCommunityPosts(questions.slice(0, 2));
+          setCommunityStatus('ok');
+        }
+      } catch (error) {
+        if (!cancelled) {
+          console.warn('종목 커뮤니티 조회 실패', error);
+          setCommunityStatus('error');
+        }
+      }
+    }
+
+    loadCommunity();
+    return () => { cancelled = true; };
+  }, [stockCode, stockName, stock?.short]);
+
   // 훅 이후 조건부 렌더링
   if (!stock) return null;
 
   const col       = tone(stock.pct);
-  const posts     = (state.community[stock.code] || []).slice(0, 2);
   const changeAmt = stock.changeAmt || 0;
 
   return (
@@ -439,19 +480,23 @@ function StockPreviewCard({ stock: rawStock }) {
       <div style={{ borderTop: '1px solid #F2F4F6', marginTop: 14, paddingTop: 14 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
           <span style={{ fontSize: 14, fontWeight: 800, color: INK }}>커뮤니티</span>
-          <span onClick={() => navigate('detail', { code: stock.code })} style={{ fontSize: 12, color: SUB, cursor: 'pointer' }}>더보기 ›</span>
+          <span onClick={() => routerNavigate('/community')} style={{ fontSize: 12, color: SUB, cursor: 'pointer' }}>더보기 ›</span>
         </div>
-        {posts.length === 0 ? (
+        {communityStatus === 'loading' ? (
+          <div style={{ fontSize: 13, color: SUB, padding: '8px 0' }}>커뮤니티 글을 불러오는 중...</div>
+        ) : communityStatus === 'error' ? (
+          <div style={{ fontSize: 13, color: SUB, padding: '8px 0' }}>커뮤니티 글을 불러올 수 없어요.</div>
+        ) : communityPosts.length === 0 ? (
           <div style={{ fontSize: 13, color: SUB, padding: '8px 0' }}>아직 글이 없어요. 첫 글을 남겨보세요.</div>
-        ) : posts.map(p => (
-          <div key={p.id} style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
-            <div style={{ width: 28, height: 28, borderRadius: '50%', background: p.author === '나' ? BRAND : '#D1D6DB', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 12, flexShrink: 0 }}>{p.author.charAt(0)}</div>
+        ) : communityPosts.map(p => (
+          <div key={p.id} onClick={() => routerNavigate(`/community/${p.id}`)} style={{ display: 'flex', gap: 8, marginBottom: 10, cursor: 'pointer' }}>
+            <div style={{ width: 28, height: 28, borderRadius: '50%', background: BRAND, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 12, flexShrink: 0 }}>{(p.authorNickname || '익').charAt(0)}</div>
             <div style={{ minWidth: 0 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <span style={{ fontSize: 13, fontWeight: 700, color: INK }}>{p.author}</span>
-                <span style={{ fontSize: 11, color: SUB }}>{timeAgo(p.ts)}</span>
+                <span style={{ fontSize: 13, fontWeight: 700, color: INK }}>{p.authorNickname || '익명'}</span>
+                <span style={{ fontSize: 11, color: SUB }}>{timeAgo(new Date(p.createdAt).getTime())}</span>
               </div>
-              <div style={{ fontSize: 13, color: '#4E5968', lineHeight: 1.5, overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{p.text}</div>
+              <div style={{ fontSize: 13, color: '#4E5968', lineHeight: 1.5, overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{p.title || p.content}</div>
             </div>
           </div>
         ))}

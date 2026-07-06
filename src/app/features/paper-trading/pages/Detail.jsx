@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { useStore, seedRand } from '../store/store.jsx';
+import { getQuestions } from '../../community/api/communityApi.js';
 import {
   fetchCandleData, fetchOrderBook, fetchExecutions, fetchDailyPrices, fetchStockInfo,
   fetchPaperTradingBalance, fetchPaperTradingHolding, placeBuyOrder, placeSellOrder,
@@ -821,53 +822,85 @@ function OrderBook({ stock, selectedPrice, onPick }) {
 }
 
 function Community({ stock, bare }) {
-  const { state, addPost, togglePostLike, addComment } = useStore();
-  const posts = state.community[stock.code] || [];
-  const [text, setText] = useState('');
-  const [openId, setOpenId] = useState(null);
-  const submit = () => { if (!text.trim()) return; addPost(stock.code, text.trim()); setText(''); };
+  const routerNavigate = useNavigate();
+  const [posts, setPosts] = useState([]);
+  const [status, setStatus] = useState('loading');
+  const stockName = stock?.name || stock?.short || stock?.code || '';
+
+  useEffect(() => {
+    if (!stock?.code) return;
+    let cancelled = false;
+    const terms = [...new Set([stockName, stock.short, stock.code].filter(Boolean))];
+
+    async function loadCommunity() {
+      setStatus('loading');
+      try {
+        let questions = [];
+        for (const term of terms) {
+          const data = await getQuestions(term);
+          const list = Array.isArray(data) ? data : [];
+          questions = list.filter(q => {
+            const qCode = q.stock?.stockCode || q.stockCode;
+            const qName = q.stock?.companyName || q.stockName || '';
+            return qCode === stock.code || (qName && (qName.includes(stockName) || stockName.includes(qName) || qName.includes(term)));
+          });
+          if (questions.length) break;
+        }
+        if (!cancelled) {
+          setPosts(questions);
+          setStatus('ok');
+        }
+      } catch (error) {
+        if (!cancelled) {
+          console.warn('종목 상세 커뮤니티 조회 실패', error);
+          setStatus('error');
+        }
+      }
+    }
+
+    loadCommunity();
+    return () => { cancelled = true; };
+  }, [stock?.code, stock.short, stockName]);
+
   const inner = (
     <>
       <div style={{ display: 'flex', gap: 10, marginBottom: 22 }}>
-        <input value={text} onChange={e => setText(e.target.value)} onKeyDown={e => e.key === 'Enter' && submit()}
-          placeholder={`${stock.name}에 대해 질문하거나 의견을 남겨보세요`}
-          style={{ flex: 1, height: 46, border: '1px solid #E5E8EB', borderRadius: 12, padding: '0 16px', fontSize: 14, outline: 'none' }} />
-        <button onClick={submit} style={{ ...primaryBtn, height: 46, padding: '0 22px', whiteSpace: 'nowrap' }}>등록</button>
+        <button
+          onClick={() => routerNavigate('/community/write')}
+          style={{ ...primaryBtn, height: 46, padding: '0 22px', whiteSpace: 'nowrap' }}
+        >
+          커뮤니티에 질문하기
+        </button>
+        <button
+          onClick={() => routerNavigate('/community')}
+          style={{ height: 46, padding: '0 18px', borderRadius: 12, border: '1px solid #E5E8EB', background: '#fff', color: '#4E5968', fontSize: 14, fontWeight: 800, cursor: 'pointer', whiteSpace: 'nowrap' }}
+        >
+          전체 글 보기
+        </button>
       </div>
-      {posts.length === 0 ? <div style={{ fontSize: 14, color: SUB, textAlign: 'center', padding: '24px 0' }}>첫 번째 글을 남겨보세요.</div> : (
+      {status === 'loading' ? (
+        <div style={{ fontSize: 14, color: SUB, textAlign: 'center', padding: '24px 0' }}>커뮤니티 글을 불러오는 중...</div>
+      ) : status === 'error' ? (
+        <div style={{ fontSize: 14, color: SUB, textAlign: 'center', padding: '24px 0' }}>커뮤니티 글을 불러올 수 없어요.</div>
+      ) : posts.length === 0 ? <div style={{ fontSize: 14, color: SUB, textAlign: 'center', padding: '24px 0' }}>아직 등록된 글이 없어요.</div> : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           {posts.map(post => (
-            <div key={post.id} style={{ borderTop: '1px solid #F2F4F6', paddingTop: 16 }}>
+            <div key={post.id} onClick={() => routerNavigate(`/community/${post.id}`)} style={{ borderTop: '1px solid #F2F4F6', paddingTop: 16, cursor: 'pointer' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-                <div style={{ width: 32, height: 32, borderRadius: '50%', background: post.author === '나' ? BRAND : '#D1D6DB', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 13 }}>{post.author.charAt(0)}</div>
-                <span style={{ fontSize: 14, fontWeight: 700, color: INK }}>{post.author}</span>
-                <span style={{ fontSize: 12, color: SUB }}>{timeAgo(post.ts)}</span>
+                <div style={{ width: 32, height: 32, borderRadius: '50%', background: BRAND, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 13 }}>{(post.authorNickname || '익').charAt(0)}</div>
+                <span style={{ fontSize: 14, fontWeight: 700, color: INK }}>{post.authorNickname || '익명'}</span>
+                <span style={{ fontSize: 12, color: SUB }}>{timeAgo(new Date(post.createdAt).getTime())}</span>
+                {post.isResolved && <span style={{ fontSize: 11, fontWeight: 800, color: '#1FA463', background: '#EAF8F0', padding: '3px 7px', borderRadius: 6 }}>해결됨</span>}
               </div>
-              <div style={{ fontSize: 15, lineHeight: 1.6, color: '#333D4B', marginBottom: 10 }}>{post.text}</div>
+              <div style={{ fontSize: 15, fontWeight: 800, lineHeight: 1.5, color: INK, marginBottom: 5 }}>{post.title}</div>
+              <div style={{ fontSize: 14, lineHeight: 1.6, color: '#4E5968', marginBottom: 10, overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{post.content}</div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                <button onClick={() => togglePostLike(stock.code, post.id)} style={{ display: 'flex', alignItems: 'center', gap: 5, border: 'none', background: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 700, color: post.liked ? UP : SUB }}>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill={post.liked ? UP : 'none'} stroke={post.liked ? UP : SUB} strokeWidth="2"><path d="M7 11v9H4V11zM7 11l4-7c1.5 0 2.5 1 2.5 2.5V9h5c1.1 0 1.9 1 1.6 2l-1.6 7c-.2.9-1 1.5-2 1.5H7" strokeLinejoin="round" /></svg>
-                  {post.likes}
-                </button>
-                <button onClick={() => setOpenId(openId === post.id ? null : post.id)} style={{ display: 'flex', alignItems: 'center', gap: 5, border: 'none', background: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 700, color: SUB }}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 13, fontWeight: 700, color: SUB }}>
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={SUB} strokeWidth="2"><path d="M21 12a8 8 0 0 1-11.5 7.2L4 20l1-4.5A8 8 0 1 1 21 12z" strokeLinejoin="round" /></svg>
-                  답글 {post.comments.length}
-                </button>
+                  답변 {post.answerCount ?? 0}
+                </span>
+                <span style={{ fontSize: 13, fontWeight: 700, color: SUB }}>조회 {post.views ?? 0}</span>
               </div>
-              {openId === post.id && (
-                <div style={{ marginTop: 12, paddingLeft: 14, borderLeft: '2px solid #F2F4F6', display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  {post.comments.map(c => (
-                    <div key={c.id}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 3 }}>
-                        <span style={{ fontSize: 13, fontWeight: 700, color: INK }}>{c.author}</span>
-                        <span style={{ fontSize: 11, color: SUB }}>{timeAgo(c.ts)}</span>
-                      </div>
-                      <div style={{ fontSize: 14, color: '#4E5968', lineHeight: 1.5 }}>{c.text}</div>
-                    </div>
-                  ))}
-                  <CommentBox onSubmit={(t) => addComment(stock.code, post.id, t)} />
-                </div>
-              )}
             </div>
           ))}
         </div>
@@ -880,18 +913,6 @@ function Community({ stock, bare }) {
       <PanelTitle right={<span style={{ fontSize: 13, color: SUB, whiteSpace: 'nowrap' }}>{posts.length}개 글</span>}>커뮤니티 · {stock.name}</PanelTitle>
       {inner}
     </Card>
-  );
-}
-
-function CommentBox({ onSubmit }) {
-  const [v, setV] = useState('');
-  const go = () => { if (!v.trim()) return; onSubmit(v.trim()); setV(''); };
-  return (
-    <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
-      <input value={v} onChange={e => setV(e.target.value)} onKeyDown={e => e.key === 'Enter' && go()} placeholder="답글 달기"
-        style={{ flex: 1, height: 38, border: '1px solid #E5E8EB', borderRadius: 10, padding: '0 12px', fontSize: 13, outline: 'none' }} />
-      <button onClick={go} style={{ height: 38, padding: '0 16px', borderRadius: 10, border: 'none', background: '#F2F4F6', color: '#4E5968', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>등록</button>
-    </div>
   );
 }
 
