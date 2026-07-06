@@ -433,7 +433,8 @@ export function StoreProvider({ children, initialLoggedIn, onLogout }) {
         && s.price === priceMap[s.code]?.price
         && s.value == null
         && s.volume == null;
-      const name = s.name ?? s.stockName ?? prev.name ?? prev.stockName ?? s.code;
+      const name = [s.name, s.stockName, prev.name, prev.stockName, s.short, prev.short]
+        .find(v => typeof v === 'string' && v.trim() && v !== s.code) ?? s.code;
       const snapPrice = isLiveOnly
         ? (prev.snapPrice ?? prev.price ?? s.price ?? 0)
         : (s.price ?? prev.snapPrice ?? 0);

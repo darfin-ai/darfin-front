@@ -52,6 +52,49 @@ function AdviceLine({ text }) {
   );
 }
 
+function EmphasisText({ text }) {
+  const parts = String(text || '').split(/(\*\*[^*]+\*\*)/g).filter(Boolean);
+  return parts.map((part, i) => {
+    if (part.startsWith('**') && part.endsWith('**')) {
+      return <strong key={i} style={{ color: INK, fontWeight: 900 }}>{part.slice(2, -2)}</strong>;
+    }
+    return <span key={i}>{part}</span>;
+  });
+}
+
+function GeminiInsight({ text }) {
+  const lines = String(text || '').split('\n').map(line => line.trim()).filter(Boolean);
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      {lines.map((line, i) => {
+        if (line.startsWith('###')) {
+          return (
+            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: i === 0 ? 0 : 6 }}>
+              <span style={{ width: 6, height: 18, borderRadius: 3, background: BRAND, flexShrink: 0 }} />
+              <span style={{ fontSize: 15, fontWeight: 900, color: INK }}>{line.replace(/^#+\s*/, '')}</span>
+            </div>
+          );
+        }
+        if (/^[-*]\s+/.test(line)) {
+          return (
+            <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'flex-start', background: '#F8FBFF', border: '1px solid #EAF1FF', borderRadius: 10, padding: '11px 13px' }}>
+              <span style={{ width: 7, height: 7, borderRadius: '50%', background: BRAND, marginTop: 7, flexShrink: 0 }} />
+              <div style={{ fontSize: 14, color: '#364153', lineHeight: 1.65 }}>
+                <EmphasisText text={line.replace(/^[-*]\s+/, '')} />
+              </div>
+            </div>
+          );
+        }
+        return (
+          <div key={i} style={{ fontSize: 14, color: '#364153', lineHeight: 1.7, background: i === 1 ? '#FFFDF7' : 'transparent', borderLeft: i === 1 ? '3px solid #F5A623' : 'none', padding: i === 1 ? '10px 12px' : 0, borderRadius: i === 1 ? 8 : 0 }}>
+            <EmphasisText text={line} />
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function HealthBar({ label, score, max }) {
   const pct = (score / max) * 100;
   const col = pct >= 70 ? '#1FA463' : pct >= 45 ? '#F5A623' : '#F04452';
@@ -127,10 +170,14 @@ function normalizeReport(report) {
 function downloadReport(r) {
   r = normalizeReport(r);
   const esc = (s) => String(s).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+  const richGemini = (s) => esc(s)
+    .replace(/^###\s*(.+)$/gm, '<b>$1</b>')
+    .replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>')
+    .replace(/\n/g, '<br>');
   const b = r.behavior, rk = r.risk, rt = r.returns;
   const sectionRows = [
     ['① 투자 성향 요약', `<b>${esc(r.label)}</b><br>${esc(r.labelReason)}`],
-    ...(r.geminiAnalysis ? [['Gemini 종합 해석', esc(r.geminiAnalysis).replace(/\n/g, '<br>')]] : []),
+    ...(r.geminiAnalysis ? [['Gemini 종합 해석', richGemini(r.geminiAnalysis)]] : []),
     ['② 포트폴리오 건강도', `${r.health.total} / 100 (${esc(r.health.grade)})<br>` + Object.entries(r.health.breakdown).map(([k, v]) => `${esc(k)} ${v}/25`).join(' · ') + `<br>${esc(r.health.comment)}`],
     ['③ 행동 패턴', esc(b.text) + `<br><i>Advice: ${esc(b.advice)}</i>`],
     ['④ 리스크 진단', esc(rk.text) + `<br><i>Advice: ${esc(rk.advice)}</i>`],
@@ -209,7 +256,7 @@ function ReportCard({ report: r }) {
 
       {r.geminiAnalysis && (
         <ReportSection no="AI" title="Gemini 종합 해석" tags={['Info', 'Advice']}>
-          <div style={{ fontSize: 14, color: '#4E5968', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{r.geminiAnalysis}</div>
+          <GeminiInsight text={r.geminiAnalysis} />
         </ReportSection>
       )}
 
