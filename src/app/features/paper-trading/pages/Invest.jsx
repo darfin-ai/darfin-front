@@ -346,16 +346,16 @@ function TradesTable() {
       </div>
       {rows.length === 0 ? <Empty text="체결 내역이 없어요." cta="종목 둘러보기" onCta={() => navigate('home')} /> : (
         <Card style={{ padding: 8 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '100px 1.6fr 1fr 1fr 1.1fr 1fr', gap: 8, padding: '12px 16px', fontSize: 13, color: SUB, fontWeight: 600 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '100px 1.6fr 1fr 1fr 1.1fr 0.8fr 1fr', gap: 8, padding: '12px 16px', fontSize: 13, color: SUB, fontWeight: 600 }}>
             <span>날짜</span><span>종목</span><span style={{ textAlign: 'right' }}>구분</span><span style={{ textAlign: 'right' }}>체결가</span>
-            <span style={{ textAlign: 'right' }}>수량</span><span style={{ textAlign: 'right' }}>실현손익</span>
+            <span style={{ textAlign: 'right' }}>수량</span><span style={{ textAlign: 'right' }}>보유일</span><span style={{ textAlign: 'right' }}>실현손익</span>
           </div>
           {rows.map(t => {
             const s = getStock(t.code);
             const isBuy = t.type === 'BUY';
             return (
               <div key={t.id} onClick={() => navigate('detail', { code: t.code })}
-                style={{ display: 'grid', gridTemplateColumns: '100px 1.6fr 1fr 1fr 1.1fr 1fr', gap: 8, padding: '14px 16px', alignItems: 'center', borderRadius: 12, cursor: 'pointer' }}
+                style={{ display: 'grid', gridTemplateColumns: '100px 1.6fr 1fr 1fr 1.1fr 0.8fr 1fr', gap: 8, padding: '14px 16px', alignItems: 'center', borderRadius: 12, cursor: 'pointer' }}
                 onMouseEnter={e => e.currentTarget.style.background = '#F9FAFB'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
                 <span style={{ fontSize: 14, color: '#4E5968' }}>{dateLabel(t.ts)}</span>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
@@ -367,6 +367,7 @@ function TradesTable() {
                 </div>
                 <div style={{ textAlign: 'right', fontSize: 15, color: INK }}>{won(t.price)}</div>
                 <div style={{ textAlign: 'right', fontSize: 15, color: '#4E5968' }}>{t.qty}주</div>
+                <div style={{ textAlign: 'right', fontSize: 15, color: '#4E5968' }}>{isBuy || t.holdDays == null ? '-' : `${t.holdDays}일`}</div>
                 <div style={{ textAlign: 'right', fontSize: 15, fontWeight: 700, color: t.pnl == null ? SUB : tone(t.pnl) }}>{t.pnl == null ? '-' : signNum(t.pnl)}</div>
               </div>
             );

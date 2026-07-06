@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useStore } from '../store/store.jsx';
 import {
   UP, DOWN, SUB, INK, BRAND,
@@ -6,7 +6,7 @@ import {
   Card, primaryBtn,
   PageShell, Empty, LoginGate,
 } from '../components/ui.jsx';
-import { analyzePortfolio, buildReport } from '../lib/aiEngine.js';
+import { fetchStoredPortfolioReports, generatePythonPortfolioAnalysis, getDarfinUser } from '../lib/aiEngine.js';
 
 const AXES = [
   { n: '①', t: '행동 패턴', d: '매매 빈도 · 보유 기간 · 손절/익절 · 추격 매수' },
@@ -70,22 +70,67 @@ function HealthBar({ label, score, max }) {
 
 function ContribRow({ x, positive }) {
   const col = positive ? UP : DOWN;
+  const name = x.name || x.code || '-';
+  const sector = x.sector || '미분류';
   return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '9px 0' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
-        <span style={{ fontSize: 14, fontWeight: 700, color: INK, whiteSpace: 'nowrap' }}>{x.name}</span>
-        <span style={{ fontSize: 12, color: SUB, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{x.sector}</span>
+        <span style={{ fontSize: 14, fontWeight: 700, color: INK, whiteSpace: 'nowrap' }}>{name}</span>
+        <span style={{ fontSize: 12, color: SUB, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{sector}</span>
       </div>
       <span style={{ fontSize: 14, fontWeight: 800, color: col, whiteSpace: 'nowrap' }}>{signNum(x.v)}원</span>
     </div>
   );
 }
 
+function normalizeReport(report) {
+  const r = report || {};
+  const health = r.health || {};
+  const behavior = r.behavior || {};
+  const risk = r.risk || {};
+  const returns = r.returns || {};
+
+  return {
+    ...r,
+    label: r.label || '-',
+    labelReason: r.labelReason || '-',
+    disclaimer: r.disclaimer || '이 리포트는 모의투자 학습을 목적으로 제공되며, 특정 종목의 매수·매도를 권유하지 않아요.',
+    health: {
+      breakdown: health.breakdown || {},
+      total: health.total ?? 0,
+      grade: health.grade || '-',
+      comment: health.comment || '-',
+    },
+    behavior: {
+      metrics: behavior.metrics || {},
+      text: behavior.text || '-',
+      advice: behavior.advice || '-',
+      limited: behavior.limited ?? true,
+    },
+    risk: {
+      ...risk,
+      text: risk.text || '-',
+      advice: risk.advice || '-',
+    },
+    returns: {
+      ...returns,
+      top3: Array.isArray(returns.top3) ? returns.top3 : [],
+      bottom3: Array.isArray(returns.bottom3) ? returns.bottom3 : [],
+      sectorContrib: Array.isArray(returns.sectorContrib) ? returns.sectorContrib : [],
+      text: returns.text || '-',
+    },
+    adviceTop3: Array.isArray(r.adviceTop3) ? r.adviceTop3 : [],
+    strategy: r.strategy || '-',
+  };
+}
+
 function downloadReport(r) {
+  r = normalizeReport(r);
   const esc = (s) => String(s).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
   const b = r.behavior, rk = r.risk, rt = r.returns;
   const sectionRows = [
     ['① 투자 성향 요약', `<b>${esc(r.label)}</b><br>${esc(r.labelReason)}`],
+    ...(r.geminiAnalysis ? [['Gemini 종합 해석', esc(r.geminiAnalysis).replace(/\n/g, '<br>')]] : []),
     ['② 포트폴리오 건강도', `${r.health.total} / 100 (${esc(r.health.grade)})<br>` + Object.entries(r.health.breakdown).map(([k, v]) => `${esc(k)} ${v}/25`).join(' · ') + `<br>${esc(r.health.comment)}`],
     ['③ 행동 패턴', esc(b.text) + `<br><i>Advice: ${esc(b.advice)}</i>`],
     ['④ 리스크 진단', esc(rk.text) + `<br><i>Advice: ${esc(rk.advice)}</i>`],
@@ -116,8 +161,14 @@ ${sectionRows.map(([t, body]) => `<div class="sec"><h2>${esc(t)}</h2><div class=
 }
 
 function ReportCard({ report: r }) {
-  const gradeColor = r.health.grade === '우수' ? '#1FA463' : r.health.grade === '보통' ? '#F5A623' : '#F04452';
-  const b = r.behavior, rk = r.risk, rt = r.returns;
+  r = normalizeReport(r);
+  const user = getDarfinUser();
+  const displayName = r.nickname || user?.nickname || user?.name || user?.email || '회원';
+  const health = r.health;
+  const b = r.behavior;
+  const rk = r.risk;
+  const rt = r.returns;
+  const gradeColor = health.grade === '우수' ? '#1FA463' : health.grade === '보통' ? '#F5A623' : '#F04452';
   return (
     <Card>
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
@@ -125,7 +176,7 @@ function ReportCard({ report: r }) {
           <span style={{ width: 44, height: 44, borderRadius: 13, background: BRAND, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>✦</span>
           <div>
             <div style={{ fontSize: 19, fontWeight: 800, color: INK, whiteSpace: 'nowrap' }}>포트폴리오 통합 분석 리포트</div>
-            <div style={{ fontSize: 13, color: SUB, whiteSpace: 'nowrap' }}>Google Gemini Pro · {dateLabel(r.ts || Date.now())} 생성</div>
+            <div style={{ fontSize: 13, color: SUB, whiteSpace: 'nowrap' }}>{displayName}님 · Google Gemini Pro · {dateLabel(r.ts || Date.now())} 생성</div>
           </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
@@ -138,6 +189,16 @@ function ReportCard({ report: r }) {
         </div>
       </div>
       <div style={{ fontSize: 12, color: SUB, marginTop: 14, background: '#F9FAFB', borderRadius: 10, padding: '10px 14px', lineHeight: 1.5 }}>※ {r.disclaimer}</div>
+      {r.geminiError && (
+        <div style={{ fontSize: 12, color: '#C2740B', marginTop: 10, background: '#FFF8EC', borderRadius: 10, padding: '10px 14px', lineHeight: 1.5 }}>
+          Gemini 서버 연결에 실패해 기존 계산 리포트로 생성됐어요. {r.geminiError}
+        </div>
+      )}
+      {r.dbError && (
+        <div style={{ fontSize: 12, color: '#C2740B', marginTop: 10, background: '#FFF8EC', borderRadius: 10, padding: '10px 14px', lineHeight: 1.5 }}>
+          리포트는 생성됐지만 DB 저장에 실패했어요. {r.dbError}
+        </div>
+      )}
 
       <ReportSection no="1" title="투자 성향 요약" tags={['Info']}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
@@ -146,27 +207,33 @@ function ReportCard({ report: r }) {
         <div style={{ fontSize: 14, color: '#4E5968', lineHeight: 1.6 }}>{r.labelReason}</div>
       </ReportSection>
 
+      {r.geminiAnalysis && (
+        <ReportSection no="AI" title="Gemini 종합 해석" tags={['Info', 'Advice']}>
+          <div style={{ fontSize: 14, color: '#4E5968', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{r.geminiAnalysis}</div>
+        </ReportSection>
+      )}
+
       <ReportSection no="2" title="포트폴리오 건강도" tags={['Info']}>
         <div style={{ display: 'flex', gap: 24, alignItems: 'center', flexWrap: 'wrap' }}>
           <div style={{ textAlign: 'center', minWidth: 120 }}>
-            <div style={{ fontSize: 44, fontWeight: 800, color: gradeColor, lineHeight: 1 }}>{r.health.total}<span style={{ fontSize: 20, color: SUB }}> / 100</span></div>
-            <span style={{ display: 'inline-block', marginTop: 8, fontSize: 13, fontWeight: 800, color: gradeColor, background: gradeColor + '18', padding: '5px 12px', borderRadius: 999 }}>{r.health.grade}</span>
+            <div style={{ fontSize: 44, fontWeight: 800, color: gradeColor, lineHeight: 1 }}>{health.total}<span style={{ fontSize: 20, color: SUB }}> / 100</span></div>
+            <span style={{ display: 'inline-block', marginTop: 8, fontSize: 13, fontWeight: 800, color: gradeColor, background: gradeColor + '18', padding: '5px 12px', borderRadius: 999 }}>{health.grade}</span>
           </div>
           <div style={{ flex: 1, minWidth: 220, display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {Object.entries(r.health.breakdown).map(([k, v]) => <HealthBar key={k} label={k} score={v} max={25} />)}
+            {Object.entries(health.breakdown).map(([k, v]) => <HealthBar key={k} label={k} score={v} max={25} />)}
           </div>
         </div>
-        <div style={{ fontSize: 14, color: '#4E5968', lineHeight: 1.6, marginTop: 14 }}>{r.health.comment}</div>
+        <div style={{ fontSize: 14, color: '#4E5968', lineHeight: 1.6, marginTop: 14 }}>{health.comment}</div>
       </ReportSection>
 
       <ReportSection no="3" title="행동 패턴 분석" tags={['Info', 'Advice']}>
         {!b.limited && (
           <div style={{ display: 'flex', gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
-            <MetricChip label="월 매매" value={b.metrics.tradesPerMonth.toFixed(1) + '회'} warn={b.metrics.tradesPerMonth >= 6} />
-            <MetricChip label="평균 보유" value={b.metrics.avgHoldDays.toFixed(0) + '일'} />
-            <MetricChip label="손절 비율" value={b.metrics.stopLossRatio.toFixed(0) + '%'} warn={b.metrics.stopLossRatio <= 10} />
-            <MetricChip label="익절 비율" value={b.metrics.takeProfitRatio.toFixed(0) + '%'} />
-            <MetricChip label="추격 매수" value={b.metrics.chaseBuyCount + '건'} warn={b.metrics.chaseBuyCount >= 2} />
+            <MetricChip label="월 매매" value={(b.metrics.tradesPerMonth ?? 0).toFixed(1) + '회'} warn={(b.metrics.tradesPerMonth ?? 0) >= 6} />
+            <MetricChip label="평균 보유" value={(b.metrics.avgHoldDays ?? 0).toFixed(0) + '일'} />
+            <MetricChip label="손절 비율" value={(b.metrics.stopLossRatio ?? 0).toFixed(0) + '%'} warn={(b.metrics.stopLossRatio ?? 0) <= 10} />
+            <MetricChip label="익절 비율" value={(b.metrics.takeProfitRatio ?? 0).toFixed(0) + '%'} />
+            <MetricChip label="추격 매수" value={(b.metrics.chaseBuyCount ?? 0) + '건'} warn={(b.metrics.chaseBuyCount ?? 0) >= 2} />
           </div>
         )}
         <div style={{ fontSize: 14, color: '#4E5968', lineHeight: 1.6 }}>{b.text}</div>
@@ -175,10 +242,10 @@ function ReportCard({ report: r }) {
 
       <ReportSection no="4" title="리스크 진단" tags={['Info', 'Advice']}>
         <div style={{ display: 'flex', gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
-          <MetricChip label="리스크 점수" value={rk.riskScore + '점 · ' + rk.riskGrade} warn={rk.riskScore > 60} />
-          <MetricChip label="업종 집중도" value={rk.sectorConcentration.toFixed(0) + '%'} warn={rk.sectorConcentration > 40} />
-          <MetricChip label="종목 집중도" value={rk.topStockConcentration.toFixed(0) + '%'} warn={rk.topStockConcentration > 30} />
-          <MetricChip label="손실 종목" value={rk.lossStockRatio.toFixed(0) + '%'} warn={rk.lossStockRatio > 50} />
+          <MetricChip label="리스크 점수" value={(rk.riskScore ?? 0) + '점 · ' + (rk.riskGrade || '-')} warn={(rk.riskScore ?? 0) > 60} />
+          <MetricChip label="업종 집중도" value={(rk.sectorConcentration ?? 0).toFixed(0) + '%'} warn={(rk.sectorConcentration ?? 0) > 40} />
+          <MetricChip label="종목 집중도" value={(rk.topStockConcentration ?? 0).toFixed(0) + '%'} warn={(rk.topStockConcentration ?? 0) > 30} />
+          <MetricChip label="손실 종목" value={(rk.lossStockRatio ?? 0).toFixed(0) + '%'} warn={(rk.lossStockRatio ?? 0) > 50} />
         </div>
         <div style={{ fontSize: 14, color: '#4E5968', lineHeight: 1.6 }}>{rk.text}</div>
         <AdviceLine text={rk.advice} />
@@ -228,33 +295,94 @@ function ReportCard({ report: r }) {
   );
 }
 
+function ReportAccordion({ report: r }) {
+  r = normalizeReport(r);
+  const health = r.health;
+  return (
+    <details style={{ border: '1px solid #E5E8EB', borderRadius: 12, background: '#fff', overflow: 'hidden' }}>
+      <summary style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '16px 18px', cursor: 'pointer', listStyle: 'none' }}>
+        <span style={{ fontSize: 14, fontWeight: 800, color: BRAND, background: '#EFF5FF', padding: '6px 10px', borderRadius: 8, whiteSpace: 'nowrap' }}>{r.label || '-'}</span>
+        <span style={{ fontSize: 14, fontWeight: 700, color: INK, whiteSpace: 'nowrap' }}>{dateLabel(r.ts || Date.now())}</span>
+        <span style={{ fontSize: 13, color: SUB, marginLeft: 'auto', whiteSpace: 'nowrap' }}>건강도 {health.total ?? '-'}점</span>
+      </summary>
+      <div style={{ padding: '0 18px 18px' }}>
+        <ReportCard report={r} />
+      </div>
+    </details>
+  );
+}
+
 export function AIReports() {
-  const { state, getStock, addAiReport, navigate } = useStore();
+  const { state, getStock, addAiReport, setAiReports, navigate } = useStore();
   const [generating, setGenerating] = useState(false);
+  const [reportsLoaded, setReportsLoaded] = useState(false);
+
+  useEffect(() => {
+    if (!state.isLoggedIn || reportsLoaded) return;
+    let cancelled = false;
+    fetchStoredPortfolioReports()
+      .then((reports) => {
+        if (!cancelled && reports.length) setAiReports(reports);
+      })
+      .catch((error) => console.warn('저장된 AI 리포트 조회 실패', error))
+      .finally(() => {
+        if (!cancelled) setReportsLoaded(true);
+      });
+    return () => { cancelled = true; };
+  }, [reportsLoaded, setAiReports, state.isLoggedIn]);
+
   if (!state.isLoggedIn) return <PageShell title="AI 분석"><LoginGate /></PageShell>;
 
-  const generate = () => {
+  const generate = async () => {
     if (state.holdings.length === 0 && state.trades.length === 0) return;
     setGenerating(true);
-    setTimeout(() => {
-      const metrics = analyzePortfolio(state, getStock);
-      const report = buildReport(metrics);
-      addAiReport(report);
+    try {
+      try {
+        const aiResult = await generatePythonPortfolioAnalysis(state, getStock);
+        const user = getDarfinUser();
+        const report = {
+          ...(aiResult.report || {}),
+          nickname: aiResult.report?.nickname || user?.nickname || user?.name || user?.email || '회원',
+        };
+        addAiReport({
+          ...report,
+          geminiAnalysis: aiResult.analysis,
+          remoteReportId: aiResult.reportId,
+          dbError: aiResult.dbError,
+        });
+      } catch (error) {
+        const geminiError = error?.message || 'Python 투자분석 서버 연결 실패';
+        console.warn('Python 포트폴리오 분석 실패', error);
+        addAiReport({
+          label: '분석 실패',
+          labelReason: 'Python 백엔드 투자분석 서버 연결에 실패했어요.',
+          disclaimer: '이 리포트는 모의투자 학습을 목적으로 제공되며, 특정 종목의 매수·매도를 권유하지 않아요.',
+          health: { breakdown: {}, total: 0, grade: '-', comment: '-' },
+          behavior: { metrics: {}, text: '-', advice: '-', limited: true },
+          risk: { text: '-', advice: '-' },
+          returns: { top3: [], bottom3: [], sectorContrib: [], text: '-' },
+          adviceTop3: [],
+          strategy: '-',
+          nickname: getDarfinUser()?.nickname || getDarfinUser()?.name || getDarfinUser()?.email || '회원',
+          geminiError,
+        });
+      }
+    } finally {
       setGenerating(false);
-    }, 1700);
+    }
   };
 
   return (
-    <PageShell title="AI 분석 리포트" sub="Gemini가 행동 패턴 · 리스크 · 수익률 · 투자 성향 4대 축을 통합 분석해요"
+    <PageShell title="AI 분석 리포트" sub="Python이 행동 패턴 · 리스크 · 수익률 · 투자 성향을 계산하고 Gemini가 해석을 붙여요"
       right={<button onClick={generate} disabled={generating} style={{ ...primaryBtn, height: 46, opacity: generating ? 0.6 : 1, display: 'flex', alignItems: 'center', gap: 8, whiteSpace: 'nowrap' }}>
         <span>✦</span>{generating ? '분석 중…' : '리포트 생성'}</button>}>
 
       <Card style={{ marginBottom: 20, background: 'linear-gradient(135deg,#F4F8FF,#fff)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-          <span style={{ fontSize: 15, fontWeight: 800, color: BRAND, whiteSpace: 'nowrap' }}>✦ Gemini 기반 4대 축 분석</span>
+          <span style={{ fontSize: 15, fontWeight: 800, color: BRAND, whiteSpace: 'nowrap' }}>✦ Python 기반 4대 축 분석</span>
           <span style={{ fontSize: 12, color: SUB, marginLeft: 'auto', whiteSpace: 'nowrap' }}>버튼 클릭 시 1회 생성 · 종합 리포트 1개</span>
         </div>
-        <div style={{ fontSize: 13, color: '#4E5968', marginBottom: 16, lineHeight: 1.5 }}>모든 수치는 보유 종목·매매 이력·수익률 데이터로 계산한 뒤 Gemini가 해석과 개선 제안을 생성해요.</div>
+        <div style={{ fontSize: 13, color: '#4E5968', marginBottom: 16, lineHeight: 1.5 }}>모든 수치는 Python 백엔드가 보유 종목·매매 이력·수익률 데이터로 계산한 뒤 Gemini가 해석과 개선 제안을 생성해요.</div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
           {AXES.map(a => (
             <div key={a.n} style={{ background: '#fff', border: '1px solid #EAF0FB', borderRadius: 14, padding: 16 }}>
@@ -268,7 +396,7 @@ export function AIReports() {
       {generating && (
         <Card style={{ marginBottom: 20, display: 'flex', alignItems: 'center', gap: 14 }}>
           <div className="spin" style={{ width: 22, height: 22, border: '3px solid #D6E4FF', borderTopColor: BRAND, borderRadius: '50%' }} />
-          <span style={{ fontSize: 15, fontWeight: 700, color: BRAND }}>Gemini가 4대 축을 계산하고 리포트를 작성하고 있어요…</span>
+          <span style={{ fontSize: 15, fontWeight: 700, color: BRAND }}>Python 백엔드가 4대 축을 계산하고 Gemini 해석을 붙이고 있어요…</span>
         </Card>
       )}
 
@@ -277,7 +405,8 @@ export function AIReports() {
           cta={state.holdings.length === 0 && state.trades.length === 0 ? '종목 둘러보기' : null} onCta={() => navigate('home')} />
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-          {state.aiReports.map(r => <ReportCard key={r.id} report={r} />)}
+          {state.aiReports[0] && <ReportCard report={state.aiReports[0]} />}
+          {state.aiReports.slice(1).map(r => <ReportAccordion key={r.id || r.remoteReportId} report={r} />)}
         </div>
       )}
     </PageShell>

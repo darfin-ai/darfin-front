@@ -166,6 +166,14 @@ export function StoreProvider({ children, initialLoggedIn, onLogout }) {
   const [lastExecution, setLastExecution] = useState(null); // 가장 최근 체결 메시지 1건
   const [lastOrderBook, setLastOrderBook] = useState(null); // 가장 최근 호가 메시지(asks/bids 전체 교체용)
 
+  useEffect(() => {
+    try {
+      localStorage.setItem(LS_KEY, JSON.stringify(state));
+    } catch (e) {
+      console.warn('모의투자 상태 저장 실패', e);
+    }
+  }, [state]);
+
   // 관심종목 + 보유종목(모의투자) 코드를 합쳐서 실시간 구독 — 보유종목도 실제 KIS 틱으로 갱신되게 한다
   const subscribedCodes = useMemo(() => {
     return Array.from(new Set([...state.watchlist, ...state.holdings.map(h => h.code)]));
@@ -248,7 +256,7 @@ export function StoreProvider({ children, initialLoggedIn, onLogout }) {
       })),
       trades: portfolio.trades.map(t => ({
         id: String(t.id), code: t.code, type: t.type,
-        qty: t.qty, price: t.price, ts: t.ts, pnl: t.pnl,
+        qty: t.qty, price: t.price, ts: t.ts, pnl: t.pnl, holdDays: t.holdDays,
       })),
       fundHistory: (portfolio.fundHistory || []).map(h => ({ id: String(h.id), type: h.type, amount: h.amount, ts: h.ts })),
     }));
@@ -527,6 +535,22 @@ export function StoreProvider({ children, initialLoggedIn, onLogout }) {
     setState(s => ({ ...s, aiReports: [{ id: 'r' + Date.now(), ts: Date.now(), ...report }, ...s.aiReports] }));
   }, []);
 
+  const setAiReports = useCallback((reports) => {
+    setState(s => {
+      const map = new Map();
+      [...(s.aiReports || []), ...(reports || [])].forEach((report) => {
+        if (!report || !report.health) return;
+        const key = report.remoteReportId ? `remote:${report.remoteReportId}` : `local:${report.id || report.ts || Date.now()}`;
+        map.set(key, {
+          id: report.id || `r${report.remoteReportId || report.ts || Date.now()}`,
+          ...report,
+        });
+      });
+      const aiReports = Array.from(map.values()).sort((a, b) => (b.ts || 0) - (a.ts || 0));
+      return { ...s, aiReports };
+    });
+  }, []);
+
   const addPost = useCallback((code, text) => {
     setState(s => {
       const list = s.community[code] || [];
@@ -553,7 +577,7 @@ export function StoreProvider({ children, initialLoggedIn, onLogout }) {
     market, industries, schedule: SCHEDULE, aiComments: AI_COMMENTS,
     marketError,
     genCandles, genSpark, seedRand,
-    navigate, goToLogin, toggleWatch, refreshPortfolio, chargeFunds, resetFunds, setInitialFunds, addAiReport,
+    navigate, goToLogin, toggleWatch, refreshPortfolio, chargeFunds, resetFunds, setInitialFunds, addAiReport, setAiReports,
     addPost, togglePostLike, addComment,
     lastExecution, lastOrderBook, subscribeDetail,
   };
