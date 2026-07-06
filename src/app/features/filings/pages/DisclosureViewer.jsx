@@ -102,22 +102,6 @@ function sliceToSegments(text, mask, start, end) {
   return segments;
 }
 
-// 표(table) 블록의 rows를 백엔드(dart_collector.py의 block_plain_text)와 동일한 규칙
-// ("셀 | 셀"을 " | "로, 행은 "\n"으로 연결)으로 합쳤을 때 각 셀이 원문(text) 전체에서
-// 차지하는 [start, end) 구간을 역산한다. 백엔드의 직렬화 규칙이 바뀌면 이 함수도 같이 바꿔야 한다.
-function computeTableCellRanges(rows, blockCharStart) {
-  let cursor = blockCharStart;
-  return rows.map((row, rowIdx) => {
-    if (rowIdx > 0) cursor += 1; // 행 구분자 "\n"
-    return row.map((cell, cellIdx) => {
-      if (cellIdx > 0) cursor += 3; // 셀 구분자 " | "
-      const start = cursor;
-      cursor += cell.length;
-      return { start, end: cursor };
-    });
-  });
-}
-
 // ── 토글 스위치 컴포넌트 ─────────────────────────────────────────
 function ToggleSwitch({ label, icon, checked, onCheckedChange, disabled, checkedBg }) {
   return (
@@ -361,6 +345,73 @@ export function DisclosureViewer() {
       );
     });
 
+  // 블록 하나(문단 또는 표)를 재귀적으로 렌더링한다. 표 셀은 문자열이 아니라 블록 목록이라
+  // (사업/분기보고서 각주처럼 표 안에 표가 중첩된 경우를 실제 <table>로 그리기 위함)
+  // 셀 내부도 같은 함수를 그대로 재귀 호출한다. charStart/charEnd는 Python이 중첩 깊이와
+  // 무관하게 원문 전체 기준으로 이미 계산해서 내려주므로, 여기서는 그대로 슬라이스만 하면 된다.
+  const renderBlock = (block, key) => {
+    if (block.type === "table") {
+      return (
+        <div key={key} className="my-4 overflow-x-auto">
+          <table className="w-full border-collapse text-xs">
+            <tbody>
+              {block.rows.map((row, ri) => (
+                <tr key={ri}>
+                  {row.map((cell, ci) => (
+                    <td
+                      key={ci}
+                      rowSpan={cell.rowSpan > 1 ? cell.rowSpan : undefined}
+                      colSpan={cell.colSpan > 1 ? cell.colSpan : undefined}
+                      className="border border-slate-200 px-2 py-1 align-top text-slate-700 leading-relaxed whitespace-pre-wrap"
+                    >
+                      {renderCellContent(cell.blocks, `${key}-${ri}-${ci}`)}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      );
+    }
+
+    const segments = block.charStart != null && highlightMask
+      ? sliceToSegments(originalText, highlightMask, block.charStart, block.charEnd)
+      : null;
+    return (
+      <p key={key} className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap font-sans mb-3 last:mb-0">
+        {segments ? renderSegments(segments, key) : block.text}
+      </p>
+    );
+  };
+
+  // 표 셀 하나의 내용을 렌더링한다. 거래소 조회공시류(예: "정정항목/정정전/정정후" 3단 표)는
+  // <br>로 여러 줄을 한 셀에 이어붙이는데, 상위 항목명 줄에는 숫자가 없고 "- "로 시작하는
+  // 하위 항목에만 값이 있어서 옆 셀과 줄 수가 다르다 — 즉 줄 단위로 정확히 1:1 대응시킬 방법이
+  // 없다(DART 원문 자체가 그렇게 만들어져 있음). 억지로 짝짓는 대신, 셀 안에 줄이 여러 개
+  // 있다는 걸 구분선으로 명확히 보여줘서 최소한 "이 셀 안에 서로 다른 값 N개가 있다"는 것만은
+  // 헷갈리지 않게 한다.
+  const renderCellContent = (cellBlocks, key) => {
+    const isMultiLine = cellBlocks.length > 1 && cellBlocks.every((cb) => cb.type === "paragraph");
+    if (!isMultiLine) {
+      return cellBlocks.map((cb, cbi) => renderBlock(cb, `${key}-${cbi}`));
+    }
+    return (
+      <div className="divide-y divide-slate-200 -my-1">
+        {cellBlocks.map((cb, cbi) => {
+          const segments = cb.charStart != null && highlightMask
+            ? sliceToSegments(originalText, highlightMask, cb.charStart, cb.charEnd)
+            : null;
+          return (
+            <div key={`${key}-${cbi}`} className="py-1">
+              {segments ? renderSegments(segments, `${key}-${cbi}`) : cb.text}
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
   return (
     <div className="h-[calc(100vh-11rem)] min-h-[720px] flex flex-col -mt-4 animate-in fade-in duration-300">
 
@@ -487,48 +538,7 @@ export function DisclosureViewer() {
           ) : (
             <div className="flex-1 overflow-y-auto p-6" ref={originalPanelRef}>
               {originalBlocks && originalBlocks.length > 0 ? (
-                originalBlocks.map((block, bi) => {
-                  if (block.type === "table") {
-                    const cellRanges = block.charStart != null && highlightMask
-                      ? computeTableCellRanges(block.rows, block.charStart)
-                      : null;
-                    return (
-                      <div key={bi} className="my-4 overflow-x-auto">
-                        <table className="w-full border-collapse text-xs">
-                          <tbody>
-                            {block.rows.map((row, ri) => (
-                              <tr key={ri}>
-                                {row.map((cell, ci) => {
-                                  const range = cellRanges?.[ri]?.[ci];
-                                  const cellSegments = range
-                                    ? sliceToSegments(originalText, highlightMask, range.start, range.end)
-                                    : null;
-                                  return (
-                                    <td
-                                      key={ci}
-                                      className="border border-slate-200 px-2 py-1 align-top text-slate-700 leading-relaxed whitespace-pre-wrap"
-                                    >
-                                      {cellSegments ? renderSegments(cellSegments, `t${bi}-${ri}-${ci}`) : cell}
-                                    </td>
-                                  );
-                                })}
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    );
-                  }
-
-                  const paragraphSegments = block.charStart != null && highlightMask
-                    ? sliceToSegments(originalText, highlightMask, block.charStart, block.charEnd)
-                    : null;
-                  return (
-                    <p key={bi} className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap font-sans mb-3 last:mb-0">
-                      {paragraphSegments ? renderSegments(paragraphSegments, `p${bi}`) : block.text}
-                    </p>
-                  );
-                })
+                originalBlocks.map((block, bi) => renderBlock(block, `b${bi}`))
               ) : (
                 <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap font-sans">
                   {highlightMask
@@ -577,8 +587,8 @@ export function DisclosureViewer() {
                     <div className="flex items-center gap-2 text-blue-600 font-bold"><Sparkles size={18} /><span>핵심 내용 정리</span></div>
                     <RiskBadgeGroup badges={summaryBadges} size="md" />
                   </div>
-                  <p className="text-sm font-semibold text-slate-800">{disclosure.summaryText}</p>
-                  <p className="text-sm text-slate-600 leading-relaxed bg-blue-50 p-3 rounded-lg">{disclosure.investorComment}</p>
+                  <p className="text-base font-semibold text-slate-800 leading-relaxed">{disclosure.summaryText}</p>
+                  <p className="text-base text-slate-600 leading-relaxed bg-blue-50 p-4 rounded-lg">{disclosure.investorComment}</p>
                 </>
               ) : (
                 <>
@@ -597,23 +607,27 @@ export function DisclosureViewer() {
                   {analysisItems.map((item, index) => {
                     const isActive = activeHighlightKey === item.targetKey;
                     const hasCoords = item.charOffsetStart >= 0 && item.charOffsetEnd > item.charOffsetStart;
+                    // 분석 결과가 하나뿐이면 여러 개일 때 쓰던 촘촘한 글자 크기 그대로는
+                    // 가독성이 떨어져서, 이 경우만 더 크게 키운다.
+                    const isSingle = analysisItems.length === 1;
                     return (
                       <div
                         key={`${item.analysisCategory}-${index}`}
                         onClick={() => hasCoords && handleAnalysisItemClick(item)}
-                        className={`border border-slate-200 rounded-xl p-4 bg-white transition-all duration-200
+                        className={`border border-slate-200 rounded-xl transition-all duration-200 bg-white
+                          ${isSingle ? "p-5" : "p-4"}
                           ${isActive ? "ring-2 ring-yellow-400 ring-offset-1 border-yellow-300" : ""}
                           ${hasCoords ? "cursor-pointer hover:shadow-sm hover:border-slate-300" : ""}`}
                       >
                         <div className="flex items-start justify-between gap-2 mb-2">
                           <div className="flex items-center gap-1.5 flex-wrap">
-                            <h4 className="text-sm font-bold text-slate-800">{ANALYSIS_CATEGORY_LABELS[item.analysisCategory] ?? item.analysisCategory}</h4>
+                            <h4 className={`font-bold text-slate-800 ${isSingle ? "text-base" : "text-sm"}`}>{ANALYSIS_CATEGORY_LABELS[item.analysisCategory] ?? item.analysisCategory}</h4>
                             {hasCoords && <span className="flex items-center gap-0.5 text-[10px] text-slate-400"><ChevronRight size={10} />원문으로</span>}
                           </div>
                           <RiskBadge axisLabel="위험도" riskLabel={item.riskLevel} riskTier={item.riskTier} size="sm" />
                         </div>
-                        <p className="text-xs text-slate-500 mb-2 bg-yellow-50 border border-yellow-100 px-2 py-1 rounded italic leading-relaxed">"{item.targetKey}"</p>
-                        <p className="text-sm text-slate-600 leading-relaxed">{item.materialImpact}</p>
+                        <p className={`text-slate-500 mb-2 bg-yellow-50 border border-yellow-100 px-2 py-1 rounded italic leading-relaxed ${isSingle ? "text-sm" : "text-xs"}`}>"{item.targetKey}"</p>
+                        <p className={`text-slate-600 leading-relaxed ${isSingle ? "text-base" : "text-sm"}`}>{item.materialImpact}</p>
                       </div>
                     );
                   })}
