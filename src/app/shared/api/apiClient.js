@@ -76,7 +76,7 @@ export async function request(path, options = {}) {
   if (!res.ok) {
     let err = {};
     try { err = JSON.parse(text); } catch { /* empty body */ }
-    throw { status: res.status, message: err.message || '서버 오류가 발생했습니다.' };
+    throw { status: res.status, message: err.message || err.errorMessage || err.error || '서버 오류가 발생했습니다.' };
   }
 
   return text ? JSON.parse(text) : null;

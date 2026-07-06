@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { ChevronDown } from 'lucide-react';
 import { useStore } from '../store/store.jsx';
 import {
   UP, DOWN, SUB, INK, BRAND,
@@ -6,7 +7,7 @@ import {
   Card, primaryBtn,
   PageShell, Empty, LoginGate,
 } from '../components/ui.jsx';
-import { fetchStoredPortfolioReports, generatePythonPortfolioAnalysis, getDarfinUser } from '../lib/aiEngine.js';
+import { fetchStoredPortfolioReports, generatePortfolioAnalysis, getDarfinUser } from '../lib/aiEngine.js';
 
 const AXES = [
   { n: '①', t: '행동 패턴', d: '매매 빈도 · 보유 기간 · 손절/익절 · 추격 매수' },
@@ -62,7 +63,7 @@ function EmphasisText({ text }) {
   });
 }
 
-function GeminiInsight({ text }) {
+function DarfinInsight({ text }) {
   const lines = String(text || '').split('\n').map(line => line.trim()).filter(Boolean);
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -170,14 +171,14 @@ function normalizeReport(report) {
 function downloadReport(r) {
   r = normalizeReport(r);
   const esc = (s) => String(s).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
-  const richGemini = (s) => esc(s)
+  const richDarfin = (s) => esc(s)
     .replace(/^###\s*(.+)$/gm, '<b>$1</b>')
     .replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>')
     .replace(/\n/g, '<br>');
   const b = r.behavior, rk = r.risk, rt = r.returns;
   const sectionRows = [
     ['① 투자 성향 요약', `<b>${esc(r.label)}</b><br>${esc(r.labelReason)}`],
-    ...(r.geminiAnalysis ? [['Gemini 종합 해석', richGemini(r.geminiAnalysis)]] : []),
+    ...(r.geminiAnalysis ? [['Darfin AI 종합 해석', richDarfin(r.geminiAnalysis)]] : []),
     ['② 포트폴리오 건강도', `${r.health.total} / 100 (${esc(r.health.grade)})<br>` + Object.entries(r.health.breakdown).map(([k, v]) => `${esc(k)} ${v}/25`).join(' · ') + `<br>${esc(r.health.comment)}`],
     ['③ 행동 패턴', esc(b.text) + `<br><i>Advice: ${esc(b.advice)}</i>`],
     ['④ 리스크 진단', esc(rk.text) + `<br><i>Advice: ${esc(rk.advice)}</i>`],
@@ -193,7 +194,7 @@ h1{font-size:24px;margin-bottom:4px}.meta{color:#8B95A1;font-size:13px;margin-bo
 .note{background:#F9FAFB;border-radius:10px;padding:10px 14px;font-size:12px;color:#8B95A1;margin:16px 0}
 .t{color:#4E5968;font-size:14px}</style></head><body>
 <h1>✦ 포트폴리오 통합 분석 리포트</h1>
-<div class="meta">Google Gemini Pro · ${dateLabel(r.ts || Date.now())} 생성 &nbsp; <span class="badge">${esc(r.label)}</span></div>
+<div class="meta">Darfin AI · ${dateLabel(r.ts || Date.now())} 생성 &nbsp; <span class="badge">${esc(r.label)}</span></div>
 <div class="note">※ ${esc(r.disclaimer)}</div>
 ${sectionRows.map(([t, body]) => `<div class="sec"><h2>${esc(t)}</h2><div class="t">${body}</div></div>`).join('')}
 <div class="note">Darfin 모의투자 · 학습용 리포트</div>
@@ -223,7 +224,7 @@ function ReportCard({ report: r }) {
           <span style={{ width: 44, height: 44, borderRadius: 13, background: BRAND, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>✦</span>
           <div>
             <div style={{ fontSize: 19, fontWeight: 800, color: INK, whiteSpace: 'nowrap' }}>포트폴리오 통합 분석 리포트</div>
-            <div style={{ fontSize: 13, color: SUB, whiteSpace: 'nowrap' }}>{displayName}님 · Google Gemini Pro · {dateLabel(r.ts || Date.now())} 생성</div>
+            <div style={{ fontSize: 13, color: SUB, whiteSpace: 'nowrap' }}>{displayName}님 · Darfin AI · {dateLabel(r.ts || Date.now())} 생성</div>
           </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
@@ -238,7 +239,7 @@ function ReportCard({ report: r }) {
       <div style={{ fontSize: 12, color: SUB, marginTop: 14, background: '#F9FAFB', borderRadius: 10, padding: '10px 14px', lineHeight: 1.5 }}>※ {r.disclaimer}</div>
       {r.geminiError && (
         <div style={{ fontSize: 12, color: '#C2740B', marginTop: 10, background: '#FFF8EC', borderRadius: 10, padding: '10px 14px', lineHeight: 1.5 }}>
-          Gemini 서버 연결에 실패해 기존 계산 리포트로 생성됐어요. {r.geminiError}
+          분석 서버 연결에 실패해 리포트 생성이 제한됐어요. {r.geminiError}
         </div>
       )}
       {r.dbError && (
@@ -255,8 +256,8 @@ function ReportCard({ report: r }) {
       </ReportSection>
 
       {r.geminiAnalysis && (
-        <ReportSection no="AI" title="Gemini 종합 해석" tags={['Info', 'Advice']}>
-          <GeminiInsight text={r.geminiAnalysis} />
+        <ReportSection no="AI" title="Darfin AI 종합 해석" tags={['Info', 'Advice']}>
+          <DarfinInsight text={r.geminiAnalysis} />
         </ReportSection>
       )}
 
@@ -345,17 +346,46 @@ function ReportCard({ report: r }) {
 function ReportAccordion({ report: r }) {
   r = normalizeReport(r);
   const health = r.health;
+  const [open, setOpen] = useState(false);
   return (
-    <details style={{ border: '1px solid #E5E8EB', borderRadius: 12, background: '#fff', overflow: 'hidden' }}>
-      <summary style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '16px 18px', cursor: 'pointer', listStyle: 'none' }}>
+    <div style={{ border: '1px solid #E5E8EB', borderRadius: 12, background: '#fff', overflow: 'hidden' }}>
+      <button
+        type="button"
+        aria-expanded={open}
+        onClick={() => setOpen(v => !v)}
+        style={{
+          width: '100%',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 12,
+          padding: '16px 18px',
+          border: 0,
+          background: 'transparent',
+          cursor: 'pointer',
+          textAlign: 'left',
+        }}
+      >
         <span style={{ fontSize: 14, fontWeight: 800, color: BRAND, background: '#EFF5FF', padding: '6px 10px', borderRadius: 8, whiteSpace: 'nowrap' }}>{r.label || '-'}</span>
         <span style={{ fontSize: 14, fontWeight: 700, color: INK, whiteSpace: 'nowrap' }}>{dateLabel(r.ts || Date.now())}</span>
         <span style={{ fontSize: 13, color: SUB, marginLeft: 'auto', whiteSpace: 'nowrap' }}>건강도 {health.total ?? '-'}점</span>
-      </summary>
-      <div style={{ padding: '0 18px 18px' }}>
-        <ReportCard report={r} />
-      </div>
-    </details>
+        <ChevronDown
+          size={18}
+          strokeWidth={2.4}
+          aria-hidden="true"
+          style={{
+            color: SUB,
+            flexShrink: 0,
+            transition: 'transform 160ms ease',
+            transform: open ? 'rotate(180deg)' : 'rotate(0deg)',
+          }}
+        />
+      </button>
+      {open && (
+        <div style={{ padding: '0 18px 18px' }}>
+          <ReportCard report={r} />
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -385,7 +415,7 @@ export function AIReports() {
     setGenerating(true);
     try {
       try {
-        const aiResult = await generatePythonPortfolioAnalysis(state, getStock);
+        const aiResult = await generatePortfolioAnalysis(state, getStock);
         const user = getDarfinUser();
         const report = {
           ...(aiResult.report || {}),
@@ -398,11 +428,11 @@ export function AIReports() {
           dbError: aiResult.dbError,
         });
       } catch (error) {
-        const geminiError = error?.message || 'Python 투자분석 서버 연결 실패';
-        console.warn('Python 포트폴리오 분석 실패', error);
+        const geminiError = error?.message || '투자분석 서버 연결 실패';
+        console.warn('포트폴리오 분석 실패', error);
         addAiReport({
           label: '분석 실패',
-          labelReason: 'Python 백엔드 투자분석 서버 연결에 실패했어요.',
+          labelReason: '투자분석 서버 연결에 실패했어요.',
           disclaimer: '이 리포트는 모의투자 학습을 목적으로 제공되며, 특정 종목의 매수·매도를 권유하지 않아요.',
           health: { breakdown: {}, total: 0, grade: '-', comment: '-' },
           behavior: { metrics: {}, text: '-', advice: '-', limited: true },
@@ -420,16 +450,16 @@ export function AIReports() {
   };
 
   return (
-    <PageShell title="AI 분석 리포트" sub="Python이 행동 패턴 · 리스크 · 수익률 · 투자 성향을 계산하고 Gemini가 해석을 붙여요"
+    <PageShell title="AI 분석 리포트" sub="Darfin AI가 행동 패턴 · 리스크 · 수익률 · 투자 성향을 분석해 맞춤 해석을 붙여요"
       right={<button onClick={generate} disabled={generating} style={{ ...primaryBtn, height: 46, opacity: generating ? 0.6 : 1, display: 'flex', alignItems: 'center', gap: 8, whiteSpace: 'nowrap' }}>
         <span>✦</span>{generating ? '분석 중…' : '리포트 생성'}</button>}>
 
       <Card style={{ marginBottom: 20, background: 'linear-gradient(135deg,#F4F8FF,#fff)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-          <span style={{ fontSize: 15, fontWeight: 800, color: BRAND, whiteSpace: 'nowrap' }}>✦ Python 기반 4대 축 분석</span>
+          <span style={{ fontSize: 15, fontWeight: 800, color: BRAND, whiteSpace: 'nowrap' }}>✦ Darfin AI 기반 4대 축 분석</span>
           <span style={{ fontSize: 12, color: SUB, marginLeft: 'auto', whiteSpace: 'nowrap' }}>버튼 클릭 시 1회 생성 · 종합 리포트 1개</span>
         </div>
-        <div style={{ fontSize: 13, color: '#4E5968', marginBottom: 16, lineHeight: 1.5 }}>모든 수치는 Python 백엔드가 보유 종목·매매 이력·수익률 데이터로 계산한 뒤 Gemini가 해석과 개선 제안을 생성해요.</div>
+        <div style={{ fontSize: 13, color: '#4E5968', marginBottom: 16, lineHeight: 1.5 }}>보유 종목·매매 이력·수익률 데이터를 Darfin AI가 분석하고 맞춤 해석과 개선 제안을 생성해요.</div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
           {AXES.map(a => (
             <div key={a.n} style={{ background: '#fff', border: '1px solid #EAF0FB', borderRadius: 14, padding: 16 }}>
@@ -443,7 +473,7 @@ export function AIReports() {
       {generating && (
         <Card style={{ marginBottom: 20, display: 'flex', alignItems: 'center', gap: 14 }}>
           <div className="spin" style={{ width: 22, height: 22, border: '3px solid #D6E4FF', borderTopColor: BRAND, borderRadius: '50%' }} />
-          <span style={{ fontSize: 15, fontWeight: 700, color: BRAND }}>Python 백엔드가 4대 축을 계산하고 Gemini 해석을 붙이고 있어요…</span>
+          <span style={{ fontSize: 15, fontWeight: 700, color: BRAND }}>Darfin AI가 사용자의 보유 종목, 매매 이력, 수익률 흐름을 바탕으로 투자 성향을 분석 중입니다.</span>
         </Card>
       )}
 

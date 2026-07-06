@@ -1,7 +1,58 @@
-// AI 분석 계산은 FastAPI Python 백엔드(app/services/calculator.py)에서 수행한다.
+import { request } from '../../../shared/api/apiClient.js';
+
+// AI 분석 요청은 Spring Boot API가 받고, 서버에서 Python 분석 서버 호출/DB 저장을 담당한다.
 export const DISCLAIMER = '이 리포트는 모의투자 학습을 목적으로 제공되며, 특정 종목의 매수·매도를 권유하지 않아요.';
 
-const INVESTMENT_API_BASE_URL = import.meta.env.VITE_INVESTMENT_API_BASE_URL || 'http://127.0.0.1:8001';
+const PORTFOLIO_ANALYSIS_PATH = '/api/analysis/portfolio';
+
+function parseJsonish(value) {
+  if (typeof value !== 'string') return value;
+  try {
+    return JSON.parse(value);
+  } catch {
+    return value;
+  }
+}
+
+function unwrapApiData(data) {
+  return data?.data ?? data?.result ?? data;
+}
+
+function timestampOf(value) {
+  if (!value) return undefined;
+  if (typeof value === 'number') return value;
+  const time = new Date(value).getTime();
+  return Number.isNaN(time) ? undefined : time;
+}
+
+function normalizePortfolioReportEnvelope(item) {
+  const source = parseJsonish(item);
+  if (!source || typeof source !== 'object') return source;
+
+  const nestedReport = parseJsonish(source.report || source.analysisReport || source.portfolioReport);
+  const report = nestedReport && typeof nestedReport === 'object'
+    ? (nestedReport.report && typeof nestedReport.report === 'object' ? nestedReport.report : nestedReport)
+    : source;
+
+  return {
+    ...report,
+    id: report.id || source.id || source.reportId || source.report_id || source.remoteReportId,
+    ts: report.ts || source.ts || timestampOf(source.createdAt || source.created_at || source.generatedAt || source.generated_at),
+    nickname: report.nickname || source.nickname,
+    geminiAnalysis: report.geminiAnalysis || source.geminiAnalysis || source.analysis,
+    remoteReportId: report.remoteReportId || source.remoteReportId || source.reportId || source.report_id || source.id,
+    dbError: report.dbError || source.dbError || source.db_error,
+  };
+}
+
+function extractReportList(data) {
+  const body = unwrapApiData(data);
+  const reports = Array.isArray(body)
+    ? body
+    : body?.reports || body?.content || body?.items || body?.data?.reports || [];
+
+  return Array.isArray(reports) ? reports.map(normalizePortfolioReportEnvelope) : [];
+}
 
 export function getDarfinUser() {
   try {
@@ -57,28 +108,23 @@ export function buildPortfolioAnalysisPayload(state, getStock) {
 }
 
 export async function fetchStoredPortfolioReports(limit = 20) {
-  const userId = getDarfinUserId();
-  if (!userId) return [];
+  if (!getDarfinUserId()) return [];
 
-  const response = await fetch(`${INVESTMENT_API_BASE_URL}/analysis/portfolio/reports/${encodeURIComponent(userId)}?limit=${limit}`);
-  const data = await response.json().catch(() => null);
+  const data = await request(`${PORTFOLIO_ANALYSIS_PATH}/reports?limit=${encodeURIComponent(limit)}`, {
+    method: 'GET',
+  });
 
-  if (!response.ok) {
-    const message = data?.detail || data?.message || `저장된 리포트 조회 실패 (HTTP ${response.status})`;
-    throw new Error(message);
-  }
-
-  return Array.isArray(data?.reports) ? data.reports : [];
+  return extractReportList(data);
 }
 
-export async function generatePythonPortfolioAnalysis(state, getStock) {
+export async function generatePortfolioAnalysis(state, getStock) {
   const user = getDarfinUser();
   const userId = getDarfinUserId();
   const payload = buildPortfolioAnalysisPayload(state, getStock);
-  const response = await fetch(`${INVESTMENT_API_BASE_URL}/analysis/portfolio`, {
+  const data = await request(PORTFOLIO_ANALYSIS_PATH, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
+      userId: userId ? String(userId) : null,
       user_id: userId ? String(userId) : null,
       nickname: user?.nickname || user?.name || user?.email || '회원',
       state: {
@@ -92,20 +138,14 @@ export async function generatePythonPortfolioAnalysis(state, getStock) {
     }),
   });
 
-  const data = await response.json().catch(() => null);
-
-  if (!response.ok) {
-    const message = Array.isArray(data?.detail)
-      ? data.detail.map(item => item.msg).join(', ')
-      : data?.detail || data?.message || `Python 투자분석 요청 실패 (HTTP ${response.status})`;
-    throw new Error(message);
-  }
+  const body = unwrapApiData(data);
+  const report = normalizePortfolioReportEnvelope(body?.report || body?.analysisReport || body);
 
   return {
-    metrics: data?.metrics || null,
-    report: data?.report || null,
-    analysis: data?.analysis || null,
-    reportId: data?.report_id || null,
-    dbError: data?.db_error || null,
+    metrics: body?.metrics || null,
+    report: report?.health ? report : body?.report || null,
+    analysis: body?.analysis || body?.geminiAnalysis || null,
+    reportId: body?.reportId || body?.report_id || body?.id || null,
+    dbError: body?.dbError || body?.db_error || null,
   };
 }
