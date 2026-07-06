@@ -153,13 +153,26 @@ export async function downloadDisclosureOriginal(rceptNo) {
 }
 
 /**
- * 공시 원문 평문 조회.
+ * 공시 원문 조회.
  * GET /api/disclosures/{rceptNo}/original-text
- * DART document.xml에서 태그를 제거한 평문을 받아온다. DisclosureViewer.jsx 좌측 "공시 원문" 탭에
- * 표시하고, 그대로 generateSummary/generateAnalysis의 입력(dartContext/dartFullText)으로 재사용한다.
+ * DART document.xml에서 태그를 제거한 평문(text)과, 문단/표 단위로 구조화한 blocks를 함께 받아온다.
+ * text는 그대로 generateSummary/generateAnalysis의 입력(dartContext/dartFullText)과 하이라이트
+ * charOffset 계산 기준으로 재사용하고, blocks는 DisclosureViewer.jsx 좌측 "공시 원문" 탭에서
+ * 표(table)를 실제 표 형태로 그리는 데 사용한다.
  *
  * @param {string} rceptNo
- * @returns {Promise<{ success: boolean, text: string|null, errorMessage: string|null }>}
+ * @returns {Promise<{
+ *   success: boolean,
+ *   text: string|null,
+ *   blocks: Array<{
+ *     type: "paragraph"|"table",
+ *     text?: string,
+ *     rows?: string[][],
+ *     charStart: number|null,
+ *     charEnd: number|null
+ *   }>|null,
+ *   errorMessage: string|null
+ * }>}
  */
 export async function getDisclosureOriginalText(rceptNo) {
   const response = await fetch(`${API_BASE_URL}/api/disclosures/${encodeURIComponent(rceptNo)}/original-text`);

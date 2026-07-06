@@ -30,19 +30,15 @@ import {
 } from "../api/disclosureApi";
 import { RiskBadge, RiskBadgeGroup } from "../components/RiskBadge";
 
-// ── 하이라이트 세그먼트 빌더 ─────────────────────────────────────
+// ── 하이라이트 마스크 빌더 ─────────────────────────────────────
 // AI 분석 항목(charOffset 기반)과 전문용어(startIndex 기반)를
-// 하나의 세그먼트 배열로 병합한다.
-// 타입: "plain" | "highlight"(AI 핵심 문장) | "term"(전문용어)
+// 원문 전체(originalText) 길이의 마스크 배열 하나로 병합한다. 좌표계는 항상 원문 전체 기준이며,
+// 문단/표 블록은 이 마스크의 일부 구간을 sliceToSegments로 잘라서 사용한다.
 // 우선순위: 두 종류가 겹치면 highlight > term (AI 분석 우선)
 // 전문용어는 termId 기준으로 원문에서 첫 번째 등장 위치에만 밑줄을 친다.
-function buildSegments(text, analysisItems, termHighlights, showHighlight, showTerms) {
-  if (!text) return [{ type: "plain", text: "" }];
+function buildHighlightMask(text, analysisItems, termHighlights, showHighlight, showTerms) {
+  const mask = new Array(text.length).fill(null); // null | { type: "highlight", item } | { type: "term", th }
 
-  // 겹치지 않도록 마스크 배열로 관리
-  const mask = new Array(text.length).fill(null); // null | "highlight" | "term"
-
-  // 1. AI 분석 핵심 문장 (우선순위 높음)
   if (showHighlight) {
     for (const item of analysisItems) {
       const s = item.charOffsetStart, e = item.charOffsetEnd;
@@ -54,7 +50,7 @@ function buildSegments(text, analysisItems, termHighlights, showHighlight, showT
     }
   }
 
-  // 2. 전문용어 밑줄 — termId 기준 첫 번째 등장 위치에만 적용
+  // 전문용어 밑줄 — termId 기준 첫 번째 등장 위치에만 적용
   // (백엔드에서 중복이 내려오거나 캐시 데이터가 남아있어도 프론트에서 한 번 더 보장)
   if (showTerms) {
     const seenTermIds = new Set();
@@ -74,32 +70,52 @@ function buildSegments(text, analysisItems, termHighlights, showHighlight, showT
     }
   }
 
-  // 마스크 → 연속 세그먼트 배열로 변환
+  return mask;
+}
+
+// mask의 [start, end) 구간을 연속 세그먼트 배열로 변환한다.
+// 타입: "plain" | "highlight"(AI 핵심 문장) | "term"(전문용어)
+function sliceToSegments(text, mask, start, end) {
   const segments = [];
-  let i = 0;
-  while (i < text.length) {
+  let i = start;
+  while (i < end) {
     const cell = mask[i];
     if (cell === null) {
       let j = i + 1;
-      while (j < text.length && mask[j] === null) j++;
+      while (j < end && mask[j] === null) j++;
       segments.push({ type: "plain", text: text.slice(i, j) });
       i = j;
     } else if (cell.type === "highlight") {
       const item = cell.item;
       let j = i + 1;
-      while (j < text.length && mask[j] !== null && mask[j].type === "highlight" && mask[j].item === item) j++;
+      while (j < end && mask[j] !== null && mask[j].type === "highlight" && mask[j].item === item) j++;
       segments.push({ type: "highlight", text: text.slice(i, j), item });
       i = j;
     } else {
-      // term
       const th = cell.th;
       let j = i + 1;
-      while (j < text.length && mask[j] !== null && mask[j].type === "term" && mask[j].th === th) j++;
+      while (j < end && mask[j] !== null && mask[j].type === "term" && mask[j].th === th) j++;
       segments.push({ type: "term", text: text.slice(i, j), th });
       i = j;
     }
   }
   return segments;
+}
+
+// 표(table) 블록의 rows를 백엔드(dart_collector.py의 block_plain_text)와 동일한 규칙
+// ("셀 | 셀"을 " | "로, 행은 "\n"으로 연결)으로 합쳤을 때 각 셀이 원문(text) 전체에서
+// 차지하는 [start, end) 구간을 역산한다. 백엔드의 직렬화 규칙이 바뀌면 이 함수도 같이 바꿔야 한다.
+function computeTableCellRanges(rows, blockCharStart) {
+  let cursor = blockCharStart;
+  return rows.map((row, rowIdx) => {
+    if (rowIdx > 0) cursor += 1; // 행 구분자 "\n"
+    return row.map((cell, cellIdx) => {
+      if (cellIdx > 0) cursor += 3; // 셀 구분자 " | "
+      const start = cursor;
+      cursor += cell.length;
+      return { start, end: cursor };
+    });
+  });
 }
 
 // ── 토글 스위치 컴포넌트 ─────────────────────────────────────────
@@ -133,6 +149,9 @@ export function DisclosureViewer() {
   const [activeTab, setActiveTab] = useState("summary");
 
   const [originalText, setOriginalText] = useState(null);
+  // 문단/표 단위로 구조화한 블록 목록 — 표를 실제 <table>로 그리는 데 사용한다.
+  // charStart/charEnd가 null인 블록은 구조 표시에만 쓰이고 하이라이트 대상에서는 제외된다.
+  const [originalBlocks, setOriginalBlocks] = useState(null);
   const [isLoadingOriginal, setIsLoadingOriginal] = useState(true);
   const [originalTextError, setOriginalTextError] = useState(null);
 
@@ -174,7 +193,7 @@ export function DisclosureViewer() {
     setIsLoadingOriginal(true);
     setOriginalTextError(null);
     getDisclosureOriginalText(rceptNo)
-      .then((d) => { if (mounted) setOriginalText(d.text); })
+      .then((d) => { if (mounted) { setOriginalText(d.text); setOriginalBlocks(d.blocks ?? null); } })
       .catch((e) => { if (mounted) setOriginalTextError(e.message ?? "공시 원문을 불러오지 못했습니다."); })
       .finally(() => { if (mounted) setIsLoadingOriginal(false); });
     return () => { mounted = false; };
@@ -300,10 +319,47 @@ export function DisclosureViewer() {
     );
   }
 
-  // 세그먼트 빌드 (원문 텍스트를 highlight/term/plain으로 분해)
-  const segments = originalText
-    ? buildSegments(originalText, analysisItems, termHighlights, highlightEnabled, termsEnabled)
+  // 원문 전체 기준 하이라이트 마스크 (문단/표 블록이 이 마스크의 구간을 나눠 쓴다)
+  const highlightMask = originalText
+    ? buildHighlightMask(originalText, analysisItems, termHighlights, highlightEnabled, termsEnabled)
     : null;
+
+  // 세그먼트(plain/highlight/term) 배열을 mark/abbr가 섞인 React 노드로 렌더링한다.
+  // 원문 패널(문단 <p>, 표 <td> 등) 여러 곳에서 재사용하므로 컴포넌트 스코프 함수로 뺐다.
+  const renderSegments = (segments, keyPrefix) =>
+    segments.map((seg, i) => {
+      const key = `${keyPrefix}-${i}`;
+      if (seg.type === "plain") return <span key={key}>{seg.text}</span>;
+
+      if (seg.type === "highlight") {
+        const isActive = activeHighlightKey === seg.item.targetKey;
+        return (
+          <mark
+            key={key}
+            data-highlight-key={seg.item.targetKey}
+            onClick={() => { setActiveTab("analysis"); setActiveHighlightKey(seg.item.targetKey); setTimeout(() => setActiveHighlightKey(null), 2000); }}
+            className={`bg-yellow-200 rounded-sm px-0.5 cursor-pointer transition-all duration-200
+              ${isActive ? "outline outline-2 outline-offset-1 outline-yellow-500" : ""}`}
+            title={`[${ANALYSIS_CATEGORY_LABELS[seg.item.analysisCategory] ?? seg.item.analysisCategory}] ${seg.item.riskLevel}`}
+          >{seg.text}</mark>
+        );
+      }
+
+      const isActive = activeTermId === seg.th.termId;
+      return (
+        <abbr
+          key={key}
+          data-term-id={seg.th.termId}
+          onClick={() => handleTermInTextClick(seg.th.termId)}
+          title={seg.th.definition?.slice(0, 120) + "…"}
+          className={`cursor-pointer border-b-2 border-dotted transition-all duration-200 no-underline
+            ${isActive
+              ? "border-blue-600 text-blue-900 bg-blue-50"
+              : "border-blue-400 text-blue-800 hover:border-blue-600"}`}
+          style={{ textDecoration: "none" }}
+        >{seg.text}</abbr>
+      );
+    });
 
   return (
     <div className="h-[calc(100vh-11rem)] min-h-[720px] flex flex-col -mt-4 animate-in fade-in duration-300">
@@ -430,45 +486,56 @@ export function DisclosureViewer() {
             </div>
           ) : (
             <div className="flex-1 overflow-y-auto p-6" ref={originalPanelRef}>
-              <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap font-sans">
-                {segments
-                  ? segments.map((seg, i) => {
-                      if (seg.type === "plain") return <span key={i}>{seg.text}</span>;
+              {originalBlocks && originalBlocks.length > 0 ? (
+                originalBlocks.map((block, bi) => {
+                  if (block.type === "table") {
+                    const cellRanges = block.charStart != null && highlightMask
+                      ? computeTableCellRanges(block.rows, block.charStart)
+                      : null;
+                    return (
+                      <div key={bi} className="my-4 overflow-x-auto">
+                        <table className="w-full border-collapse text-xs">
+                          <tbody>
+                            {block.rows.map((row, ri) => (
+                              <tr key={ri}>
+                                {row.map((cell, ci) => {
+                                  const range = cellRanges?.[ri]?.[ci];
+                                  const cellSegments = range
+                                    ? sliceToSegments(originalText, highlightMask, range.start, range.end)
+                                    : null;
+                                  return (
+                                    <td
+                                      key={ci}
+                                      className="border border-slate-200 px-2 py-1 align-top text-slate-700 leading-relaxed whitespace-pre-wrap"
+                                    >
+                                      {cellSegments ? renderSegments(cellSegments, `t${bi}-${ri}-${ci}`) : cell}
+                                    </td>
+                                  );
+                                })}
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    );
+                  }
 
-                      if (seg.type === "highlight") {
-                        const isActive = activeHighlightKey === seg.item.targetKey;
-                        return (
-                          <mark
-                            key={i}
-                            data-highlight-key={seg.item.targetKey}
-                            onClick={() => { setActiveTab("analysis"); setActiveHighlightKey(seg.item.targetKey); setTimeout(() => setActiveHighlightKey(null), 2000); }}
-                            className={`bg-yellow-200 rounded-sm px-0.5 cursor-pointer transition-all duration-200
-                              ${isActive ? "outline outline-2 outline-offset-1 outline-yellow-500" : ""}`}
-                            title={`[${ANALYSIS_CATEGORY_LABELS[seg.item.analysisCategory] ?? seg.item.analysisCategory}] ${seg.item.riskLevel}`}
-                          >{seg.text}</mark>
-                        );
-                      }
-
-                      if (seg.type === "term") {
-                        const isActive = activeTermId === seg.th.termId;
-                        return (
-                          <abbr
-                            key={i}
-                            data-term-id={seg.th.termId}
-                            onClick={() => handleTermInTextClick(seg.th.termId)}
-                            title={seg.th.definition?.slice(0, 120) + "…"}
-                            className={`cursor-pointer border-b-2 border-dotted transition-all duration-200 no-underline
-                              ${isActive
-                                ? "border-blue-600 text-blue-900 bg-blue-50"
-                                : "border-blue-400 text-blue-800 hover:border-blue-600"}`}
-                            style={{ textDecoration: "none" }}
-                          >{seg.text}</abbr>
-                        );
-                      }
-                      return null;
-                    })
-                  : originalText}
-              </p>
+                  const paragraphSegments = block.charStart != null && highlightMask
+                    ? sliceToSegments(originalText, highlightMask, block.charStart, block.charEnd)
+                    : null;
+                  return (
+                    <p key={bi} className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap font-sans mb-3 last:mb-0">
+                      {paragraphSegments ? renderSegments(paragraphSegments, `p${bi}`) : block.text}
+                    </p>
+                  );
+                })
+              ) : (
+                <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap font-sans">
+                  {highlightMask
+                    ? renderSegments(sliceToSegments(originalText, highlightMask, 0, originalText.length), "fallback")
+                    : originalText}
+                </p>
+              )}
             </div>
           )}
         </section>
