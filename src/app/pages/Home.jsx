@@ -38,19 +38,13 @@ const TICKERS = [
 ];
 
 const RECENT_DISCLOSURES = [
-  { id: 1, company: "삼성전자", code: "005930", type: "분기보고서", title: "2026년 1분기 분기보고서 (주요 실적: 영업이익 7.8조 원)", time: "09:12", tag: "실적", severity: "positive" },
-  { id: 2, company: "에코프로비엠", code: "247540", type: "주요사항보고서", title: "타법인 주식 및 출자증권 취득결정 (2,400억 규모 헝가리 법인 투자)", time: "09:31", tag: "투자", severity: "neutral" },
-  { id: 3, company: "카카오페이", code: "377300", type: "주요사항보고서", title: "전환사채 발행 결정 (500억 규모, CB 희석 주의)", time: "10:05", tag: "고위험", severity: "negative" },
-  { id: 4, company: "HD현대중공업", code: "329180", type: "수시공시", title: "대규모 LNG선 수주 계약 체결 — 총 계약금액 2.3조 원", time: "10:48", tag: "수주", severity: "positive" },
-  { id: 5, company: "셀트리온", code: "068270", type: "주요사항보고서", title: "자기주식 취득 결정 (1,200억 규모 자사주 매입 공시)", time: "11:22", tag: "주주환원", severity: "positive" },
-  { id: 6, company: "한화에어로스페이스", code: "012450", type: "수시공시", title: "방위산업 수출 계약 체결 — 폴란드 향 계약금액 4,200억", time: "13:05", tag: "수주", severity: "positive" },
+  { id: 1, company: "삼성전자", code: "005930", type: "분기보고서", title: "2026년 1분기 분기보고서 (주요 실적: 영업이익 7.8조 원)", time: "09:12" },
+  { id: 2, company: "에코프로비엠", code: "247540", type: "주요사항보고서", title: "타법인 주식 및 출자증권 취득결정 (2,400억 규모 헝가리 법인 투자)", time: "09:31" },
+  { id: 3, company: "카카오페이", code: "377300", type: "주요사항보고서", title: "전환사채 발행 결정 (500억 규모, CB 희석 주의)", time: "10:05" },
+  { id: 4, company: "HD현대중공업", code: "329180", type: "수시공시", title: "대규모 LNG선 수주 계약 체결 — 총 계약금액 2.3조 원", time: "10:48" },
+  { id: 5, company: "셀트리온", code: "068270", type: "주요사항보고서", title: "자기주식 취득 결정 (1,200억 규모 자사주 매입 공시)", time: "11:22" },
+  { id: 6, company: "한화에어로스페이스", code: "012450", type: "수시공시", title: "방위산업 수출 계약 체결 — 폴란드 향 계약금액 4,200억", time: "13:05" },
 ];
-
-const DISCLOSURE_SEVERITY = {
-  positive: { border: "border-l-blue-400", dot: "bg-blue-400" },
-  negative: { border: "border-l-red-400", dot: "bg-red-400" },
-  neutral: { border: "border-l-slate-300", dot: "bg-slate-300" },
-};
 
 /* Mirrors the real score_component categories from the findings table. */
 const LENS_STYLE = {
@@ -551,30 +545,27 @@ export function Home() {
 
           <div className="rounded-lg border border-slate-200 bg-white p-2" role="feed" aria-label="오늘의 주요 공시 목록" aria-live="polite">
             <div className="divide-y divide-slate-100">
-              {RECENT_DISCLOSURES.map((d, i) => {
-                const sev = DISCLOSURE_SEVERITY[d.severity];
-                return (
-                  <motion.div key={d.id} initial={{ opacity: 0, y: 8 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.06, duration: 0.25 }}>
-                    <Link to={`/disclosure/${d.id}`} className={`group flex items-center gap-4 p-3 border-l-4 ${sev.border} hover:bg-slate-50 rounded-md transition-colors`}>
-                      <div className="w-28 flex-shrink-0">
-                        <div className="text-sm font-semibold text-slate-900">{d.company}</div>
-                        <div className="text-xs text-slate-400 tabular-nums">{d.code}</div>
-                      </div>
-                      <span className="hidden sm:inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200 flex-shrink-0">
-                        {d.tag}
-                      </span>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm text-slate-700 font-medium truncate group-hover:text-slate-900 transition-colors">{d.title}</p>
-                        <p className="text-xs text-slate-400 mt-0.5">{d.type}</p>
-                      </div>
-                      <div className="flex items-center gap-2 flex-shrink-0">
-                        <span className="text-xs text-slate-400 tabular-nums">{d.time}</span>
-                        <ChevronRight size={16} className="text-slate-300 group-hover:text-blue-500 transition-colors" aria-hidden="true" />
-                      </div>
-                    </Link>
-                  </motion.div>
-                );
-              })}
+              {RECENT_DISCLOSURES.map((d, i) => (
+                <motion.div key={d.id} initial={{ opacity: 0, y: 8 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.06, duration: 0.25 }}>
+                  <Link to={`/disclosure/${d.id}`} className="group flex items-center gap-3 p-3 hover:bg-slate-50 rounded-md transition-colors">
+                    <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br text-xs font-semibold text-white ${AVATAR_PALETTE[i % AVATAR_PALETTE.length]}`}>
+                      {avatarLabel({ name: d.company })}
+                    </span>
+                    <div className="w-28 flex-shrink-0">
+                      <div className="text-sm font-semibold text-slate-900">{d.company}</div>
+                      <div className="text-xs text-slate-400 tabular-nums">{d.code}</div>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-slate-700 font-medium truncate group-hover:text-slate-900 transition-colors">{d.title}</p>
+                      <p className="text-xs text-slate-400 mt-0.5">{d.type}</p>
+                    </div>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <span className="text-xs text-slate-400 tabular-nums">{d.time}</span>
+                      <ChevronRight size={16} className="text-slate-300 group-hover:text-blue-500 transition-colors" aria-hidden="true" />
+                    </div>
+                  </Link>
+                </motion.div>
+              ))}
             </div>
           </div>
         </div>
