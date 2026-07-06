@@ -46,9 +46,11 @@ function deriveNodes(strategyShifts) {
       shift: null,
       isCurrent: false,
     },
-    // One node per detected shift, chronological order
+    // One node per detected shift, chronological order. Two distinct shifts
+    // can share the same quarter (e.g. both evidenced by the same annual
+    // filing) — index makes the id unique even then.
     ...sorted.map((shift, i) => ({
-      id: shift.quarter,
+      id: `${shift.quarter}-${i}`,
       label: shortLabel(shift.to),
       quarter: shift.quarter,
       shift,

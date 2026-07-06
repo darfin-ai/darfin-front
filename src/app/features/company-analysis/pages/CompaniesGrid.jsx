@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { getTopKospiCompanies, getTopKosdaqCompanies } from '../../../../mocks/companyAnalysis';
 import { fetchCompanies } from '../api/companyAnalysisApi';
 import { CompanyCard } from '../components/CompanyCard';
 import { CompanySearchBar } from '../components/CompanySearchBar';
@@ -57,8 +56,7 @@ export function CompaniesGrid() {
     () => rows.filter((row) => watchedIds.includes(row.company.id) && matchesQuery(row.company, query)),
     [rows, watchedIds, query],
   );
-  const topKospi = useMemo(() => getTopKospiCompanies(), []);
-  const topKosdaq = useMemo(() => getTopKosdaqCompanies(), []);
+  const allCompanies = useMemo(() => rows.map((row) => row.company), [rows]);
   const watchlistCompanies = useMemo(
     () => rows.filter((row) => watchedIds.includes(row.company.id)).map((row) => row.company),
     [rows, watchedIds],
@@ -130,8 +128,11 @@ export function CompaniesGrid() {
         <TabsContent value="search">
           <div className="pt-8">
             {renderPanel(searchResults, [
-              { title: 'KOSPI 시가총액 상위 15개 기업', companies: topKospi },
-              { title: 'KOSDAQ 시가총액 상위 15개 기업', companies: topKosdaq },
+              {
+                title: '전체 기업',
+                companies: allCompanies,
+                emptyMessage: loading ? '불러오는 중...' : '등록된 기업이 없어요.',
+              },
             ])}
           </div>
         </TabsContent>

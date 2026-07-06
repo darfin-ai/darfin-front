@@ -1,6 +1,8 @@
 import { motion } from 'motion/react';
 import { Lightbulb } from 'lucide-react';
 import { SourceExcerptDialog } from './SourceExcerptDialog';
+import { Skeleton } from '../../../shared/components/ui/skeleton';
+import { isAiReady } from '../lib/aiStatus';
 
 const SEVERITY_STYLES = {
   high:   { border: 'border-l-red-400',   dot: 'bg-red-400',   label: '영향 높음', text: 'text-red-600' },
@@ -13,11 +15,28 @@ const STATUS_BADGE = {
   removed: { label: '제거됨', className: 'bg-red-50 text-red-600 border border-red-200' },
 };
 
+function RiskSkeletonCard() {
+  return (
+    <div className="flex flex-col rounded-lg border border-slate-200 border-l-4 border-l-slate-200 bg-white p-4">
+      <Skeleton className="h-4 w-2/3" />
+      <div className="mt-3 space-y-1.5">
+        <Skeleton className="h-3 w-full" />
+        <Skeleton className="h-3 w-4/5" />
+      </div>
+      <div className="mt-3 flex items-center gap-2">
+        <Skeleton className="h-2 w-2 rounded-full" />
+        <Skeleton className="h-3 w-16" />
+      </div>
+    </div>
+  );
+}
+
 /**
  * @param {{ overview: import('../../../../mocks/companyAnalysis/types').CompanyOverview }} props
  */
 export function KeyRisksPanel({ overview }) {
   const risks = overview.risks ?? [];
+  const ready = isAiReady(overview);
 
   return (
     <section aria-labelledby="risk-heading">
@@ -25,13 +44,23 @@ export function KeyRisksPanel({ overview }) {
         <h2 id="risk-heading" className="text-xl font-semibold text-slate-900">
           핵심 리스크
         </h2>
-        {risks.some((r) => r.status === 'new') && (
+        {ready && risks.some((r) => r.status === 'new') && (
           <span className="rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-600 border border-blue-200">
             {risks.filter((r) => r.status === 'new').length}건 신규
           </span>
         )}
+        {!ready && (
+          <span className="text-xs font-normal text-slate-400">분석 중...</span>
+        )}
       </div>
 
+      {!ready ? (
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <RiskSkeletonCard />
+          <RiskSkeletonCard />
+          <RiskSkeletonCard />
+        </div>
+      ) : (
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {risks.filter((r) => r.status !== 'removed').map((risk, i) => {
           const sev = SEVERITY_STYLES[risk.severity];
@@ -83,8 +112,9 @@ export function KeyRisksPanel({ overview }) {
           );
         })}
       </div>
+      )}
 
-      {risks.some((r) => r.status === 'removed') && (
+      {ready && risks.some((r) => r.status === 'removed') && (
         <div className="mt-3">
           <p className="text-xs font-medium text-slate-500 mb-2">이번 분기 제거된 리스크</p>
           <div className="flex flex-wrap gap-2">

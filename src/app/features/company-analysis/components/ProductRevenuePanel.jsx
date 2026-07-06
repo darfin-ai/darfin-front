@@ -1,6 +1,8 @@
 import { motion } from 'motion/react';
 import { Lightbulb } from 'lucide-react';
 import { SourceExcerptDialog } from './SourceExcerptDialog';
+import { Skeleton } from '../../../shared/components/ui/skeleton';
+import { isAiReady } from '../lib/aiStatus';
 
 const BAR_COLORS = [
   'bg-blue-500',
@@ -59,14 +61,24 @@ export function ProductRevenuePanel({ overview }) {
 
       <p className="mt-4 text-xs text-slate-400">매출액 기준 비중 (2026Q1)</p>
 
-      {overview.productInsight && (
+      {!isAiReady(overview) ? (
         <div className="mt-4 flex gap-3 rounded-lg border border-blue-100 bg-blue-50/60 px-3 py-2.5">
-          <Lightbulb size={15} className="mt-0.5 shrink-0 text-blue-500" />
-          <p className="text-sm leading-relaxed text-slate-700">
-            <span className="font-semibold text-blue-700">So what? </span>
-            {overview.productInsight}
-          </p>
+          <Lightbulb size={15} className="mt-0.5 shrink-0 text-blue-400" />
+          <div className="flex-1 space-y-1.5 py-0.5">
+            <Skeleton className="h-3 w-5/6" />
+            <Skeleton className="h-3 w-2/3" />
+          </div>
         </div>
+      ) : (
+        overview.productInsight && (
+          <div className="mt-4 flex gap-3 rounded-lg border border-blue-100 bg-blue-50/60 px-3 py-2.5">
+            <Lightbulb size={15} className="mt-0.5 shrink-0 text-blue-500" />
+            <p className="text-sm leading-relaxed text-slate-700">
+              <span className="font-semibold text-blue-700">So what? </span>
+              {overview.productInsight}
+            </p>
+          </div>
+        )
       )}
     </section>
   );

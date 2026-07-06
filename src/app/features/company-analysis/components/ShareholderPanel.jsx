@@ -3,6 +3,8 @@ import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
 import { motion } from 'motion/react';
 import { Lightbulb } from 'lucide-react';
 import { SourceExcerptDialog } from './SourceExcerptDialog';
+import { Skeleton } from '../../../shared/components/ui/skeleton';
+import { isAiReady } from '../lib/aiStatus';
 
 // Colour palette: each ownership type gets a distinct but harmonious colour
 const HOLDER_COLORS = {
@@ -86,7 +88,7 @@ export function ShareholderPanel({ overview }) {
                 >
                   {chartData.map((entry) => (
                     <Cell
-                      key={entry.id}
+                      key={entry.name}
                       fill={HOLDER_COLORS[entry.id] ?? '#e2e8f0'}
                       opacity={activeIdx === null || activeIdx === chartData.indexOf(entry) ? 1 : 0.35}
                       style={{ cursor: 'pointer', transition: 'opacity 0.15s' }}
@@ -103,7 +105,7 @@ export function ShareholderPanel({ overview }) {
           <div className="flex-1 space-y-2">
             {shareholders.map((h, i) => (
               <motion.div
-                key={h.id}
+                key={h.name}
                 initial={{ opacity: 0, x: 8 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.25, delay: i * 0.05, ease: 'easeOut' }}
@@ -128,14 +130,24 @@ export function ShareholderPanel({ overview }) {
         </div>
 
         {/* So what */}
-        {overview.shareholderInsight && (
+        {!isAiReady(overview) ? (
           <div className="mt-4 flex gap-3 rounded-lg border border-blue-100 bg-blue-50/60 px-3 py-2.5">
-            <Lightbulb size={15} className="mt-0.5 shrink-0 text-blue-500" />
-            <p className="text-sm leading-relaxed text-slate-700">
-              <span className="font-semibold text-blue-700">So what? </span>
-              {overview.shareholderInsight}
-            </p>
+            <Lightbulb size={15} className="mt-0.5 shrink-0 text-blue-400" />
+            <div className="flex-1 space-y-1.5 py-0.5">
+              <Skeleton className="h-3 w-5/6" />
+              <Skeleton className="h-3 w-2/3" />
+            </div>
           </div>
+        ) : (
+          overview.shareholderInsight && (
+            <div className="mt-4 flex gap-3 rounded-lg border border-blue-100 bg-blue-50/60 px-3 py-2.5">
+              <Lightbulb size={15} className="mt-0.5 shrink-0 text-blue-500" />
+              <p className="text-sm leading-relaxed text-slate-700">
+                <span className="font-semibold text-blue-700">So what? </span>
+                {overview.shareholderInsight}
+              </p>
+            </div>
+          )
         )}
       </div>
     </section>
