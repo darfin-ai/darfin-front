@@ -1,12 +1,11 @@
 import { motion } from 'motion/react';
-import { getCompanyDetail } from '../../../../mocks/companyAnalysis';
 import { CompanyCard } from './CompanyCard';
 
 /**
- * @param {{ companies: import('../../../../mocks/companyAnalysis/types').Company[], sector: string }} props
+ * @param {{ rows: { company: import('../../../../mocks/companyAnalysis/types').Company, scores: import('../../../../mocks/companyAnalysis/types').ScoreComponent[] }[], sector: string }} props
  */
-export function SimilarCompaniesPanel({ companies, sector }) {
-  if (companies.length === 0) return null;
+export function SimilarCompaniesPanel({ rows, sector }) {
+  if (rows.length === 0) return null;
 
   return (
     <section aria-labelledby="similar-companies-heading">
@@ -24,13 +23,8 @@ export function SimilarCompaniesPanel({ companies, sector }) {
         </p>
       </motion.div>
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-        {companies.map((company, index) => (
-          <CompanyCard
-            key={company.id}
-            company={company}
-            scores={getCompanyDetail(company.id)?.scores ?? []}
-            index={index}
-          />
+        {rows.map(({ company, scores }, index) => (
+          <CompanyCard key={company.id} company={company} scores={scores} index={index} />
         ))}
       </div>
     </section>

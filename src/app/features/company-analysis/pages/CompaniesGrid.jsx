@@ -1,5 +1,6 @@
-import { useMemo, useRef, useState } from 'react';
-import { getCompanies, getCompanyDetail, getTopKospiCompanies, getTopKosdaqCompanies } from '../../../../mocks/companyAnalysis';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { getTopKospiCompanies, getTopKosdaqCompanies } from '../../../../mocks/companyAnalysis';
+import { fetchCompanies } from '../api/companyAnalysisApi';
 import { CompanyCard } from '../components/CompanyCard';
 import { CompanySearchBar } from '../components/CompanySearchBar';
 import { CompanyQuickLinks } from '../components/CompanyQuickLinks';
@@ -13,7 +14,7 @@ function matchesQuery(company, query) {
   return (
     company.name.toLowerCase().includes(q) ||
     company.ticker.toLowerCase().includes(q) ||
-    company.sector.toLowerCase().includes(q)
+    (company.sector ?? '').toLowerCase().includes(q)
   );
 }
 
@@ -23,13 +24,32 @@ export function CompaniesGrid() {
   const inputRef = useRef(null);
   const { ids: watchedIds, isWatched, toggle } = useWatchlist();
 
-  const rows = useMemo(() => {
-    return getCompanies()
-      .map((company) => {
-        const detail = getCompanyDetail(company.id);
-        return { company, scores: detail?.scores ?? [] };
+  const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+    fetchCompanies()
+      .then((data) => {
+        if (cancelled) return;
+        const sorted = [...(data ?? [])].sort(
+          (a, b) => mostRecentChangeMagnitude(b.scores) - mostRecentChangeMagnitude(a.scores),
+        );
+        setRows(sorted);
       })
-      .sort((a, b) => mostRecentChangeMagnitude(b.scores) - mostRecentChangeMagnitude(a.scores));
+      .catch((err) => {
+        if (cancelled) return;
+        setError(err.message || '기업 목록을 불러오지 못했습니다.');
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const searchResults = useMemo(() => rows.filter((row) => matchesQuery(row.company, query)), [rows, query]);
@@ -46,6 +66,12 @@ export function CompaniesGrid() {
 
   function renderPanel(sourceRows, quickLinkSections) {
     if (query.trim()) {
+      if (loading) {
+        return <p className="py-12 text-center text-sm text-slate-400">불러오는 중...</p>;
+      }
+      if (error) {
+        return <p className="py-12 text-center text-sm text-red-500">{error}</p>;
+      }
       if (sourceRows.length === 0) {
         return (
           <p className="py-12 text-center text-sm text-slate-500">"{query}"에 해당하는 기업을 찾을 수 없어요.</p>

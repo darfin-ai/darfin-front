@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router';
-import { getCompanies, getCompanyDetail, getSimilarCompanies } from '../../../../mocks/companyAnalysis';
+import { fetchCompanies, fetchCompanyDetail } from '../api/companyAnalysisApi';
 import { IdentityStrip } from '../components/IdentityStrip';
 import { SimilarCompaniesPanel } from '../components/SimilarCompaniesPanel';
 import { FinancialTrendCharts } from '../components/FinancialTrendCharts';
@@ -17,30 +17,78 @@ import { ShareholderPanel } from '../components/ShareholderPanel';
 import { DividendPanel } from '../components/DividendPanel';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '../../../shared/components/ui/tabs';
 
+/** 파이프라인이 아직 이 회사를 처리하지 않아 상세 데이터가 사실상 비어있는지 판단. */
+function isDataRich(detail) {
+  return Boolean(detail?.overview) || (detail?.recentFilings ?? []).length > 0;
+}
+
 export function CompanyDetailPage() {
   const { id } = useParams();
-  const detail = getCompanyDetail(id);
   const [selection, setSelection] = useState(null);
 
-  if (!detail) {
-    const companySummary = getCompanies().find((c) => c.id === id);
+  const [detail, setDetail] = useState(null);
+  const [allRows, setAllRows] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
+  const [error, setError] = useState(null);
 
-    if (!companySummary) {
-      return (
-        <div className="mx-auto max-w-7xl px-4 py-16 text-center sm:px-6 lg:px-8">
-          <p className="text-sm text-slate-500">해당 기업을 찾을 수 없어요.</p>
-          <Link to="/company" className="mt-3 inline-block text-sm font-medium text-blue-600 hover:underline">
-            기업 목록으로 돌아가기
-          </Link>
-        </div>
-      );
-    }
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+    setNotFound(false);
+    setDetail(null);
 
+    Promise.all([fetchCompanyDetail(id), fetchCompanies().catch(() => [])])
+      .then(([detailData, rows]) => {
+        if (cancelled) return;
+        setDetail(detailData);
+        setAllRows(rows ?? []);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        if (err.status === 404) {
+          setNotFound(true);
+        } else {
+          setError(err.message || '기업 정보를 불러오지 못했습니다.');
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [id]);
+
+  if (loading) {
+    return <p className="py-20 text-center text-sm text-slate-400">불러오는 중...</p>;
+  }
+
+  if (error) {
+    return <p className="py-20 text-center text-sm text-red-500">{error}</p>;
+  }
+
+  if (notFound || !detail) {
+    return (
+      <div className="mx-auto max-w-7xl px-4 py-16 text-center sm:px-6 lg:px-8">
+        <p className="text-sm text-slate-500">해당 기업을 찾을 수 없어요.</p>
+        <Link to="/company" className="mt-3 inline-block text-sm font-medium text-blue-600 hover:underline">
+          기업 목록으로 돌아가기
+        </Link>
+      </div>
+    );
+  }
+
+  const { company, financials, findings, diffs, profile, strategyShifts, overview, recentFilings } = detail;
+
+  if (!isDataRich(detail)) {
     return (
       <div className="w-full">
-        <IdentityStrip company={companySummary} />
+        <IdentityStrip company={company} />
         <div className="mx-auto max-w-2xl px-4 py-20 text-center sm:px-6 lg:px-8">
-          <p className="text-base font-medium text-slate-700">{companySummary.name}의 상세 분석을 준비하고 있어요.</p>
+          <p className="text-base font-medium text-slate-700">{company.name}의 상세 분석을 준비하고 있어요.</p>
           <p className="mt-2 text-sm text-slate-500">정기공시 기반 심층 분석은 순차적으로 추가될 예정이에요.</p>
           <Link to="/company" className="mt-6 inline-block text-sm font-medium text-blue-600 hover:underline">
             기업 목록으로 돌아가기
@@ -50,9 +98,9 @@ export function CompanyDetailPage() {
     );
   }
 
-  const { company, financials, findings, diffs, profile, strategyShifts, overview, recentFilings } = detail;
-
-  const similarCompanies = getSimilarCompanies(company.id);
+  const similarRows = allRows.filter(
+    (row) => row.company.id !== company.id && row.company.sector && row.company.sector === company.sector,
+  );
 
   return (
     <div className="w-full">
@@ -98,7 +146,7 @@ export function CompanyDetailPage() {
                     selectedHopSourceRef={selection?.hop.sourceRef ?? null}
                     onSelectHop={(finding, hop) => setSelection({ finding, hop })}
                   />
-                  <SimilarCompaniesPanel companies={similarCompanies} sector={company.sector} />
+                  <SimilarCompaniesPanel rows={similarRows} sector={company.sector} />
                 </div>
 
                 {/* Sidebar — only shown after a hop is selected in the reasoning chain */}
