@@ -1,23 +1,23 @@
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
 
 export function getAccessToken() {
-  return localStorage.getItem('darfin_access_token');
+  return sessionStorage.getItem('darfin_access_token');
 }
 
 export function getRefreshToken() {
-  return localStorage.getItem('darfin_refresh_token');
+  return sessionStorage.getItem('darfin_refresh_token');
 }
 
 export function setTokens(accessToken, refreshToken) {
-  localStorage.setItem('darfin_access_token', accessToken);
-  localStorage.setItem('darfin_refresh_token', refreshToken);
+  sessionStorage.setItem('darfin_access_token', accessToken);
+  sessionStorage.setItem('darfin_refresh_token', refreshToken);
 }
 
 export function clearTokens() {
-  localStorage.removeItem('darfin_access_token');
-  localStorage.removeItem('darfin_refresh_token');
-  localStorage.removeItem('darfin_user');
-  localStorage.removeItem('darfin_logged_in');
+  sessionStorage.removeItem('darfin_access_token');
+  sessionStorage.removeItem('darfin_refresh_token');
+  sessionStorage.removeItem('darfin_user');
+  sessionStorage.removeItem('darfin_logged_in');
 }
 
 async function tryRefresh() {

@@ -23,7 +23,7 @@ function userFromPayload(payload) {
 }
 
 function loadUser() {
-  const stored = localStorage.getItem('darfin_user');
+  const stored = sessionStorage.getItem('darfin_user');
   if (stored) {
     try { return JSON.parse(stored); } catch { /* fall through */ }
   }
@@ -46,7 +46,7 @@ export function AuthProvider({ children }) {
     if (!resolved) {
       resolved = userFromPayload(parseJwt(tokens.accessToken));
     }
-    localStorage.setItem('darfin_user', JSON.stringify(resolved));
+    sessionStorage.setItem('darfin_user', JSON.stringify(resolved));
     setUser(resolved);
   }, []);
 
@@ -62,7 +62,7 @@ export function AuthProvider({ children }) {
   const updateUser = useCallback((patch) => {
     setUser((prev) => {
       const next = { ...prev, ...patch };
-      localStorage.setItem('darfin_user', JSON.stringify(next));
+      sessionStorage.setItem('darfin_user', JSON.stringify(next));
       return next;
     });
   }, []);

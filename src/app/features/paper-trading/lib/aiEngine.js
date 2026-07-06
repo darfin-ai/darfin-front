@@ -56,7 +56,7 @@ function extractReportList(data) {
 
 export function getDarfinUser() {
   try {
-    return JSON.parse(localStorage.getItem('darfin_user') || 'null');
+    return JSON.parse(sessionStorage.getItem('darfin_user') || 'null');
   } catch {
     return null;
   }
