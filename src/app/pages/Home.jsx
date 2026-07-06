@@ -1,10 +1,28 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router";
 import { motion } from "motion/react";
-import { Search, ChevronRight, ArrowUpRight, ArrowDownRight, ArrowRight, Lightbulb, TrendingUp, Landmark, AlertTriangle, ShieldCheck } from "lucide-react";
+import { Search, ChevronRight, ArrowUpRight, ArrowDownRight, ArrowRight, Lightbulb, TrendingUp, Landmark, AlertTriangle, ShieldCheck, Check } from "lucide-react";
 import { heroDemo, heroFindingsByLens } from "../../mocks/landing/heroDemo";
+import { topKospiCompanies } from "../../mocks/companyAnalysis/topKospi";
+import { topKosdaqCompanies } from "../../mocks/companyAnalysis/topKosdaq";
 
 const SECTION = "py-20 px-4 sm:px-6 lg:px-8";
+
+/* Matches CompanyQuickLinks.jsx exactly, so avatar badges look identical to the real /company page. */
+const AVATAR_PALETTE = [
+  "from-blue-500 to-blue-600",
+  "from-violet-500 to-violet-600",
+  "from-teal-500 to-teal-600",
+  "from-amber-500 to-amber-600",
+  "from-rose-500 to-rose-600",
+  "from-indigo-500 to-indigo-600",
+  "from-emerald-500 to-emerald-600",
+  "from-cyan-500 to-cyan-600",
+];
+function avatarLabel(company) {
+  const source = company.shortName ?? company.name;
+  return source.length <= 2 ? source : source.slice(0, 2);
+}
 
 const TICKERS = [
   { name: "삼성전자", code: "005930", price: 73400, change: 1.32, up: true },
@@ -171,6 +189,195 @@ function HeroDemo() {
   );
 }
 
+function CompanyBadge({ company, index }) {
+  return (
+    <div className="flex items-center gap-2 flex-shrink-0 rounded-full border border-slate-200 bg-white pl-2 pr-4 py-1.5">
+      <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gradient-to-br text-[10px] font-semibold text-white ${AVATAR_PALETTE[index % AVATAR_PALETTE.length]}`}>
+        {avatarLabel(company)}
+      </span>
+      <span className="text-xs font-semibold text-slate-700 whitespace-nowrap">{company.name}</span>
+    </div>
+  );
+}
+
+function CompanyMarquee() {
+  const rowA = [...topKospiCompanies, ...topKospiCompanies];
+  const rowB = [...topKosdaqCompanies, ...topKosdaqCompanies];
+  return (
+    <div className="overflow-hidden space-y-3" aria-hidden="true">
+      <div className="flex gap-3 w-max" style={{ animation: "marquee 38s linear infinite" }}>
+        {rowA.map((c, i) => <CompanyBadge key={`kospi-${c.id}-${i}`} company={c} index={i} />)}
+      </div>
+      <div className="flex gap-3 w-max" style={{ animation: "marquee-reverse 38s linear infinite" }}>
+        {rowB.map((c, i) => <CompanyBadge key={`kosdaq-${c.id}-${i}`} company={c} index={i + 3} />)}
+      </div>
+      <style>{`
+        @keyframes marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+        @keyframes marquee-reverse { from { transform: translateX(-50%); } to { transform: translateX(0); } }
+      `}</style>
+    </div>
+  );
+}
+
+function BrowserChrome({ label, children }) {
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white overflow-hidden shadow-sm">
+      <div className="px-4 py-2.5 flex items-center gap-1.5 border-b border-slate-100 bg-slate-50">
+        <span className="h-2.5 w-2.5 rounded-full bg-red-300" />
+        <span className="h-2.5 w-2.5 rounded-full bg-amber-300" />
+        <span className="h-2.5 w-2.5 rounded-full bg-emerald-300" />
+        <span className="ml-2 text-xs font-medium text-slate-400 truncate">{label}</span>
+      </div>
+      <div className="p-5">{children}</div>
+    </div>
+  );
+}
+
+function CompanyMockup() {
+  return (
+    <BrowserChrome label="삼성전자 · 005930 · 기업분석">
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <div className="flex items-center gap-2">
+            <span className="font-bold text-slate-900">삼성전자</span>
+            <span className="text-xs text-slate-400 tabular-nums">005930</span>
+            <span className="rounded-full bg-blue-50 text-blue-700 border border-blue-200 text-[10px] font-bold px-1.5 py-0.5">KOSPI</span>
+          </div>
+          <div className="text-xs text-slate-400 mt-0.5">반도체·전자제품</div>
+        </div>
+        <div className="text-right">
+          <div className="text-xs text-slate-400">AI 종합 스코어</div>
+          <div className="text-xl font-bold text-blue-600 tabular-nums">78</div>
+        </div>
+      </div>
+      <div className="flex gap-1 mb-4 bg-slate-100/80 rounded-lg p-1 text-xs font-semibold">
+        <span className="flex-1 text-center py-1.5 bg-white rounded-md text-slate-900 shadow-sm">개요</span>
+        <span className="flex-1 text-center py-1.5 text-slate-400">재무 추이</span>
+        <span className="flex-1 text-center py-1.5 text-slate-400">공시 변경</span>
+      </div>
+      <div className="flex items-start justify-between mb-4 px-1">
+        {["2024 Q1", "2025 Q1", "2026 Q1"].map((q, i) => (
+          <div key={q} className="flex flex-col items-center gap-1 relative flex-1">
+            {i > 0 && <div className="absolute right-1/2 top-3 w-full h-px bg-slate-200 -z-10" />}
+            <div className={`h-6 w-6 rounded-full flex items-center justify-center text-[10px] font-bold ${i === 2 ? "bg-blue-600 text-white" : "bg-slate-200 text-slate-500"}`}>
+              {i === 2 ? "●" : "✓"}
+            </div>
+            <span className="text-[10px] text-slate-400 tabular-nums">{q}</span>
+          </div>
+        ))}
+      </div>
+      <div className="flex gap-2 rounded-md border border-blue-100 bg-blue-50/60 px-3 py-2.5">
+        <Lightbulb size={13} className="mt-0.5 shrink-0 text-blue-500" />
+        <p className="text-xs leading-relaxed text-slate-700">
+          <span className="font-semibold text-blue-700">AI 요약. </span>
+          DS 부문 매출 비중이 61%로 급등 — HBM 수요 확대가 영업이익률을 8.45%→42.75%로 끌어올림.
+        </p>
+      </div>
+    </BrowserChrome>
+  );
+}
+
+function TradingMockup() {
+  const bars = [40, 55, 35, 60, 50, 70, 65, 80, 58, 72, 68, 90];
+  return (
+    <BrowserChrome label="모의투자 · 삼성전자">
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <div className="font-bold text-slate-900">삼성전자</div>
+          <div className="text-lg font-bold text-slate-900 tabular-nums">73,400<span className="text-xs font-medium text-slate-400 ml-1">원</span></div>
+        </div>
+        <span className="rounded-full bg-slate-100 text-slate-500 text-[10px] font-bold px-2 py-1">모의투자 · 실제 돈 아님</span>
+      </div>
+      <div className="flex items-end gap-1 h-20 mb-4">
+        {bars.map((h, i) => (
+          <div key={i} className={`flex-1 rounded-sm ${i % 3 === 0 ? "bg-blue-200" : "bg-red-200"}`} style={{ height: `${h}%` }} />
+        ))}
+      </div>
+      <div className="grid grid-cols-2 gap-2 mb-4">
+        <button className="py-2 rounded-lg bg-red-500 text-white text-xs font-bold">매수</button>
+        <button className="py-2 rounded-lg border border-slate-200 text-slate-500 text-xs font-bold">매도</button>
+      </div>
+      <div className="flex items-center justify-between text-xs border-t border-slate-100 pt-3">
+        <span className="text-slate-400">평가손익</span>
+        <span className="font-bold text-red-500 tabular-nums">+12.4%</span>
+      </div>
+    </BrowserChrome>
+  );
+}
+
+function CommunityMockup() {
+  const posts = [
+    { company: "삼성전자", tag: "005930", q: "이번 분기 HBM 매출 비중, 다음 분기에도 유지될까요?", replies: 3, resolved: true },
+    { company: "카카오페이", tag: "377300", q: "CB 발행이 기존 주주에게 어떤 영향을 주나요?", replies: 1, resolved: false },
+    { company: "HD현대중공업", tag: "329180", q: "LNG선 수주가 실제 실적엔 언제 반영되나요?", replies: 0, resolved: false },
+  ];
+  return (
+    <BrowserChrome label="커뮤니티 · 질문과 답변">
+      <div className="divide-y divide-slate-100">
+        {posts.map((p, i) => (
+          <div key={p.company} className="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
+            <div className={`h-8 w-8 shrink-0 rounded-full bg-gradient-to-br ${AVATAR_PALETTE[i % AVATAR_PALETTE.length]} text-white text-[10px] font-bold flex items-center justify-center`}>
+              {p.company.slice(0, 2)}
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-1.5 mb-0.5">
+                <span className="text-xs font-semibold text-blue-600">{p.company}</span>
+                <span className="text-[10px] text-slate-400 tabular-nums">{p.tag}</span>
+              </div>
+              <p className="text-xs text-slate-700 truncate">{p.q}</p>
+            </div>
+            <span className={`shrink-0 text-[10px] font-medium px-1.5 py-0.5 rounded-full ${p.resolved ? "bg-blue-50 text-blue-600 border border-blue-200" : "bg-slate-100 text-slate-500"}`}>
+              {p.resolved ? `답변 ${p.replies}` : "답변 대기"}
+            </span>
+          </div>
+        ))}
+      </div>
+    </BrowserChrome>
+  );
+}
+
+const WALKTHROUGH = [
+  {
+    eyebrow: "기업 분석",
+    title: "공시를 검색하면, AI가 먼저 읽습니다",
+    desc: "관심 기업을 검색하면 최신 공시부터 과거 분기까지 AI가 원문을 읽고 핵심 변화를 짚어드립니다.",
+    bullets: [
+      "실적·지배구조·리스크·경영진 발언까지 한 화면에서",
+      "분기마다 무엇이 바뀌었는지 자동으로 비교",
+      "모든 인사이트는 원문 근거와 함께 제공",
+    ],
+    link: "/company",
+    cta: "기업 분석 시작하기",
+    Mockup: CompanyMockup,
+  },
+  {
+    eyebrow: "모의투자",
+    title: "실제 돈 없이, 먼저 연습해보세요",
+    desc: "실시간 시세를 기반으로 한 모의투자로, 실전에 들어가기 전에 전략을 검증할 수 있습니다.",
+    bullets: [
+      "실제 시세 기반 · 실제 돈은 전혀 사용하지 않음",
+      "매수·매도 체결 후 즉시 손익 확인",
+      "전략을 충분히 검증한 뒤 실전 투자로",
+    ],
+    link: "/trading",
+    cta: "모의투자 해보기",
+    Mockup: TradingMockup,
+  },
+  {
+    eyebrow: "커뮤니티",
+    title: "같은 기업을 보는 사람들과 의견을 나눕니다",
+    desc: "공시와 분석 결과를 함께 보며, 종목별로 쌓이는 질문과 답변에 참여해보세요. 아직 시작하는 단계라, 지금 참여하면 초기 멤버가 됩니다.",
+    bullets: [
+      "종목별로 질문과 답변이 쌓이는 구조",
+      "공시·분석 결과를 근거로 한 토론",
+      "지금 커뮤니티를 만들어가는 초기 멤버가 되어보세요",
+    ],
+    link: "/community",
+    cta: "커뮤니티 둘러보기",
+    Mockup: CommunityMockup,
+  },
+];
+
 export function Home() {
   const navigate = useNavigate();
   return (
@@ -254,55 +461,76 @@ export function Home() {
         </div>
       </section>
 
-      {/* ── Workflow ─────────────────────────────────────── */}
-      <section className={`bg-white ${SECTION}`}>
+      {/* ── Data coverage — real KOSPI/KOSDAQ companies as social proof ── */}
+      <section className="bg-white py-14 overflow-hidden">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center mb-8">
+          <div className="text-xs font-semibold text-blue-600 uppercase tracking-widest mb-2">데이터 커버리지</div>
+          <h2 className="text-2xl font-extrabold text-slate-900">코스피·코스닥 상장사 전체를 분석합니다</h2>
+        </div>
+        <CompanyMarquee />
+      </section>
+
+      {/* ── Product walkthrough — real UI mockups per feature ── */}
+      <section className={`bg-slate-50 border-y border-slate-200 ${SECTION}`}>
         <div className="max-w-7xl mx-auto">
           <motion.div
             initial={{ opacity: 0, y: 16 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.35 }}
-            className="text-center mb-12"
+            className="text-center mb-16"
           >
             <div className="text-xs font-semibold text-blue-600 uppercase tracking-widest mb-2">이용 흐름</div>
             <h2 className="text-3xl font-extrabold text-slate-900 mb-3">분석하고, 연습하고, 함께 검증합니다</h2>
             <p className="text-lg text-slate-500 max-w-xl mx-auto">하나로 이어지는 투자 리서치 흐름입니다.</p>
           </motion.div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 relative">
-            <div className="hidden md:block absolute top-[22px] left-[16.5%] right-[16.5%] h-px bg-slate-200 z-0" />
-            {[
-              { n: 1, title: "분석한다", desc: "관심 기업의 공시를 AI가 읽고, 원문 근거와 함께 핵심 변화를 짚어드립니다.", link: "/company", cta: "기업 분석 보기" },
-              { n: 2, title: "연습한다", desc: "실제 돈 없이 모의투자로 전략을 먼저 검증합니다.", link: "/trading", cta: "모의투자 해보기" },
-              { n: 3, title: "함께 검증한다", desc: "같은 기업을 보는 다른 투자자와 의견을 나눕니다.", link: "/community", cta: "커뮤니티 보기" },
-            ].map((step, i) => (
-              <motion.div
-                key={step.n}
-                initial={{ opacity: 0, y: 16 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.08, duration: 0.35, ease: "easeOut" }}
-                whileHover={{ y: -3 }}
-                className="relative z-10"
-              >
-                <div className="h-11 w-11 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold mb-4 mx-auto">
-                  {step.n}
+          <div className="space-y-20">
+            {WALKTHROUGH.map((item, i) => {
+              const Mockup = item.Mockup;
+              return (
+                <div key={item.eyebrow} className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+                  <motion.div
+                    initial={{ opacity: 0, y: 16 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.35, ease: "easeOut" }}
+                    className={i % 2 === 1 ? "lg:order-2" : ""}
+                  >
+                    <div className="text-xs font-semibold text-blue-600 uppercase tracking-widest mb-2">0{i + 1} · {item.eyebrow}</div>
+                    <h3 className="text-2xl font-extrabold text-slate-900 mb-3">{item.title}</h3>
+                    <p className="text-slate-500 mb-5 leading-relaxed">{item.desc}</p>
+                    <ul className="space-y-2 mb-6">
+                      {item.bullets.map((b) => (
+                        <li key={b} className="flex items-start gap-2 text-sm text-slate-600">
+                          <Check size={15} className="mt-0.5 text-blue-500 shrink-0" />
+                          {b}
+                        </li>
+                      ))}
+                    </ul>
+                    <Link to={item.link} className="inline-flex items-center gap-1 text-sm font-bold text-blue-600 hover:text-blue-700 transition-colors">
+                      {item.cta} <ChevronRight size={15} />
+                    </Link>
+                  </motion.div>
+
+                  <motion.div
+                    initial={{ opacity: 0, y: 16 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.35, delay: 0.1, ease: "easeOut" }}
+                    className={i % 2 === 1 ? "lg:order-1" : ""}
+                  >
+                    <Mockup />
+                  </motion.div>
                 </div>
-                <div className="rounded-xl border border-slate-200 bg-white p-6 text-center transition-shadow hover:shadow-md h-full">
-                  <h3 className="font-bold text-slate-900 mb-2 text-lg">{step.title}</h3>
-                  <p className="text-sm text-slate-500 leading-relaxed mb-4">{step.desc}</p>
-                  <Link to={step.link} className="inline-flex items-center gap-1 text-xs font-bold text-blue-600 hover:text-blue-700 transition-colors">
-                    {step.cta} <ChevronRight size={13} />
-                  </Link>
-                </div>
-              </motion.div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </section>
 
       {/* ── Latest Disclosures ──────────────────────── */}
-      <section className={`bg-slate-50 border-y border-slate-200 ${SECTION}`}>
+      <section className={`bg-white ${SECTION}`}>
         <div className="max-w-7xl mx-auto">
           <motion.div
             initial={{ opacity: 0, y: 16 }}
@@ -353,7 +581,7 @@ export function Home() {
       </section>
 
       {/* ── Analysis lenses — grounded in the same real Samsung filing as the hero ── */}
-      <section className={`bg-white ${SECTION}`}>
+      <section className={`bg-slate-50 border-y border-slate-200 ${SECTION}`}>
         <div className="max-w-7xl mx-auto">
           <motion.div
             initial={{ opacity: 0, y: 16 }}
@@ -394,45 +622,6 @@ export function Home() {
               );
             })}
           </div>
-        </div>
-      </section>
-
-      {/* ── Community (soft-launch framing) ─────────────── */}
-      <section className={`bg-slate-50 border-y border-slate-200 ${SECTION}`}>
-        <div className="max-w-4xl mx-auto text-center">
-          <motion.div initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.35 }}>
-            <div className="text-xs font-semibold text-blue-600 uppercase tracking-widest mb-2">커뮤니티</div>
-            <h2 className="text-3xl font-extrabold text-slate-900 mb-3">지금 함께 만들어가는 커뮤니티</h2>
-            <p className="text-lg text-slate-500 mb-10 max-w-xl mx-auto">
-              아직 시작하는 단계입니다. 관심 기업에 대해 이런 질문을 나눌 수 있어요.
-            </p>
-          </motion.div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
-            {[
-              { company: "삼성전자", q: "이번 분기 HBM 매출 비중, 다음 분기에도 유지될까요?" },
-              { company: "카카오페이", q: "CB 발행이 기존 주주에게 어떤 영향을 주나요?" },
-              { company: "HD현대중공업", q: "LNG선 수주가 실제 실적엔 언제 반영되나요?" },
-            ].map((item, i) => (
-              <motion.div
-                key={item.company}
-                initial={{ opacity: 0, y: 16 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.08, duration: 0.35, ease: "easeOut" }}
-                whileHover={{ y: -3 }}
-                className="rounded-xl border border-slate-200 bg-white p-5 text-left transition-shadow hover:shadow-md"
-              >
-                <div className="text-xs font-semibold text-blue-600 mb-2">{item.company}</div>
-                <p className="text-sm text-slate-700 leading-relaxed">{item.q}</p>
-                <p className="text-xs text-slate-400 mt-3">예시 질문</p>
-              </motion.div>
-            ))}
-          </div>
-
-          <Link to="/community" className="inline-flex items-center gap-1 text-sm font-bold text-blue-600 hover:text-blue-700 transition-colors">
-            질문 둘러보기 <ChevronRight size={16} />
-          </Link>
         </div>
       </section>
 
