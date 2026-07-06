@@ -4,7 +4,6 @@ import {
   User,
   Settings,
   CreditCard,
-  Bell,
   Shield,
   LogOut,
   Receipt,
@@ -48,9 +47,6 @@ export function MyPage() {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [deletePassword, setDeletePassword] = useState('');
   const [deleteLoading, setDeleteLoading] = useState(false);
-
-  // Notification toggle
-  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
 
   // Billing state (mock)
   const [isRefundModalOpen, setIsRefundModalOpen] = useState(false);
@@ -286,7 +282,7 @@ export function MyPage() {
       <div className="h-px bg-slate-200 w-full" />
 
       <div>
-        <h2 className="text-xl font-bold text-slate-900 mb-6">보안 및 알림 설정</h2>
+        <h2 className="text-xl font-bold text-slate-900 mb-6">보안 설정</h2>
 
         {isLocalAccount ? (
           <form onSubmit={handlePasswordChange} className="space-y-4 max-w-md mb-8">
@@ -345,24 +341,6 @@ export function MyPage() {
             </p>
           </div>
         )}
-
-        <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-200 max-w-md">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center text-blue-600">
-              <Bell size={20} />
-            </div>
-            <div>
-              <div className="text-sm font-bold text-slate-900">이메일 및 앱 푸시 알림</div>
-              <div className="text-xs text-slate-500">중요 공시 및 AI 리포트 알림 수신</div>
-            </div>
-          </div>
-          <button
-            onClick={() => setNotificationsEnabled(!notificationsEnabled)}
-            className={`w-12 h-6 rounded-full p-1 transition-colors ${notificationsEnabled ? "bg-blue-600" : "bg-slate-300"}`}
-          >
-            <div className={`w-4 h-4 bg-white rounded-full transition-transform ${notificationsEnabled ? "translate-x-6" : "translate-x-0"}`} />
-          </button>
-        </div>
       </div>
 
       <div className="h-px bg-slate-200 w-full" />

@@ -5,7 +5,7 @@ import { CompaniesGrid, CompanyDetailPage } from "./features/company-analysis";
 import { DisclosureSearch, DisclosureViewer } from "./features/filings";
 import { TradingRoot } from "./features/paper-trading";
 import { CommunityList, CommunityDetail, CommunityWrite } from "./features/community";
-import { MyPage, SubscriptionManagement, AllNotifications } from "./features/account";
+import { MyPage, SubscriptionManagement } from "./features/account";
 import { Login, SignUp, ForgotId, ResetPassword, OAuthCallback } from "./features/auth";
 export const router = createBrowserRouter([
   {
@@ -23,7 +23,6 @@ export const router = createBrowserRouter([
       { path: "community/:id", Component: CommunityDetail },
       { path: "mypage", Component: MyPage },
       { path: "subscription", Component: SubscriptionManagement },
-      { path: "notifications", Component: AllNotifications },
       { path: "login", Component: Login },
       { path: "signup", Component: SignUp },
       { path: "forgot-id", Component: ForgotId },
