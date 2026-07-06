@@ -108,7 +108,7 @@ export function Layout() {
           <nav className="hidden md:flex items-center gap-6">
             {[
     { to: "/company", icon: <BarChart2 size={16} />, label: "\uAE30\uC5C5 \uBD84\uC11D" },
-    { to: "/disclosure", icon: <BookOpen size={16} />, label: "\uACF5\uC2DC \uC5F4\uB78C" },
+    { to: "/disclosure", icon: <BookOpen size={16} />, label: "\uACF5\uC2DC \uBD84\uC11D" },
     { to: "/trading", icon: <TrendingUp size={16} />, label: "\uBAA8\uC758\uD22C\uC790" },
     { to: "/community", icon: <MessageSquare size={16} />, label: "\uCEE4\uBBA4\uB2C8\uD2F0" }
   ].map(({ to, icon, label }) => <Link
@@ -217,7 +217,7 @@ export function Layout() {
               <nav className="flex flex-col gap-1">
                 {[
     { to: "/company", icon: <BarChart2 size={18} />, label: "기업 분석" },
-    { to: "/disclosure", icon: <BookOpen size={18} />, label: "공시 열람" },
+    { to: "/disclosure", icon: <BookOpen size={18} />, label: "공시 분석" },
     { to: "/trading", icon: <TrendingUp size={18} />, label: "모의투자" },
     { to: "/community", icon: <MessageSquare size={18} />, label: "커뮤니티" }
   ].map(({ to, icon, label }) => <Link

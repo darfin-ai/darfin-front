@@ -3,6 +3,7 @@ import { Link, useParams, useSearchParams } from "react-router";
 import { ANALYSIS_CATEGORY_LABELS } from "../constants";
 import {
   AlertTriangle,
+  BookA,
   BookOpen,
   ChevronDown,
   ChevronLeft,
@@ -385,7 +386,7 @@ export function DisclosureViewer() {
                 <div className="w-px h-4 bg-slate-200" />
                 <ToggleSwitch
                   label={isLoadingTerms ? "로딩 중..." : `전문용어${termHighlights.length > 0 ? ` (${uniqueTerms.length})` : ""}`}
-                  icon={<span className={`text-xs font-bold border-b-2 border-dotted pb-px ${termsEnabled ? "border-blue-500 text-blue-600" : "border-slate-400 text-slate-400"}`}>用</span>}
+                  icon={<BookA size={14} className={termsEnabled ? "text-blue-600" : "text-slate-400"} />}
                   checked={termsEnabled}
                   onCheckedChange={setTermsEnabled}
                   disabled={!originalText || isLoadingTerms}
