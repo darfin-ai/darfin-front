@@ -107,7 +107,7 @@ export function CompaniesGrid() {
   }
 
   return (
-    <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-16">
+    <div className="container pb-16">
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <div className="pt-10 pb-2">
           <div className="mb-6 text-center">

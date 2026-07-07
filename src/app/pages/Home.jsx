@@ -41,13 +41,13 @@ function avatarLabel(company) {
 }
 
 
-/* Mirrors the real score_component categories from the findings table. */
-function lensStyles(t) {
+/* Category icons for the company-analysis lenses band. */
+function lensStyles() {
   return {
-    financialChange: { icon: <TrendingUp size={16} />, border: "border-l-red-400", dot: "bg-red-400", text: "text-red-600 dark:text-red-400", label: t("landing.lenses.impactHigh") },
-    managementEmphasis: { icon: <Landmark size={16} />, border: "border-l-amber-400", dot: "bg-amber-400", text: "text-amber-600 dark:text-amber-400", label: t("landing.lenses.impactMedium") },
-    riskEscalation: { icon: <AlertTriangle size={16} />, border: "border-l-amber-400", dot: "bg-amber-400", text: "text-amber-600 dark:text-amber-400", label: t("landing.lenses.impactMedium") },
-    governance: { icon: <ShieldCheck size={16} />, border: "border-l-slate-300 dark:border-l-slate-600", dot: "bg-slate-300 dark:bg-slate-600", text: "text-slate-500 dark:text-slate-400", label: t("landing.lenses.impactMedium") },
+    financialChange: { icon: <TrendingUp size={18} />, iconBg: "bg-red-50 dark:bg-red-950/40", iconText: "text-red-600 dark:text-red-400" },
+    managementEmphasis: { icon: <Landmark size={18} />, iconBg: "bg-amber-50 dark:bg-amber-950/40", iconText: "text-amber-600 dark:text-amber-400" },
+    riskEscalation: { icon: <AlertTriangle size={18} />, iconBg: "bg-amber-50 dark:bg-amber-950/40", iconText: "text-amber-600 dark:text-amber-400" },
+    governance: { icon: <ShieldCheck size={18} />, iconBg: "bg-slate-100 dark:bg-slate-800", iconText: "text-slate-600 dark:text-slate-400" },
   };
 }
 
@@ -656,7 +656,7 @@ function HeroSection() {
 
   return (
     <div
-      className="grid grid-cols-1 lg:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)] gap-8 lg:gap-6 items-center"
+      className="grid grid-cols-1 lg:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)] gap-10 lg:gap-16 items-center"
       onMouseEnter={() => { if (!isTouchDevice) setActive(true); }}
       onMouseLeave={() => { if (!isTouchDevice) setActive(false); }}
     >
@@ -716,7 +716,7 @@ function WalkthroughRow({ item, index, Mockup, link }) {
 
   return (
     <div
-      className="grid grid-cols-1 lg:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)] gap-8 lg:gap-6 items-center"
+      className="grid grid-cols-1 lg:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)] gap-10 lg:gap-16 items-center"
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
@@ -728,7 +728,7 @@ function WalkthroughRow({ item, index, Mockup, link }) {
         className={textOnRight ? "lg:order-2" : ""}
       >
         <div className={EYEBROW}>0{index + 1} · {item.eyebrow}</div>
-        <h3 className="text-xl font-semibold text-slate-900 dark:text-slate-100 mb-2">{item.title}</h3>
+        <h3 className="text-2xl font-semibold text-slate-900 dark:text-slate-100 mb-2">{item.title}</h3>
         <p className={`${SECTION_DESC} mb-5`}>{item.desc}</p>
         <ul className="space-y-2 mb-6">
           {item.bullets.map((b) => (
@@ -769,12 +769,11 @@ export function Home() {
   const navigate = useNavigate();
   const { isLoggedIn } = useAuth();
   const { t } = useLocale();
-  const demoSnapshot = t("landing.demo.snapshot");
   const credibilityStats = t("landing.credibility.stats");
   const walkthroughItems = t("landing.walkthrough.items");
   const disclosureItems = t("landing.disclosures.items");
   const lensItems = t("landing.lenses.items");
-  const lensStyleMap = lensStyles(t);
+  const lensStyleMap = lensStyles();
   return (
     <div className="flex flex-col flex-1">
       {/* ── Hero ─────────────────────────────────────────── */}
@@ -855,6 +854,51 @@ export function Home() {
         </div>
       </section>
 
+      {/* ── Company analysis lenses ───────────────────────── */}
+      <section className={SECTION}>
+        <div className="container">
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.35 }}
+            className="max-w-[45rem] mx-auto text-center mb-8"
+          >
+            <div className={EYEBROW}>{t("landing.lenses.eyebrow")}</div>
+            <h2 className={`${SECTION_TITLE} mb-3`}>{t("landing.lenses.title")}</h2>
+            <p className={SECTION_DESC}>{t("landing.lenses.subtitle")}</p>
+          </motion.div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-px rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-200 dark:bg-slate-800 overflow-hidden">
+            {lensItems.map((item, i) => {
+              const style = lensStyleMap[item.scoreComponent];
+              return (
+                <motion.div
+                  key={item.scoreComponent}
+                  initial={{ opacity: 0, y: 8 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: i * 0.06, duration: 0.25, ease: "easeOut" }}
+                  className="bg-white dark:bg-slate-900 px-5 py-5"
+                >
+                  <div className={`mb-3 inline-flex h-9 w-9 items-center justify-center rounded-lg ${style.iconBg} ${style.iconText}`}>
+                    {style.icon}
+                  </div>
+                  <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-1.5">{item.label}</h3>
+                  <p className="text-sm leading-relaxed text-slate-500 dark:text-slate-400">{item.summary}</p>
+                </motion.div>
+              );
+            })}
+          </div>
+
+          <div className="mt-6 text-center">
+            <Link to="/company" className={LINK_ACTION}>
+              {t("landing.lenses.cta")} <ChevronRight size={15} />
+            </Link>
+          </div>
+        </div>
+      </section>
+
       {/* ── Latest Disclosures ──────────────────────── */}
       <section className={SECTION}>
         <div className="container">
@@ -863,16 +907,11 @@ export function Home() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.35 }}
-            className="flex items-end justify-between mb-6"
+            className="max-w-[45rem] mx-auto text-center mb-6"
           >
-            <div>
-              <div className={EYEBROW}>{t("landing.disclosures.eyebrow")}</div>
-              <h2 className={SECTION_TITLE}>{t("landing.disclosures.title")}</h2>
-              <p className={`${SECTION_DESC} mt-2`}>{t("landing.disclosures.subtitle")}</p>
-            </div>
-            <Link to="/disclosure" className={`hidden sm:flex ${LINK_ACTION}`}>
-              {t("landing.disclosures.viewAll")} <ChevronRight size={16} />
-            </Link>
+            <div className={EYEBROW}>{t("landing.disclosures.eyebrow")}</div>
+            <h2 className={`${SECTION_TITLE} mb-3`}>{t("landing.disclosures.title")}</h2>
+            <p className={SECTION_DESC}>{t("landing.disclosures.subtitle")}</p>
           </motion.div>
 
           <div className={`${CARD} p-2`} role="feed" aria-label={t("landing.disclosures.feedLabel")} aria-live="polite">
@@ -900,50 +939,11 @@ export function Home() {
               ))}
             </div>
           </div>
-        </div>
-      </section>
 
-      {/* ── Analysis lenses — grounded in the same real Samsung filing as the hero ── */}
-      <section className={SECTION}>
-        <div className="container">
-          <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.35 }}
-            className="max-w-[45rem] mx-auto text-center mb-8"
-          >
-            <div className={EYEBROW}>{t("landing.lenses.eyebrow")}</div>
-            <h2 className={`${SECTION_TITLE} mb-3`}>{t("landing.lenses.title")}</h2>
-            <p className={SECTION_DESC}>
-              {t("landing.lenses.subtitlePrefix")} {demoSnapshot.companyName} {t("landing.lenses.subtitleSuffix")}
-            </p>
-          </motion.div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {lensItems.map((item, i) => {
-              const style = lensStyleMap[item.scoreComponent];
-              return (
-                <motion.div
-                  key={item.scoreComponent}
-                  initial={{ opacity: 0, y: 8 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: i * 0.06, duration: 0.25, ease: "easeOut" }}
-                  className={`flex flex-col ${CARD} border-l-2 p-4 ${style.border}`}
-                >
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="text-slate-400 dark:text-slate-500">{style.icon}</span>
-                    <h3 className="text-sm font-medium text-slate-900 dark:text-slate-100">{item.label}</h3>
-                  </div>
-                  <p className="text-sm leading-relaxed text-slate-500 dark:text-slate-400 mb-3">{item.summary}</p>
-                  <div className="mt-auto flex items-center gap-1.5">
-                    <span className={`h-2 w-2 rounded-full ${style.dot}`} />
-                    <span className={`text-xs font-medium ${style.text}`}>{style.label}</span>
-                  </div>
-                </motion.div>
-              );
-            })}
+          <div className="mt-6 text-center">
+            <Link to="/disclosure" className={LINK_ACTION}>
+              {t("landing.disclosures.viewAll")} <ChevronRight size={15} />
+            </Link>
           </div>
         </div>
       </section>
@@ -953,7 +953,7 @@ export function Home() {
         <div className="container-sm text-center">
           <p className="text-base text-slate-500 dark:text-slate-400 leading-relaxed">
             {t("landing.pricing.text")}{" "}
-            <Link to="/subscription" className="font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors">
+            <Link to="/pricing" className="font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors">
               {t("landing.pricing.link")}
             </Link>
           </p>

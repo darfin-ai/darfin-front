@@ -1,8 +1,14 @@
 import { useState, useEffect } from "react";
 import { Outlet, Link, useNavigate, useLocation } from "react-router";
 import { motion, AnimatePresence } from "motion/react";
-import { BookOpen, BarChart2, TrendingUp, MessageSquare, UserCircle, LogOut, Menu, X } from "lucide-react";
+import { BookOpen, BarChart2, TrendingUp, MessageSquare, UserCircle, LogOut, Menu, X, ChevronDown, CreditCard } from "lucide-react";
 import { Toaster } from "sonner";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from "./ui/dropdown-menu";
 import { useAuth } from "../../features/auth";
 import { toast } from "sonner";
 import { useLocale } from "../i18n";
@@ -42,14 +48,12 @@ export function Layout() {
   ];
 
   const isAuthPage = ["/login", "/signup", "/forgot-id", "/reset-password"].includes(location.pathname);
-  const isLanding = location.pathname === "/";
-  const shellWidth = isLanding ? "container" : "max-w-7xl mx-auto px-4 sm:px-6 lg:px-8";
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col font-sans text-slate-900 dark:text-slate-100">
       <Toaster position="top-center" />
       <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-50">
-        <div className={shellWidth}>
+        <div className="container">
           <div className="flex items-center justify-between gap-3 h-16">
             <div className="flex items-center gap-4 lg:gap-6 min-w-0 flex-1">
               <Link to="/" className="flex items-center gap-2 group flex-shrink-0">
@@ -71,30 +75,75 @@ export function Layout() {
             </div>
 
             <nav className="hidden md:flex items-center gap-1.5 lg:gap-2.5 shrink-0">
-              {navItems.map(({ to, icon, label }) => (
-                <Link
-                  key={to}
-                  to={to}
-                  onClick={(e) => handleServiceClick(e, to)}
-                  title={label}
-                  className="text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors flex items-center gap-1.5 px-1.5 py-1 rounded-md whitespace-nowrap"
-                >
-                  {icon}
-                  <span className="hidden xl:inline">{label}</span>
-                </Link>
-              ))}
+              {isLoggedIn ? (
+                navItems.map(({ to, icon, label }) => (
+                  <Link
+                    key={to}
+                    to={to}
+                    title={label}
+                    className="text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors flex items-center gap-1.5 px-1.5 py-1 rounded-md whitespace-nowrap"
+                  >
+                    {icon}
+                    <span className="hidden xl:inline">{label}</span>
+                  </Link>
+                ))
+              ) : (
+                <>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger className="group text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 data-[state=open]:text-blue-600 dark:data-[state=open]:text-blue-400 transition-colors flex items-center gap-1 px-1.5 py-1 rounded-md whitespace-nowrap outline-none">
+                      {t("nav.features")}
+                      <ChevronDown size={14} className="transition-transform duration-200 group-data-[state=open]:rotate-180" />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start" sideOffset={10}>
+                      {navItems.map(({ to, icon, label }) => (
+                        <DropdownMenuItem key={to} asChild>
+                          <Link
+                            to={to}
+                            onClick={(e) => handleServiceClick(e, to)}
+                            className="flex items-center gap-2 cursor-pointer"
+                          >
+                            {icon}
+                            {label}
+                          </Link>
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                  <Link
+                    to="/pricing"
+                    className="text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors flex items-center px-1.5 py-1 rounded-md whitespace-nowrap"
+                  >
+                    {t("nav.pricing")}
+                  </Link>
+                </>
+              )}
               <div className="h-6 w-px bg-slate-200 dark:bg-slate-700 mx-0.5" />
               <LocaleToggle />
               <ThemeToggle />
 
               {isLoggedIn && (
-                <Link
-                  to="/mypage"
-                  className="text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors flex items-center gap-1.5 p-1"
-                  title={t("nav.mypage")}
-                >
-                  <UserCircle size={20} />
-                </Link>
+                <DropdownMenu>
+                  <DropdownMenuTrigger
+                    className="text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 data-[state=open]:text-blue-600 dark:data-[state=open]:text-blue-400 transition-colors flex items-center gap-1.5 p-1 rounded-md outline-none"
+                    title={t("nav.mypage")}
+                  >
+                    <UserCircle size={20} />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" sideOffset={10}>
+                    <DropdownMenuItem asChild>
+                      <Link to="/mypage" className="flex items-center gap-2 cursor-pointer">
+                        <UserCircle size={16} />
+                        {t("nav.mypage")}
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link to="/subscription" className="flex items-center gap-2 cursor-pointer">
+                        <CreditCard size={16} />
+                        {t("nav.subscription")}
+                      </Link>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               )}
               {isLoggedIn ? (
                 <button
@@ -147,14 +196,32 @@ export function Layout() {
                       {label}
                     </Link>
                   ))}
-                  {isLoggedIn && (
+                  {!isLoggedIn && (
                     <Link
-                      to="/mypage"
+                      to="/pricing"
                       className="flex items-center gap-3 px-2 py-2.5 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
                     >
-                      <UserCircle size={18} />
-                      {t("nav.mypage")}
+                      <CreditCard size={16} />
+                      {t("nav.pricing")}
                     </Link>
+                  )}
+                  {isLoggedIn && (
+                    <>
+                      <Link
+                        to="/mypage"
+                        className="flex items-center gap-3 px-2 py-2.5 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                      >
+                        <UserCircle size={18} />
+                        {t("nav.mypage")}
+                      </Link>
+                      <Link
+                        to="/subscription"
+                        className="flex items-center gap-3 px-2 py-2.5 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                      >
+                        <CreditCard size={16} />
+                        {t("nav.subscription")}
+                      </Link>
+                    </>
                   )}
                 </nav>
 
@@ -194,7 +261,7 @@ export function Layout() {
         className={
           location.pathname === "/"
             ? "flex-1 w-full overflow-hidden"
-            : location.pathname.startsWith("/trading") || location.pathname.startsWith("/company")
+            : location.pathname.startsWith("/trading") || location.pathname.startsWith("/company") || location.pathname.startsWith("/community") || location.pathname === "/pricing" || location.pathname === "/subscription" || location.pathname === "/mypage"
               ? "flex-1 w-full"
               : isAuthPage
                 ? "flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-col"
@@ -205,7 +272,7 @@ export function Layout() {
       </main>
 
       <footer className="bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 py-8 mt-auto">
-        <div className={`${shellWidth} flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-slate-500 dark:text-slate-400`}>
+        <div className="container flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-slate-500 dark:text-slate-400">
           <p>{t("footer.copyright")}</p>
           <div className="flex gap-4">
             <a href="#" className="hover:text-slate-900 dark:hover:text-slate-100">

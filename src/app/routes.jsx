@@ -1,7 +1,8 @@
 import { createBrowserRouter } from "react-router";
 import { Layout } from "./shared/components/Layout";
 import { Home } from "./pages/Home";
-import { CompaniesGrid, CompanyDetailPage } from "./features/company-analysis";
+import { Pricing } from "./pages/Pricing";
+import { CompaniesGrid, CompanyDetailPage, CompanyRouteError } from "./features/company-analysis";
 import { DisclosureSearch, DisclosureViewer } from "./features/filings";
 import { TradingRoot } from "./features/paper-trading";
 import { CommunityList, CommunityDetail, CommunityWrite } from "./features/community";
@@ -13,8 +14,9 @@ export const router = createBrowserRouter([
     Component: Layout,
     children: [
       { index: true, Component: Home },
-      { path: "company", Component: CompaniesGrid },
-      { path: "company/:id", Component: CompanyDetailPage },
+      { path: "pricing", Component: Pricing },
+      { path: "company", Component: CompaniesGrid, ErrorBoundary: CompanyRouteError },
+      { path: "company/:id", Component: CompanyDetailPage, ErrorBoundary: CompanyRouteError },
       { path: "disclosure", Component: DisclosureSearch },
       { path: "disclosure/:id", Component: DisclosureViewer },
       { path: "trading", Component: TradingRoot },

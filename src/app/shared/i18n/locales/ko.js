@@ -4,6 +4,8 @@ export const ko = {
     disclosure: "공시 분석",
     trading: "모의투자",
     community: "커뮤니티",
+    features: "기능",
+    pricing: "요금제",
     login: "로그인",
     signup: "무료로 시작하기",
     logout: "로그아웃",
@@ -14,6 +16,7 @@ export const ko = {
     menuClose: "메뉴 닫기",
     loginRequired: "로그인이 필요한 서비스입니다.",
     logoutSuccess: "로그아웃되었습니다.",
+    subscription: "구독 관리",
   },
   footer: {
     terms: "이용약관",
@@ -57,6 +60,20 @@ export const ko = {
       imageTypeError: "이미지 파일만 업로드할 수 있습니다.",
       imageSizeError: "5MB 이하의 이미지만 업로드할 수 있습니다.",
       profilePreviewAlt: "프로필 미리보기",
+    },
+    login: {
+      email: "이메일",
+      password: "비밀번호",
+      submit: "이메일로 로그인",
+      submitting: "로그인 중...",
+      success: "로그인되었습니다.",
+      fail: "로그인에 실패했습니다.",
+      forgotId: "아이디 찾기",
+      resetPassword: "비밀번호 재설정",
+      signup: "회원가입",
+      socialDivider: "또는 소셜 로그인",
+      kakao: "카카오 로그인",
+      google: "구글 로그인",
     },
   },
   landing: {
@@ -126,12 +143,12 @@ export const ko = {
       items: [
         {
           eyebrow: "기업 분석",
-          title: "공시를 검색하면, AI가 먼저 읽습니다",
-          desc: "관심 기업을 검색하면 최신 공시부터 과거 분기까지 AI가 원문을 읽고 핵심 변화를 짚어드립니다.",
+          title: "종목 리서치, 한 화면으로 이어집니다",
+          desc: "사업·실적·분기별 변화가 탭으로 이어지고, AI가 짚은 핵심은 원문과 함께.",
           bullets: [
-            "실적·지배구조·리스크·경영진 발언까지 한 화면에서",
-            "분기마다 무엇이 바뀌었는지 자동으로 비교",
-            "모든 인사이트는 원문 근거와 함께 제공",
+            "개요: 사업·주주·리스크·배당 한눈에",
+            "재무 추이: 매출·이익·현금흐름 차트",
+            "공시 변경: 분기별 원문 자동 비교",
           ],
           cta: "기업 분석 시작하기",
         },
@@ -183,9 +200,9 @@ export const ko = {
       ],
     },
     disclosures: {
-      eyebrow: "실시간 공시 피드",
-      title: "오늘의 주요 공시",
-      subtitle: "AI가 분석한 오늘의 핵심 공시를 가장 빠르게 확인하세요.",
+      eyebrow: "수시공시",
+      title: "오늘 올라온 공시",
+      subtitle: "기업별 수시공시를 모아 빠르게 확인하세요.",
       viewAll: "전체 보기",
       feedLabel: "오늘의 주요 공시 목록",
       items: [
@@ -198,36 +215,30 @@ export const ko = {
       ],
     },
     lenses: {
-      eyebrow: "하나의 공시, 4가지 시선",
-      title: "같은 보고서에서 이만큼 찾아냅니다",
-      subtitlePrefix: "위 예시와 같은",
-      subtitleSuffix: "보고서 하나에서, AI는 재무·경영·리스크·지배구조 네 가지 관점의 변화를 함께 짚어냅니다.",
-      impactHigh: "영향 높음",
-      impactMedium: "영향 보통",
+      eyebrow: "AI 분석 구조",
+      title: "네 가지 관점으로 읽습니다",
+      subtitle: "기업 상세에서 재무·경영·리스크·지배구조를 나눠 보고, 인사이트마다 원문 근거를 연결합니다.",
+      cta: "기업 분석 시작하기",
       items: [
         {
           scoreComponent: "financialChange",
           label: "재무 변화",
-          summary:
-            "2026년 1분기 매출이 전년 동기 대비 69.2% 증가하며 133조 8,734억원을 기록했고, 유동자산 및 자산총계 등 주요 재무 지표가 크게 개선되었습니다. DX 및 DS 부문 매출 비중, 스마트폰 및 메모리 가격, 원재료 가격, 시설투자액 등 사업 전반의 주요 수치들이 변동했습니다.",
+          summary: "매출·이익·자산, 부문별 비중 등 핵심 수치가 어떻게 바뀌었는지",
         },
         {
           scoreComponent: "managementEmphasis",
-          label: "경영진 강조 사항",
-          summary:
-            "2026년 1분기 기준 R&D 투자가 11.3조원으로 변경되었고, 세계 특허 288,770건 보유와 함께 TV 및 모바일 사업 전략 및 신제품 라인업이 업데이트되었습니다.",
+          label: "경영진 강조",
+          summary: "R&D·사업 전략·신제품 등 경영진이 부각한 내용",
         },
         {
           scoreComponent: "riskEscalation",
           label: "리스크 변화",
-          summary:
-            "2026년 1분기말 기준 주가변동위험에 따른 기타포괄손익 및 당기손익 영향이 변경되었으며, 통화선도 거래 건수가 3,308건으로 감소했습니다.",
+          summary: "환율·주가·파생상품 등 노출과 리스크 서술의 변화",
         },
         {
           scoreComponent: "governance",
           label: "지배구조",
-          summary:
-            "주요 주주 및 계열회사의 보통주 지분율이 소폭 감소했으며, 발행주식총수는 동일하나 의결권 행사 가능 주식수가 변경되었습니다.",
+          summary: "주주 구성·지분율·의결권 관련 공시 변동",
         },
       ],
     },
@@ -237,10 +248,55 @@ export const ko = {
     },
     finalCta: {
       title: "지금 시작하세요",
-      subtitle: "DART 공시 기반 AI 분석부터 모의투자까지 — 무료로 가입하고 바로 이용해보세요.",
+      subtitle: "기업 분석부터 모의투자까지 — 무료로 가입하고 바로 이용해보세요.",
       signup: "무료 회원가입",
       company: "기업 분석 시작하기",
       trading: "모의투자 먼저 해보기",
+    },
+  },
+  pricingPage: {
+    eyebrow: "요금제",
+    title: "투자 리서치에 맞는 플랜을 선택하세요",
+    subtitle: "무료로 시작하고, 더 깊은 분석이 필요할 때 언제든 업그레이드하세요.",
+    recommended: "추천",
+    free: "무료",
+    perMonth: "/월",
+    startFree: "무료로 시작하기",
+    getStarted: "시작하기",
+    manageSubscription: "구독 관리",
+    faqTitle: "결제 안내",
+    faq1: "유료 플랜은 등록한 결제 수단으로 매월 자동 청구됩니다.",
+    faq2: "플랜 변경은 즉시 적용되며, 차액은 일할 계산됩니다.",
+    faq3: "구독 해지 시 다음 결제일까지 서비스를 이용할 수 있습니다.",
+    alreadyMember: "이미 계정이 있으신가요?",
+    plans: {
+      BASIC: {
+        description: "가벼운 기업 분석이 필요한 개인 투자자",
+        features: [
+          "매일 오전 6시 토큰 10,000개 초기화",
+          "공시 요약/분석 열람",
+          "기업분석 열람",
+          "투자분석 리포트 생성",
+        ],
+      },
+      PRO: {
+        description: "전문적인 딥다이브 분석이 필요한 투자자",
+        features: [
+          "매일 오전 6시·오후 6시 토큰 30,000개 초기화",
+          "공시 요약/분석 열람",
+          "기업분석 열람",
+          "투자분석 리포트 생성",
+        ],
+      },
+      ENTERPRISE: {
+        description: "데이터 기반의 의사결정이 필요한 기관/법인",
+        features: [
+          "매일 오전 6시·오후 6시 토큰 50,000개 초기화",
+          "공시 요약/분석 열람",
+          "기업분석 열람",
+          "투자분석 리포트 생성",
+        ],
+      },
     },
   },
 };

@@ -1,17 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, Link, useNavigate } from "react-router";
 import { ArrowLeft, CheckCircle2, MessageCircle, Edit2, Trash2, X, Save, CornerDownRight } from "lucide-react";
-
-function Avatar({ src, alt, size = "md" }) {
-  const cls = size === "sm" ? "w-6 h-6" : size === "md" ? "w-8 h-8" : "w-10 h-10";
-  return (
-    <img
-      src={src || "/profile.png"}
-      alt={alt}
-      className={`${cls} rounded-full object-cover bg-slate-100 flex-shrink-0`}
-    />
-  );
-}
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 import { ko } from "date-fns/locale";
@@ -27,6 +16,28 @@ import {
   createReply,
   deleteReply,
 } from "../api/communityApi";
+import {
+  CARD,
+  PAGE_TITLE,
+  SECTION_TITLE,
+  INPUT,
+  TEXTAREA,
+  BTN_PRIMARY,
+  BTN_GHOST,
+  BTN_DANGER_GHOST,
+  BACK_LINK,
+} from "../communityUi";
+
+function Avatar({ src, alt, size = "md" }) {
+  const cls = size === "sm" ? "w-6 h-6" : size === "md" ? "w-8 h-8" : "w-10 h-10";
+  return (
+    <img
+      src={src || "/profile.png"}
+      alt={alt}
+      className={`${cls} rounded-full object-cover bg-slate-100 dark:bg-slate-800 flex-shrink-0`}
+    />
+  );
+}
 
 export function CommunityDetail() {
   const { id } = useParams();
@@ -41,9 +52,7 @@ export function CommunityDetail() {
   const [newAnswer, setNewAnswer] = useState("");
   const [answerSubmitting, setAnswerSubmitting] = useState(false);
 
-  // 대댓글: { [answerId]: Reply[] }
   const [replies, setReplies] = useState({});
-  // 대댓글 로딩 여부: { [answerId]: boolean }
   const [repliesLoaded, setRepliesLoaded] = useState({});
   const [replyingTo, setReplyingTo] = useState(null);
   const [replyInputs, setReplyInputs] = useState({});
@@ -96,7 +105,7 @@ export function CommunityDetail() {
     if (question?.isResolved) return;
     try {
       await acceptAnswer(answerId);
-      setAnswers((prev) => prev.map((a) => a.id === answerId ? { ...a, isAdopted: true } : a));
+      setAnswers((prev) => prev.map((a) => (a.id === answerId ? { ...a, isAdopted: true } : a)));
       setQuestion((prev) => ({ ...prev, isResolved: true }));
       toast.success("답변을 채택했습니다.");
     } catch (err) {
@@ -183,81 +192,75 @@ export function CommunityDetail() {
   };
 
   if (loading) {
-    return <div className="max-w-3xl mx-auto py-20 text-center text-slate-400">불러오는 중...</div>;
+    return (
+      <div className="container-sm py-20 text-center text-slate-400 dark:text-slate-500">불러오는 중...</div>
+    );
   }
 
   if (error || !question) {
     return (
-      <div className="max-w-3xl mx-auto py-20 text-center text-slate-500">
+      <div className="container-sm py-20 text-center text-slate-500 dark:text-slate-400">
         {error || "존재하지 않는 게시글입니다."}
         <br />
-        <Link to="/community" className="text-blue-600 mt-4 inline-block hover:underline">목록으로 돌아가기</Link>
+        <Link to="/community" className="text-blue-600 dark:text-blue-400 mt-4 inline-block hover:underline">
+          목록으로 돌아가기
+        </Link>
       </div>
     );
   }
 
   return (
-    <div className="max-w-3xl mx-auto flex flex-col gap-6 animate-in fade-in duration-500">
-      <Link to="/community" className="inline-flex items-center gap-1 text-slate-500 hover:text-slate-900 w-fit font-medium text-sm">
+    <div className="container-sm py-10 sm:py-12 flex flex-col gap-6">
+      <Link to="/community" className={BACK_LINK}>
         <ArrowLeft size={16} />
         목록으로
       </Link>
 
-      {/* 질문 카드 */}
-      <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm">
-        <div className="flex justify-between items-start mb-4">
-          <div className="flex items-center gap-2">
+      <div className={`${CARD} p-6 sm:p-8`}>
+        <div className="flex justify-between items-start mb-4 gap-4">
+          <div className="flex flex-wrap items-center gap-2">
             {question.stock && (
-              <span className="px-2.5 py-1 bg-slate-100 text-slate-600 text-xs font-bold rounded-md">
+              <span className="px-2 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-xs font-medium rounded-md">
                 {question.stock.companyName}
               </span>
             )}
             {question.isResolved ? (
-              <span className="flex items-center gap-1 text-emerald-600 text-xs font-bold bg-emerald-50 px-2.5 py-1 rounded-md">
-                <CheckCircle2 size={14} />
+              <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 text-xs font-medium bg-emerald-50 dark:bg-emerald-950/30 px-2 py-0.5 rounded-md">
+                <CheckCircle2 size={12} />
                 해결됨
               </span>
             ) : (
-              <span className="text-slate-500 text-xs font-bold bg-slate-50 px-2.5 py-1 rounded-md border border-slate-200">
+              <span className="text-slate-500 dark:text-slate-400 text-xs font-medium bg-slate-50 dark:bg-slate-800/50 px-2 py-0.5 rounded-md border border-slate-200 dark:border-slate-700">
                 답변 대기중
               </span>
             )}
           </div>
 
           {isAuthor && (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 flex-shrink-0">
               {!isEditing ? (
                 <>
                   <button
+                    type="button"
                     onClick={() => { setEditTitle(question.title); setEditContent(question.content); setIsEditing(true); }}
-                    className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-slate-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                    className={BTN_GHOST}
                   >
-                    <Edit2 size={16} />
+                    <Edit2 size={15} />
                     수정
                   </button>
-                  <button
-                    onClick={handleDelete}
-                    className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-slate-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                  >
-                    <Trash2 size={16} />
+                  <button type="button" onClick={handleDelete} className={BTN_DANGER_GHOST}>
+                    <Trash2 size={15} />
                     삭제
                   </button>
                 </>
               ) : (
                 <>
-                  <button
-                    onClick={() => setIsEditing(false)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"
-                  >
-                    <X size={16} />
+                  <button type="button" onClick={() => setIsEditing(false)} className={BTN_GHOST}>
+                    <X size={15} />
                     취소
                   </button>
-                  <button
-                    onClick={handleEditSave}
-                    disabled={editSubmitting}
-                    className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors disabled:opacity-50"
-                  >
-                    <Save size={16} />
+                  <button type="button" onClick={handleEditSave} disabled={editSubmitting} className={BTN_PRIMARY}>
+                    <Save size={15} />
                     {editSubmitting ? "저장 중..." : "저장"}
                   </button>
                 </>
@@ -271,17 +274,17 @@ export function CommunityDetail() {
             type="text"
             value={editTitle}
             onChange={(e) => setEditTitle(e.target.value)}
-            className="w-full text-2xl font-bold text-slate-900 mb-6 p-2 border border-slate-200 rounded-lg focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+            className={`${INPUT} text-lg font-semibold mb-5`}
           />
         ) : (
-          <h1 className="text-2xl font-bold text-slate-900 mb-6">{question.title}</h1>
+          <h1 className={`${PAGE_TITLE} mb-5`}>{question.title}</h1>
         )}
 
-        <div className="flex items-center gap-3 pb-6 border-b border-slate-100 mb-6">
+        <div className="flex items-center gap-3 pb-5 border-b border-slate-200 dark:border-slate-800 mb-5">
           <Avatar src={question.authorProfileImage} alt={question.authorNickname} size="lg" />
           <div>
-            <div className="font-semibold text-sm text-slate-900">{question.authorNickname}</div>
-            <div className="text-xs text-slate-500 font-medium">
+            <div className="font-medium text-sm text-slate-900 dark:text-slate-100">{question.authorNickname}</div>
+            <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
               {formatDistanceToNow(new Date(question.createdAt), { addSuffix: true, locale: ko })} · 조회 {question.views}
             </div>
           </div>
@@ -291,97 +294,101 @@ export function CommunityDetail() {
           <textarea
             value={editContent}
             onChange={(e) => setEditContent(e.target.value)}
-            className="w-full min-h-[200px] p-4 text-slate-700 leading-relaxed whitespace-pre-wrap border border-slate-200 rounded-lg focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 resize-y"
+            rows={10}
+            className={TEXTAREA}
           />
         ) : (
-          <div className="text-slate-700 leading-relaxed whitespace-pre-wrap min-h-[100px]">
+          <div className="text-slate-700 dark:text-slate-300 leading-relaxed whitespace-pre-wrap min-h-[80px] text-sm">
             {question.content}
           </div>
         )}
       </div>
 
-      {/* 답변 섹션 */}
-      <div className="mt-4">
-        <h3 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
-          <MessageCircle className="text-blue-600" />
-          답변 <span className="text-blue-600">{answers.length}</span>
+      <div>
+        <h3 className={`${SECTION_TITLE} mb-4 flex items-center gap-2`}>
+          <MessageCircle className="text-blue-600 dark:text-blue-400" size={20} />
+          답변 <span className="text-blue-600 dark:text-blue-400">{answers.length}</span>
         </h3>
 
-        <div className="space-y-4">
+        <div className="space-y-3">
           {answers.map((answer) => (
             <div
               key={answer.id}
-              className={`p-6 rounded-2xl border ${answer.isAdopted ? "bg-emerald-50/30 border-emerald-200" : "bg-white border-slate-200 shadow-sm"}`}
+              className={`p-5 rounded-xl border ${
+                answer.isAdopted
+                  ? "bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-900/50"
+                  : `${CARD}`
+              }`}
             >
-              <div className="flex items-start justify-between mb-4">
+              <div className="flex items-start justify-between mb-3 gap-3">
                 <div className="flex items-center gap-3">
-                  <div className={`rounded-full ${answer.isAdopted ? "ring-2 ring-emerald-400" : ""}`}>
+                  <div className={`rounded-full ${answer.isAdopted ? "ring-2 ring-emerald-400 dark:ring-emerald-600" : ""}`}>
                     <Avatar src={answer.authorProfileImage} alt={answer.authorNickname} size="md" />
                   </div>
                   <div>
-                    <div className="font-semibold text-sm text-slate-900 flex items-center gap-2">
+                    <div className="font-medium text-sm text-slate-900 dark:text-slate-100 flex items-center gap-2 flex-wrap">
                       {answer.authorNickname}
                       {answer.isAdopted && (
-                        <span className="text-xs font-bold text-emerald-600 bg-emerald-100 px-1.5 py-0.5 rounded flex items-center gap-1">
+                        <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded flex items-center gap-1">
                           <CheckCircle2 size={12} /> 채택된 답변
                         </span>
                       )}
                     </div>
-                    <div className="text-xs text-slate-500 font-medium mt-0.5">
+                    <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                       {formatDistanceToNow(new Date(answer.createdAt), { addSuffix: true, locale: ko })}
                     </div>
                   </div>
                 </div>
                 {isAuthor && !question.isResolved && (
                   <button
+                    type="button"
                     onClick={() => handleAccept(answer.id)}
-                    className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-emerald-200 text-emerald-600 hover:bg-emerald-50 transition-colors"
+                    className="text-xs font-medium px-3 py-1.5 rounded-md border border-emerald-200 dark:border-emerald-900/50 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 transition-colors flex-shrink-0"
                   >
                     채택하기
                   </button>
                 )}
               </div>
 
-              <div className="text-slate-700 leading-relaxed text-sm whitespace-pre-wrap ml-11">
+              <div className="text-slate-700 dark:text-slate-300 leading-relaxed text-sm whitespace-pre-wrap ml-11">
                 {answer.content}
               </div>
 
-              {/* 대댓글 목록 */}
               {repliesLoaded[answer.id] && (replies[answer.id] ?? []).length > 0 && (
-                <div className="ml-11 mt-4 space-y-3">
+                <div className="ml-11 mt-4 space-y-2">
                   {(replies[answer.id] ?? []).map((reply) => (
-                    <div key={reply.id} className="flex gap-3 group">
-                      <CornerDownRight size={15} className="text-slate-300 flex-shrink-0 mt-2" />
-                      <div className="flex-1 bg-slate-50 rounded-xl px-4 py-3 border border-slate-100">
+                    <div key={reply.id} className="flex gap-2 group">
+                      <CornerDownRight size={14} className="text-slate-300 dark:text-slate-600 flex-shrink-0 mt-2" />
+                      <div className="flex-1 rounded-lg px-3 py-2.5 border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40">
                         <div className="flex items-center justify-between mb-1">
                           <div className="flex items-center gap-2">
                             <Avatar src={reply.authorProfileImage} alt={reply.authorNickname} size="sm" />
-                            <span className="text-xs font-bold text-slate-800">{reply.authorNickname}</span>
-                            <span className="text-xs text-slate-400">
+                            <span className="text-xs font-medium text-slate-800 dark:text-slate-200">{reply.authorNickname}</span>
+                            <span className="text-xs text-slate-400 dark:text-slate-500">
                               {formatDistanceToNow(new Date(reply.createdAt), { addSuffix: true, locale: ko })}
                             </span>
                           </div>
                           {user && user.userId === reply.authorId && (
                             <button
+                              type="button"
                               onClick={() => handleDeleteReply(answer.id, reply.id)}
-                              className="opacity-0 group-hover:opacity-100 transition-opacity text-slate-300 hover:text-red-500 p-1 rounded"
+                              className="opacity-0 group-hover:opacity-100 transition-opacity text-slate-400 hover:text-red-500 dark:hover:text-red-400 p-1 rounded"
                             >
                               <Trash2 size={12} />
                             </button>
                           )}
                         </div>
-                        <p className="text-sm text-slate-700 leading-relaxed ml-8">{reply.content}</p>
+                        <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed ml-8">{reply.content}</p>
                       </div>
                     </div>
                   ))}
                 </div>
               )}
 
-              {/* 대댓글 토글 버튼 / 입력 */}
               <div className="ml-11 mt-3">
                 {replyingTo === answer.id ? (
-                  <div className="flex gap-2 items-start animate-in fade-in slide-in-from-top-1 duration-150">
-                    <CornerDownRight size={15} className="text-slate-300 flex-shrink-0 mt-2.5" />
+                  <div className="flex gap-2 items-start">
+                    <CornerDownRight size={14} className="text-slate-300 dark:text-slate-600 flex-shrink-0 mt-2.5" />
                     <div className="flex-1">
                       <textarea
                         autoFocus
@@ -395,19 +402,17 @@ export function CommunityDetail() {
                         }}
                         placeholder="대댓글을 입력하세요. (Enter로 등록)"
                         rows={2}
-                        className="w-full px-3 py-2 text-sm bg-white border border-slate-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 resize-none"
+                        className={`${TEXTAREA} resize-none`}
                       />
                       <div className="flex justify-end gap-2 mt-1.5">
                         <button
+                          type="button"
                           onClick={() => { setReplyingTo(null); setReplyInputs((prev) => ({ ...prev, [answer.id]: "" })); }}
-                          className="text-xs font-semibold text-slate-500 hover:text-slate-700 px-3 py-1.5 rounded-lg hover:bg-slate-100 transition-colors"
+                          className={BTN_GHOST}
                         >
                           취소
                         </button>
-                        <button
-                          onClick={() => handleSubmitReply(answer.id)}
-                          className="text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 px-3 py-1.5 rounded-lg transition-colors"
-                        >
+                        <button type="button" onClick={() => handleSubmitReply(answer.id)} className={BTN_PRIMARY}>
                           등록
                         </button>
                       </div>
@@ -415,8 +420,9 @@ export function CommunityDetail() {
                   </div>
                 ) : (
                   <button
+                    type="button"
                     onClick={() => handleLoadReplies(answer.id)}
-                    className="flex items-center gap-1 text-xs font-semibold text-slate-400 hover:text-blue-600 transition-colors py-1"
+                    className="flex items-center gap-1 text-xs font-medium text-slate-400 dark:text-slate-500 hover:text-blue-600 dark:hover:text-blue-400 transition-colors py-1"
                   >
                     <CornerDownRight size={13} />
                     대댓글 {answer.replyCount > 0 ? `${answer.replyCount}개` : "달기"}
@@ -427,27 +433,28 @@ export function CommunityDetail() {
           ))}
 
           {answers.length === 0 && (
-            <div className="text-center py-10 text-slate-500 bg-white border border-slate-200 rounded-2xl shadow-sm border-dashed">
+            <div className={`${CARD} text-center py-10 text-slate-500 dark:text-slate-400 border-dashed`}>
               아직 작성된 답변이 없습니다. 첫 번째 답변을 남겨보세요!
             </div>
           )}
         </div>
       </div>
 
-      {/* 답변 작성 */}
-      <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm mt-4">
-        <h4 className="font-bold text-slate-900 mb-4">답변 작성하기</h4>
+      <div className={`${CARD} p-5 sm:p-6`}>
+        <h4 className={`${SECTION_TITLE} mb-4`}>답변 작성하기</h4>
         <textarea
           value={newAnswer}
           onChange={(e) => setNewAnswer(e.target.value)}
           placeholder="질문에 대한 답변을 남겨주세요. 타인을 비방하는 글은 제재될 수 있습니다."
-          className="w-full min-h-[120px] p-4 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 resize-none text-sm mb-4"
+          rows={5}
+          className={`${TEXTAREA} mb-4 bg-slate-50 dark:bg-slate-800/40`}
         />
         <div className="flex justify-end">
           <button
+            type="button"
             onClick={handleSubmitAnswer}
             disabled={answerSubmitting}
-            className="bg-slate-900 text-white px-6 py-2.5 rounded-xl font-medium hover:bg-slate-800 transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+            className={BTN_PRIMARY}
           >
             {answerSubmitting ? "등록 중..." : "답변 등록"}
           </button>

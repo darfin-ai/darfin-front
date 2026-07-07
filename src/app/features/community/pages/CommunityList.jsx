@@ -1,6 +1,10 @@
 import { useState, useEffect, useCallback } from "react";
 import { Link } from "react-router";
 import { Search, PenSquare, MessageCircle, CheckCircle2 } from "lucide-react";
+import { formatDistanceToNow } from "date-fns";
+import { ko } from "date-fns/locale";
+import { getQuestions } from "../api/communityApi";
+import { CARD, PAGE_TITLE, PAGE_DESC, BTN_PRIMARY } from "../communityUi";
 
 function Avatar({ src, alt, size = "sm" }) {
   const cls = size === "sm" ? "w-6 h-6" : "w-8 h-8";
@@ -8,13 +12,10 @@ function Avatar({ src, alt, size = "sm" }) {
     <img
       src={src || "/profile.png"}
       alt={alt}
-      className={`${cls} rounded-full object-cover bg-slate-100 flex-shrink-0`}
+      className={`${cls} rounded-full object-cover bg-slate-100 dark:bg-slate-800 flex-shrink-0`}
     />
   );
 }
-import { formatDistanceToNow } from "date-fns";
-import { ko } from "date-fns/locale";
-import { getQuestions } from "../api/communityApi";
 
 export function CommunityList() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -48,71 +49,68 @@ export function CommunityList() {
   }, [searchTerm, fetchQuestions]);
 
   return (
-    <div className="max-w-4xl mx-auto flex flex-col gap-6 animate-in fade-in duration-500">
-      <div className="flex items-center justify-between">
+    <div className="container py-10 sm:py-12 flex flex-col gap-6">
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">종목 토론 커뮤니티</h1>
-          <p className="text-slate-500 mt-1">궁금한 종목에 대해 질문하고 답변을 받아보세요.</p>
+          <h1 className={PAGE_TITLE}>종목 토론 커뮤니티</h1>
+          <p className={`${PAGE_DESC} mt-2`}>궁금한 종목에 대해 질문하고 답변을 받아보세요.</p>
         </div>
-        <Link
-          to="/community/write"
-          className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-xl font-medium hover:bg-blue-700 transition-colors"
-        >
-          <PenSquare size={18} />
+        <Link to="/community/write" className={BTN_PRIMARY}>
+          <PenSquare size={16} />
           질문하기
         </Link>
       </div>
 
-      <div className="bg-white p-2 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-2">
-        <Search className="text-slate-400 ml-3" size={20} />
+      <div className={`${CARD} p-1 flex items-center gap-2`}>
+        <Search className="text-slate-400 dark:text-slate-500 ml-2.5 flex-shrink-0" size={18} />
         <input
           type="text"
           placeholder="게시글 제목, 내용, 종목명 검색..."
-          className="flex-1 bg-transparent border-none outline-none py-2 text-slate-900 placeholder:text-slate-400"
+          className="flex-1 bg-transparent border-none outline-none py-2 text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
           value={inputValue}
           onChange={(e) => setInputValue(e.target.value)}
         />
       </div>
 
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+      <div className={`${CARD} overflow-hidden`}>
         {loading ? (
-          <div className="py-20 text-center text-slate-400">불러오는 중...</div>
+          <div className="py-20 text-center text-slate-400 dark:text-slate-500">불러오는 중...</div>
         ) : error ? (
-          <div className="py-20 text-center text-red-500">{error}</div>
+          <div className="py-20 text-center text-red-500 dark:text-red-400">{error}</div>
         ) : questions.length > 0 ? (
-          <div className="divide-y divide-slate-100">
+          <div className="divide-y divide-slate-100 dark:divide-slate-800">
             {questions.map((q) => (
               <Link
                 key={q.id}
                 to={`/community/${q.id}`}
-                className="block p-5 hover:bg-slate-50 transition-colors"
+                className="block p-5 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors"
               >
                 <div className="flex items-center gap-2 mb-2">
                   {q.stock && (
-                    <span className="px-2 py-1 bg-slate-100 text-slate-600 text-xs font-semibold rounded-md">
+                    <span className="px-2 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-xs font-medium rounded-md">
                       {q.stock.companyName}
                     </span>
                   )}
                   {q.isResolved ? (
-                    <span className="flex items-center gap-1 text-emerald-600 text-xs font-semibold bg-emerald-50 px-2 py-1 rounded-md">
+                    <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 text-xs font-medium bg-emerald-50 dark:bg-emerald-950/30 px-2 py-0.5 rounded-md">
                       <CheckCircle2 size={12} />
                       해결됨
                     </span>
                   ) : (
-                    <span className="text-slate-500 text-xs font-semibold bg-slate-50 px-2 py-1 rounded-md border border-slate-200">
+                    <span className="text-slate-500 dark:text-slate-400 text-xs font-medium bg-slate-50 dark:bg-slate-800/50 px-2 py-0.5 rounded-md border border-slate-200 dark:border-slate-700">
                       답변 대기중
                     </span>
                   )}
                 </div>
-                <h2 className="text-lg font-bold text-slate-900 mb-1 line-clamp-1">{q.title}</h2>
-                <div className="flex items-center gap-4 text-xs text-slate-400 font-medium">
-                  <span className="flex items-center gap-1.5 text-slate-600">
+                <h2 className="text-base font-semibold text-slate-900 dark:text-slate-100 mb-1.5 line-clamp-1">{q.title}</h2>
+                <div className="flex items-center gap-4 text-xs text-slate-400 dark:text-slate-500">
+                  <span className="flex items-center gap-1.5 text-slate-600 dark:text-slate-300">
                     <Avatar src={q.authorProfileImage} alt={q.authorNickname} />
                     {q.authorNickname}
                   </span>
                   <span>{formatDistanceToNow(new Date(q.createdAt), { addSuffix: true, locale: ko })}</span>
                   <span>조회 {q.views}</span>
-                  <span className="flex items-center gap-1 text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded-full ml-auto">
+                  <span className="flex items-center gap-1 text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/30 px-1.5 py-0.5 rounded-full ml-auto">
                     <MessageCircle size={14} />
                     {q.answerCount}
                   </span>
@@ -121,7 +119,7 @@ export function CommunityList() {
             ))}
           </div>
         ) : (
-          <div className="py-20 text-center text-slate-500">
+          <div className="py-20 text-center text-slate-500 dark:text-slate-400">
             {searchTerm ? "검색 결과가 없습니다." : "등록된 질문이 없습니다."}
           </div>
         )}

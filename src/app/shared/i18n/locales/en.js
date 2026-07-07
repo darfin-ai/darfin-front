@@ -4,6 +4,8 @@ export const en = {
     disclosure: "Filings",
     trading: "Trading",
     community: "Community",
+    features: "Features",
+    pricing: "Pricing",
     login: "Log in",
     signup: "Start for free",
     logout: "Log out",
@@ -14,6 +16,7 @@ export const en = {
     menuClose: "Close menu",
     loginRequired: "Please log in to use this feature.",
     logoutSuccess: "You have been logged out.",
+    subscription: "Subscription",
   },
   footer: {
     terms: "Terms of service",
@@ -57,6 +60,20 @@ export const en = {
       imageTypeError: "Only image files can be uploaded.",
       imageSizeError: "Images must be 5MB or smaller.",
       profilePreviewAlt: "Profile preview",
+    },
+    login: {
+      email: "Email",
+      password: "Password",
+      submit: "Log in with email",
+      submitting: "Logging in...",
+      success: "You are logged in.",
+      fail: "Log in failed.",
+      forgotId: "Find account",
+      resetPassword: "Reset password",
+      signup: "Sign up",
+      socialDivider: "Or continue with",
+      kakao: "Continue with Kakao",
+      google: "Continue with Google",
     },
   },
   landing: {
@@ -127,12 +144,12 @@ export const en = {
       items: [
         {
           eyebrow: "Company analysis",
-          title: "Search a filing—AI reads it first",
-          desc: "Search any company and AI reads quarterly filings end to end, highlighting what changed from period to period.",
+          title: "Company research that flows on one screen",
+          desc: "Business, performance, and quarterly changes in connected tabs—with AI highlights tied to source text.",
           bullets: [
-            "Financials, governance, risk, and management commentary in one view",
-            "Automatic quarter-over-quarter comparison",
-            "Every insight links back to source text",
+            "Overview: business, shareholders, risk, and dividends at a glance",
+            "Financials: revenue, profit, and cash flow charts",
+            "Filing changes: automatic quarter-over-quarter text diffs",
           ],
           cta: "Explore company analysis",
         },
@@ -184,9 +201,9 @@ export const en = {
       ],
     },
     disclosures: {
-      eyebrow: "Live disclosure feed",
-      title: "Today's key filings",
-      subtitle: "See today's most important AI-analyzed disclosures first.",
+      eyebrow: "Timely disclosures",
+      title: "Today's new filings",
+      subtitle: "Browse the latest event-driven disclosures by company.",
       viewAll: "View all",
       feedLabel: "Today's key disclosures",
       items: [
@@ -199,37 +216,30 @@ export const en = {
       ],
     },
     lenses: {
-      eyebrow: "One filing, four lenses",
-      title: "This much signal from a single report",
-      subtitlePrefix: "From the same",
-      subtitleSuffix:
-        "report shown above, AI surfaces financial, management, risk, and governance changes together.",
-      impactHigh: "High impact",
-      impactMedium: "Medium impact",
+      eyebrow: "How AI reads a company",
+      title: "Four lenses, one detail page",
+      subtitle: "On each company page, split financial, management, risk, and governance changes—with source text for every insight.",
+      cta: "Explore company analysis",
       items: [
         {
           scoreComponent: "financialChange",
           label: "Financial change",
-          summary:
-            "Q1 2026 revenue rose 69.2% YoY to ₩133.87T. Current assets and total assets improved materially. Segment mix, pricing, input costs, and capex all shifted.",
+          summary: "Revenue, profit, assets, and segment mix shifts",
         },
         {
           scoreComponent: "managementEmphasis",
-          label: "Management emphasis",
-          summary:
-            "R&D spend reached ₩11.3T in Q1 2026. Patent portfolio at 288,770 filings globally; TV/mobile strategy and product lineup updated.",
+          label: "Management focus",
+          summary: "R&D, strategy, and what leadership highlights",
         },
         {
           scoreComponent: "riskEscalation",
           label: "Risk change",
-          summary:
-            "OCI and net income sensitivity to equity price risk changed as of Q1 2026 end. FX forward contract count fell to 3,308.",
+          summary: "FX, equity, and derivatives exposure updates",
         },
         {
           scoreComponent: "governance",
           label: "Governance",
-          summary:
-            "Major shareholder and affiliate common-share ratios edged lower. Shares outstanding unchanged; voting shares eligible shifted.",
+          summary: "Shareholder structure and voting-right changes",
         },
       ],
     },
@@ -239,10 +249,55 @@ export const en = {
     },
     finalCta: {
       title: "Get started",
-      subtitle: "From DART-grounded AI analysis to paper trading—sign up free and explore now.",
+      subtitle: "From company analysis to paper trading—sign up free and explore now.",
       signup: "Create free account",
       company: "Explore company analysis",
       trading: "Try paper trading first",
+    },
+  },
+  pricingPage: {
+    eyebrow: "Pricing",
+    title: "Choose the plan that fits your research",
+    subtitle: "Start free and upgrade anytime when you need deeper analysis.",
+    recommended: "Popular",
+    free: "Free",
+    perMonth: "/mo",
+    startFree: "Start for free",
+    getStarted: "Get started",
+    manageSubscription: "Manage subscription",
+    faqTitle: "Billing notes",
+    faq1: "Paid plans renew monthly on your saved payment method.",
+    faq2: "Plan changes take effect immediately; price differences are prorated.",
+    faq3: "If you cancel, you keep access until the end of the billing period.",
+    alreadyMember: "Already have an account?",
+    plans: {
+      BASIC: {
+        description: "Individual investors who need light company analysis",
+        features: [
+          "10,000 tokens reset daily at 6:00 AM",
+          "Disclosure summaries and analysis",
+          "Company analysis access",
+          "Investment report generation",
+        ],
+      },
+      PRO: {
+        description: "Investors who need professional deep-dive analysis",
+        features: [
+          "30,000 tokens reset daily at 6:00 AM and 6:00 PM",
+          "Disclosure summaries and analysis",
+          "Company analysis access",
+          "Investment report generation",
+        ],
+      },
+      ENTERPRISE: {
+        description: "Institutions and teams making data-driven decisions",
+        features: [
+          "50,000 tokens reset daily at 6:00 AM and 6:00 PM",
+          "Disclosure summaries and analysis",
+          "Company analysis access",
+          "Investment report generation",
+        ],
+      },
     },
   },
 };

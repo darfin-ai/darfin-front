@@ -21,10 +21,10 @@ export function Login() {
     try {
       const tokens = await apiLogin({ email, password });
       login(tokens);
-      toast.success("로그인되었습니다.");
+      toast.success(t("auth.login.success"));
       navigate("/");
     } catch (err) {
-      const msg = err?.message || "로그인에 실패했습니다.";
+      const msg = err?.message || t("auth.login.fail");
       toast.error(msg);
     } finally {
       setLoading(false);
@@ -44,12 +44,11 @@ export function Login() {
           </span>
         </div>
 
-        {/* Form body */}
         <div className="px-6 pt-6 pb-5">
           <form onSubmit={handleLogin}>
             <div className="mb-3.5">
               <label className={authLabelClassName}>
-                이메일
+                {t("auth.login.email")}
               </label>
               <div className="relative">
                 <Mail
@@ -69,7 +68,7 @@ export function Login() {
 
             <div className="mb-[18px]">
               <label className={authLabelClassName}>
-                비밀번호
+                {t("auth.login.password")}
               </label>
               <div className="relative">
                 <Lock
@@ -92,41 +91,39 @@ export function Login() {
               disabled={loading}
               className={authPrimaryButtonClassName}
             >
-              {loading ? "로그인 중..." : "이메일로 로그인"}
+              {loading ? t("auth.login.submitting") : t("auth.login.submit")}
             </button>
           </form>
 
-          {/* Sub-links */}
           <div className="flex items-center justify-center gap-2.5 mt-3.5">
             <Link
               to="/forgot-id"
               className="text-xs text-slate-500 dark:text-slate-400 no-underline hover:text-slate-900 dark:hover:text-slate-100 transition-colors"
             >
-              아이디 찾기
+              {t("auth.login.forgotId")}
             </Link>
             <div className="w-px h-[11px] bg-slate-200 dark:bg-slate-700" />
             <Link
               to="/reset-password"
               className="text-xs text-slate-500 dark:text-slate-400 no-underline hover:text-slate-900 dark:hover:text-slate-100 transition-colors"
             >
-              비밀번호 재설정
+              {t("auth.login.resetPassword")}
             </Link>
             <div className="w-px h-[11px] bg-slate-200 dark:bg-slate-700" />
             <Link
               to="/signup"
               className="text-xs font-semibold text-blue-600 dark:text-blue-400 no-underline hover:text-blue-700 dark:hover:text-blue-300 transition-colors"
             >
-              회원가입
+              {t("auth.login.signup")}
             </Link>
           </div>
         </div>
 
-        {/* Social login */}
         <div className="border-t border-slate-200 dark:border-slate-700 px-6 py-5">
           <div className="flex items-center gap-2.5 mb-3.5">
             <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700" />
             <span className="text-[11px] font-medium text-slate-400 dark:text-slate-500 whitespace-nowrap">
-              또는 소셜 로그인
+              {t("auth.login.socialDivider")}
             </span>
             <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700" />
           </div>
@@ -143,7 +140,7 @@ export function Login() {
                   fill="#000000"
                 />
               </svg>
-              카카오 로그인
+              {t("auth.login.kakao")}
             </button>
 
             <button
@@ -169,7 +166,7 @@ export function Login() {
                   fill="#EA4335"
                 />
               </svg>
-              구글 로그인
+              {t("auth.login.google")}
             </button>
           </div>
         </div>

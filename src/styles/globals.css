@@ -20,6 +20,11 @@
   scrollbar-width: thin;
 }
 
+/* Keep-all wraps Korean at word boundaries; no-op for non-CJK text */
+body {
+  word-break: keep-all;
+}
+
 /* Landing / marketing layout widths */
 .container-sm,
 .container,
