@@ -3,6 +3,8 @@
 // 검색은 disclosure + stock + disclosure_type + ai_summary_result를 JOIN한 결과를
 // 페이지 단위로 받아온다(서버 사이드 정렬·페이지네이션).
 
+import { request } from "../../../shared/api/apiClient";
+
 const API_BASE_URL = import.meta.env?.VITE_API_BASE_URL ?? "http://localhost:8080";
 
 /**
@@ -195,19 +197,10 @@ export async function getDisclosureOriginalText(rceptNo) {
  * @param {string} params.dartContext - getDisclosureOriginalText로 받은 원문 평문
  */
 export async function generateSummary({ rceptNo, corpName, dartContext }) {
-  const response = await fetch(`${API_BASE_URL}/api/summary`, {
+  return request("/api/summary", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ rceptNo, corpName, dartContext })
   });
-
-  const data = await response.json().catch(() => null);
-
-  if (!response.ok || data?.success === false) {
-    throw new Error(data?.error ?? data?.errorMessage ?? `AI 요약 생성에 실패했습니다 (HTTP ${response.status})`);
-  }
-
-  return data;
 }
 
 /**
@@ -220,19 +213,10 @@ export async function generateSummary({ rceptNo, corpName, dartContext }) {
  * @param {string} params.dartFullText - getDisclosureOriginalText로 받은 원문 평문(압축하지 않은 전체)
  */
 export async function generateAnalysis({ rceptNo, corpName, dartFullText }) {
-  const response = await fetch(`${API_BASE_URL}/api/analysis`, {
+  return request("/api/analysis", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ rceptNo, corpName, dartFullText })
   });
-
-  const data = await response.json().catch(() => null);
-
-  if (!response.ok || data?.success === false) {
-    throw new Error(data?.error ?? data?.errorMessage ?? `AI 핵심 분석 생성에 실패했습니다 (HTTP ${response.status})`);
-  }
-
-  return data;
 }
 
 function toDateOnly(date) {
