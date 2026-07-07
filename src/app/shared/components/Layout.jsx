@@ -1,15 +1,13 @@
 import { useState, useEffect } from "react";
 import { Outlet, Link, useNavigate, useLocation } from "react-router";
 import { motion, AnimatePresence } from "motion/react";
-import { Search, BookOpen, BarChart2, TrendingUp, MessageSquare, UserCircle, LogOut, Menu, X } from "lucide-react";
+import { BookOpen, BarChart2, TrendingUp, MessageSquare, UserCircle, LogOut, Menu, X } from "lucide-react";
 import { Toaster } from "sonner";
 import { useAuth } from "../../features/auth";
 import { toast } from "sonner";
 import { useLocale } from "../i18n";
 import { ThemeToggle } from "./ThemeToggle";
 import { LocaleToggle } from "./LocaleToggle";
-
-const PROTECTED_PATHS = ["/company", "/disclosure", "/community"];
 
 export function Layout() {
   const navigate = useNavigate();
@@ -21,15 +19,6 @@ export function Layout() {
   useEffect(() => {
     setIsMobileMenuOpen(false);
   }, [location.pathname]);
-
-  const handleSearch = (e) => {
-    e.preventDefault();
-    const formData = new FormData(e.currentTarget);
-    const query = formData.get("query");
-    if (query) {
-      navigate(`/company/${encodeURIComponent(query)}`);
-    }
-  };
 
   const handleServiceClick = (e, path) => {
     if (!isLoggedIn && path !== "/trading") {
@@ -52,13 +41,6 @@ export function Layout() {
     { to: "/community", icon: <MessageSquare size={16} />, label: t("nav.community") },
   ];
 
-  const hideHeaderSearch =
-    location.pathname === "/" ||
-    location.pathname.startsWith("/company") ||
-    location.pathname === "/disclosure" ||
-    location.pathname.startsWith("/trading") ||
-    location.pathname.startsWith("/community");
-
   const isAuthPage = ["/login", "/signup", "/forgot-id", "/reset-password"].includes(location.pathname);
 
   return (
@@ -71,26 +53,6 @@ export function Layout() {
               <Link to="/" className="flex items-center gap-2 group flex-shrink-0">
                 <span className="text-2xl font-bold text-slate-900 dark:text-slate-100">Darfin</span>
               </Link>
-
-              {!hideHeaderSearch && (
-                <div className="hidden md:block min-w-0 flex-1 max-w-sm lg:max-w-md">
-                  <form onSubmit={handleSearch} className="relative">
-                    <label htmlFor="header-company-search" className="sr-only">
-                      {t("nav.searchPlaceholderShort")}
-                    </label>
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <Search className="h-4 w-4 text-slate-400" aria-hidden="true" />
-                    </div>
-                    <input
-                      id="header-company-search"
-                      type="text"
-                      name="query"
-                      className="block w-full pl-10 pr-3 py-2 border border-slate-200 dark:border-slate-700 rounded-full text-sm placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 bg-slate-50 dark:bg-slate-800 dark:text-slate-100 transition-shadow"
-                      placeholder={t("nav.searchPlaceholderShort")}
-                    />
-                  </form>
-                </div>
-              )}
             </div>
 
             <div className="flex md:hidden items-center gap-1 flex-shrink-0">
@@ -142,12 +104,20 @@ export function Layout() {
                   <span className="hidden lg:inline">{t("nav.logout")}</span>
                 </button>
               ) : (
-                <Link
-                  to="/login"
-                  className="text-sm font-medium text-white bg-blue-600 px-3 lg:px-4 py-2 rounded-full hover:bg-blue-700 transition-colors whitespace-nowrap"
-                >
-                  {t("nav.login")}
-                </Link>
+                <div className="flex items-center gap-2">
+                  <Link
+                    to="/login"
+                    className="text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 px-2 lg:px-3 py-2 rounded-full transition-colors whitespace-nowrap"
+                  >
+                    {t("nav.login")}
+                  </Link>
+                  <Link
+                    to="/signup"
+                    className="text-sm font-medium text-white bg-blue-600 px-3 lg:px-4 py-2 rounded-full hover:bg-blue-700 transition-colors whitespace-nowrap"
+                  >
+                    {t("nav.signup")}
+                  </Link>
+                </div>
               )}
             </nav>
           </div>
@@ -163,22 +133,6 @@ export function Layout() {
               className="md:hidden absolute left-0 right-0 top-full border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-lg max-h-[calc(100vh-4rem)] overflow-y-auto custom-scrollbar"
             >
               <div className="px-4 py-4 space-y-4">
-                <form onSubmit={handleSearch} className="relative">
-                  <label htmlFor="mobile-company-search" className="sr-only">
-                    {t("nav.searchPlaceholderShort")}
-                  </label>
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <Search className="h-4 w-4 text-slate-400" aria-hidden="true" />
-                  </div>
-                  <input
-                    id="mobile-company-search"
-                    type="text"
-                    name="query"
-                    className="block w-full pl-10 pr-3 py-2.5 border border-slate-200 dark:border-slate-700 rounded-full text-sm placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 bg-slate-50 dark:bg-slate-800 dark:text-slate-100"
-                    placeholder={t("nav.searchPlaceholderShort")}
-                  />
-                </form>
-
                 <nav className="flex flex-col gap-1">
                   {navItems.map(({ to, icon, label }) => (
                     <Link
@@ -212,12 +166,20 @@ export function Layout() {
                       {t("nav.logout")}
                     </button>
                   ) : (
-                    <Link
-                      to="/login"
-                      className="block w-full text-center text-sm font-medium text-white bg-blue-600 px-4 py-2.5 rounded-full hover:bg-blue-700 transition-colors"
-                    >
-                      {t("nav.login")}
-                    </Link>
+                    <div className="flex flex-col gap-2">
+                      <Link
+                        to="/signup"
+                        className="block w-full text-center text-sm font-medium text-white bg-blue-600 px-4 py-2.5 rounded-full hover:bg-blue-700 transition-colors"
+                      >
+                        {t("nav.signup")}
+                      </Link>
+                      <Link
+                        to="/login"
+                        className="block w-full text-center text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 border border-slate-200 dark:border-slate-700 px-4 py-2.5 rounded-full transition-colors"
+                      >
+                        {t("nav.login")}
+                      </Link>
+                    </div>
                   )}
                 </div>
               </div>

@@ -5,6 +5,7 @@ export const ko = {
     trading: "모의투자",
     community: "커뮤니티",
     login: "로그인",
+    signup: "무료로 시작하기",
     logout: "로그아웃",
     mypage: "마이페이지",
     searchPlaceholder: "기업명 또는 종목코드 검색 (예: 삼성전자)",

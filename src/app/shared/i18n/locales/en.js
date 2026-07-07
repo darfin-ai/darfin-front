@@ -5,6 +5,7 @@ export const en = {
     trading: "Trading",
     community: "Community",
     login: "Log in",
+    signup: "Start for free",
     logout: "Log out",
     mypage: "My page",
     searchPlaceholder: "Search by company name or ticker (e.g. Samsung)",
