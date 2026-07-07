@@ -154,7 +154,7 @@ function CredibilityStatValue({ stat }) {
   return stat.value;
 }
 
-function HeroDemo() {
+function HeroDemo({ active = false }) {
   const { t } = useLocale();
   const { resolvedTheme } = useTheme();
   const demo = t("landing.demo.snapshot");
@@ -234,26 +234,25 @@ function HeroDemo() {
   }, [clearTimers, demo.hops, reduceMotion, showEndState, summaryText.length]);
 
   useEffect(() => {
-    showEndState();
     setIsTouchDevice(window.matchMedia("(hover: none)").matches);
     return clearTimers;
-  }, [clearTimers, showEndState]);
+  }, [clearTimers]);
+
+  useEffect(() => {
+    if (reduceMotion) {
+      showEndState();
+      return;
+    }
+    if (active) playSequence();
+    else showEndState();
+  }, [active, playSequence, reduceMotion, showEndState]);
 
   const showSummary = step >= 6;
   const showHops = step >= 7;
   const summaryStreaming = isPlaying && streamedLength < summaryText.length;
 
   return (
-    <div
-      className={`${CARD} overflow-hidden shadow-sm lg:transition-shadow lg:hover:shadow-md dark:shadow-none`}
-      onMouseEnter={() => { if (!reduceMotion) playSequence(); }}
-      onMouseLeave={() => { if (!reduceMotion) showEndState(); }}
-      onClick={() => {
-        if (!isTouchDevice || reduceMotion) return;
-        if (isPlaying) showEndState();
-        else playSequence();
-      }}
-    >
+    <div className={`${CARD} overflow-hidden shadow-sm dark:shadow-none`}>
       <div className="px-5 py-3.5 flex items-center justify-between border-b border-slate-100 dark:border-slate-800">
         <div>
           <span className="text-sm font-medium text-slate-900 dark:text-slate-100">{demo.companyName}</span>
@@ -283,7 +282,7 @@ function HeroDemo() {
         </button>
       </div>
 
-      {!isPlaying && (
+      {!isPlaying && !active && isTouchDevice && (
         <p className="lg:hidden mx-5 mb-3 text-xs text-center text-slate-400 dark:text-slate-500">{t("landing.demo.tapReplay")}</p>
       )}
 
@@ -417,12 +416,24 @@ function CompanyMarquee() {
   const rowA = [...topKospiCompanies, ...topKospiCompanies];
   const rowB = [...topKosdaqCompanies, ...topKosdaqCompanies];
   return (
-    <div className="overflow-hidden space-y-5 py-2" aria-hidden="true">
-      <div className="flex gap-4 w-max" style={{ animation: "marquee 42s linear infinite" }}>
-        {rowA.map((c, i) => <CompanyBadge key={`kospi-${c.id}-${i}`} company={c} index={i} />)}
-      </div>
-      <div className="flex gap-4 w-max" style={{ animation: "marquee-reverse 42s linear infinite" }}>
-        {rowB.map((c, i) => <CompanyBadge key={`kosdaq-${c.id}-${i}`} company={c} index={i + 3} />)}
+    <div className="container">
+      <div className="relative overflow-hidden py-2">
+        <div className="space-y-5" aria-hidden="true">
+          <div className="flex gap-4 w-max" style={{ animation: "marquee 42s linear infinite" }}>
+            {rowA.map((c, i) => <CompanyBadge key={`kospi-${c.id}-${i}`} company={c} index={i} />)}
+          </div>
+          <div className="flex gap-4 w-max" style={{ animation: "marquee-reverse 42s linear infinite" }}>
+            {rowB.map((c, i) => <CompanyBadge key={`kosdaq-${c.id}-${i}`} company={c} index={i + 3} />)}
+          </div>
+        </div>
+        <div
+          className="pointer-events-none absolute inset-y-0 left-0 z-10 w-10 sm:w-16 bg-gradient-to-r from-slate-50 dark:from-slate-950 to-transparent"
+          aria-hidden
+        />
+        <div
+          className="pointer-events-none absolute inset-y-0 right-0 z-10 w-10 sm:w-16 bg-gradient-to-l from-slate-50 dark:from-slate-950 to-transparent"
+          aria-hidden
+        />
       </div>
       <style>{`
         @keyframes marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
@@ -607,6 +618,96 @@ function CommunityMockup({ active = false }) {
 }
 
 const WALKTHROUGH_MOCKUP_TILTS = [-0.6, 0.6, -0.5];
+const HERO_MOCKUP_TILT = 0.5;
+const DART_LOGO_URL = "https://dart.fss.or.kr/";
+
+function HeroDataTrust() {
+  const { t } = useLocale();
+  return (
+    <a
+      href={DART_LOGO_URL}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="inline-flex items-center gap-3 mb-5 group"
+    >
+      <span className="text-[10px] sm:text-[11px] font-medium uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
+        {t("landing.hero.trustedDataFrom")}
+      </span>
+      <img
+        src="/images/dart-logo.png"
+        alt={t("landing.hero.dartLogoAlt")}
+        className="h-5 sm:h-6 w-auto opacity-90 transition-opacity group-hover:opacity-100 dark:opacity-95"
+        width={90}
+        height={24}
+      />
+    </a>
+  );
+}
+
+function HeroSection() {
+  const { t } = useLocale();
+  const reduceMotion = useReducedMotion();
+  const [active, setActive] = useState(false);
+  const [isTouchDevice, setIsTouchDevice] = useState(false);
+
+  useEffect(() => {
+    setIsTouchDevice(window.matchMedia("(hover: none)").matches);
+  }, []);
+
+  return (
+    <div
+      className="grid grid-cols-1 lg:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)] gap-8 lg:gap-6 items-center"
+      onMouseEnter={() => { if (!isTouchDevice) setActive(true); }}
+      onMouseLeave={() => { if (!isTouchDevice) setActive(false); }}
+    >
+      <motion.div
+        className="max-w-[44rem]"
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.35, ease: "easeOut" }}
+      >
+        <HeroDataTrust />
+        <h1 className="text-4xl sm:text-5xl lg:text-[3.5rem] font-semibold tracking-tight text-slate-900 dark:text-slate-100 leading-[1.15] mb-4">
+          {t("landing.hero.titleLine1")}<br />
+          <span className="bg-gradient-to-r from-blue-600 to-cyan-500 dark:from-blue-400 dark:to-cyan-300 bg-clip-text text-transparent">
+            {t("landing.hero.titleLine2")}
+          </span>
+        </h1>
+        <p className="text-base text-slate-500 dark:text-slate-400 leading-relaxed mb-8 max-w-[36rem]">
+          {t("landing.hero.subtitle")}
+        </p>
+
+        <HeroCta />
+
+        <a href="#features" className={`mt-6 ${LINK_SUBTLE}`}>
+          {t("landing.hero.previewFeatures")} <ArrowRight size={14} />
+        </a>
+      </motion.div>
+
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        animate={{
+          opacity: 1,
+          y: active && !reduceMotion ? -6 : 0,
+          rotate: active && !reduceMotion ? HERO_MOCKUP_TILT : 0,
+          scale: active && !reduceMotion ? 1.015 : 1,
+        }}
+        transition={{
+          opacity: { duration: 0.35, delay: 0.1, ease: "easeOut" },
+          y: { type: "spring", stiffness: 260, damping: 22 },
+          rotate: { type: "spring", stiffness: 260, damping: 22 },
+          scale: { type: "spring", stiffness: 260, damping: 22 },
+        }}
+        onClick={() => {
+          if (!isTouchDevice || reduceMotion) return;
+          setActive((v) => !v);
+        }}
+      >
+        <HeroDemo active={active} />
+      </motion.div>
+    </div>
+  );
+}
 
 function WalkthroughRow({ item, index, Mockup, link }) {
   const [hovered, setHovered] = useState(false);
@@ -679,46 +780,7 @@ export function Home() {
       {/* ── Hero ─────────────────────────────────────────── */}
       <section className="relative overflow-hidden">
         <div className="container pt-10 sm:pt-12 pb-14 sm:pb-16">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-12 items-center">
-            <motion.div
-              className="max-w-[44rem]"
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.35, ease: "easeOut" }}
-            >
-              <p className="text-xs font-medium text-slate-400 dark:text-slate-500 mb-4">
-                {t("landing.hero.tagline")}
-              </p>
-              <h1 className="text-4xl sm:text-5xl lg:text-[3.5rem] font-semibold tracking-tight text-slate-900 dark:text-slate-100 leading-[1.15] mb-4">
-                {t("landing.hero.titleLine1")}<br />
-                {t("landing.hero.titleLine2")}
-              </h1>
-              <p className="text-base text-slate-500 dark:text-slate-400 leading-relaxed mb-8 max-w-[36rem]">
-                {t("landing.hero.subtitle")}
-              </p>
-
-              <HeroCta />
-
-              <div className="mt-6 flex flex-wrap items-center gap-x-5 gap-y-1.5 text-xs text-slate-400 dark:text-slate-500">
-                <span>{t("landing.hero.trustDart")}</span>
-                <span className="hidden sm:inline text-slate-300 dark:text-slate-600" aria-hidden>·</span>
-                <span>{t("landing.hero.trustCompanies")}</span>
-                <span className="hidden sm:inline text-slate-300 dark:text-slate-600" aria-hidden>·</span>
-                <span>{t("landing.hero.trustSource")}</span>
-              </div>
-
-              <a
-                href="#features"
-                className={`mt-6 ${LINK_SUBTLE}`}
-              >
-                {t("landing.hero.previewFeatures")} <ArrowRight size={14} />
-              </a>
-            </motion.div>
-
-            <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, delay: 0.1, ease: "easeOut" }}>
-              <HeroDemo />
-            </motion.div>
-          </div>
+          <HeroSection />
         </div>
       </section>
 
@@ -753,7 +815,7 @@ export function Home() {
       </section>
 
       {/* ── Data coverage — real KOSPI/KOSDAQ companies as social proof ── */}
-      <section className={`${SECTION} pt-0 overflow-hidden`}>
+      <section className={`${SECTION} pt-0`}>
         <div className="container text-center mb-8">
           <div className={EYEBROW}>{t("landing.coverage.eyebrow")}</div>
           <h2 className={SECTION_TITLE}>{t("landing.coverage.title")}</h2>

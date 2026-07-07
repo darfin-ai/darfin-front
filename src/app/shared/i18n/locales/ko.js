@@ -61,18 +61,16 @@ export const ko = {
   },
   landing: {
     hero: {
-      tagline: "AI 공시 분석 · 모의투자 · 투자자 커뮤니티",
-      titleLine1: "DART 원문 그대로,",
-      titleLine2: "AI가 읽어드립니다",
-      subtitle: "요약이 아닌 공시 원문을 근거로, 코스피·코스닥 3,200여 상장사의 핵심 변화를 찾아냅니다.",
+      titleLine1: "개인 투자자를 위한",
+      titleLine2: "공시·기업분석 AI",
+      subtitle: "수백 페이지 분기보고서, 무엇이 바뀌었는지 찾느라 시간 쓰지 마세요. DART 원문 근거로 핵심만 골라드립니다.",
       ctaSignup: "무료로 시작하기",
       ctaLogin: "로그인",
       ctaCompany: "기업 분석 시작하기",
       ctaTrading: "모의투자 해보기",
       signupNote: "신용카드 없이 가입 · 기업 분석·공시 분석·커뮤니티 무료 이용",
-      trustDart: "금융감독원 DART 공식 데이터",
-      trustCompanies: "3,200+ 상장 기업",
-      trustSource: "모든 분석에 원문 근거 제공",
+      trustedDataFrom: "공식 데이터 제공",
+      dartLogoAlt: "금융감독원 전자공시시스템 DART",
       previewFeatures: "기능 미리보기",
     },
     demo: {

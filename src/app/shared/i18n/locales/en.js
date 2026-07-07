@@ -61,19 +61,17 @@ export const en = {
   },
   landing: {
     hero: {
-      tagline: "AI disclosure analysis · Paper trading · Investor community",
-      titleLine1: "DART filings, unchanged.",
-      titleLine2: "AI reads them for you.",
+      titleLine1: "For individual investors",
+      titleLine2: "Filing & company analysis AI",
       subtitle:
-        "Grounded in original disclosure text—not summaries—we surface what changed across 3,200+ KOSPI and KOSDAQ listings.",
+        "Stop spending hours in hundred-page quarterly reports. We surface what changed—grounded in original DART filings, not summaries alone.",
       ctaSignup: "Start for free",
       ctaLogin: "Log in",
       ctaCompany: "Explore company analysis",
       ctaTrading: "Try paper trading",
       signupNote: "No credit card · Company, disclosure, and community features are free",
-      trustDart: "Official DART data (FSS)",
-      trustCompanies: "3,200+ listed companies",
-      trustSource: "Every insight links to source text",
+      trustedDataFrom: "Trusted data from",
+      dartLogoAlt: "DART — Financial Supervisory Service electronic disclosure system",
       previewFeatures: "Preview features",
     },
     demo: {
