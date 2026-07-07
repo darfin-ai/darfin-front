@@ -1,0 +1,37 @@
+---
+description: React component conventions for darfin-front
+globs: src/**/*.jsx
+alwaysApply: false
+---
+
+# React conventions
+
+- Functional components only; extract hooks for reusable logic
+- Feature code: `src/app/features/{feature}/` with `pages/`, `components/`, `api/`, `lib/`
+- Shared UI: `src/app/shared/components/ui/` (shadcn/Radix)
+- Landing page only: `src/app/pages/Home.jsx`
+
+## Styling
+
+- Default: Tailwind classes, slate/blue palette (see DESIGN.md)
+- `paper-trading/` uses inline `style={{}}` with INK/SUB/BRAND tokens — do not migrate without explicit request
+- Korean market: red = up, blue = down for prices
+
+## API
+
+- Use `apiClient.js` (fetch), not axios
+- Feature APIs in `features/{name}/api/`
+- Mock contracts in `src/mocks/` — update `types.js` when API shapes change
+
+## Example
+
+```jsx
+// ✅ Feature component with Tailwind
+export function CompanyCard({ company }) {
+  return (
+    <div className="rounded-lg border border-slate-200 bg-white p-4">
+      <h3 className="text-base font-semibold text-slate-900">{company.name}</h3>
+    </div>
+  );
+}
+```

@@ -1,0 +1,36 @@
+---
+description: Design system reference for UI work
+globs: src/**/*.{jsx,css}
+alwaysApply: false
+---
+
+# Design system
+
+Read [DESIGN.md](DESIGN.md) before visual changes.
+
+## Two systems coexist
+
+| Surface | Styling | Palette |
+|---------|---------|---------|
+| Layout, company, community, filings | Tailwind + shadcn | slate-* / blue-* |
+| paper-trading/ | Inline styles | INK, SUB, BRAND, UP, DOWN |
+
+Do not mix approaches within a feature. New features use Tailwind unless explicitly trading-related.
+
+## Tokens (Tailwind surfaces)
+
+- Text: `text-slate-900` (primary), `text-slate-500` (secondary), `text-slate-400` (muted)
+- Accent: `blue-600` (actions, links), `blue-50` (tinted backgrounds)
+- Borders: `border-slate-200`
+- Cards: `rounded-lg border border-slate-200 bg-white`
+
+## Korean market
+
+- Price up: red (`text-red-500`, `UP` #F04452)
+- Price down: blue (`text-blue-500`, `DOWN` #3182F6)
+
+## Copy
+
+- Korean user-facing text, sentence case
+- Active voice: "분석하기" not "분석을 수행합니다"
+- Errors explain what happened and how to fix

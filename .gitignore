@@ -19,8 +19,11 @@ yarn-error.log*
 # Local environment variables
 # API 키 등 민감 정보를 담는 로컬 환경변수 파일입니다. 보안상 반드시 제외해야 합니다.
 .env
-.env.local
-.env.*.local
+.env.*
+!.env.example
+
+# Cursor MCP config (may contain API tokens)
+.cursor/mcp.json
 
 # Editor directories and files
 # VSCode, WebStorm 등 개인 에디터 설정 파일 및 macOS 시스템 파일입니다.

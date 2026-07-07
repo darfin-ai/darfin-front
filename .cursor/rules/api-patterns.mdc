@@ -1,0 +1,29 @@
+---
+description: API client and data fetching patterns
+globs: src/**/api/**
+alwaysApply: false
+---
+
+# API patterns
+
+- All HTTP calls go through `src/app/shared/api/apiClient.js`
+- Base URL: `import.meta.env.VITE_API_BASE_URL` or `http://localhost:8080`
+- Auth: Bearer token in sessionStorage, auto-refresh on 401 via `/api/v1/auth/reissue`
+- Return parsed JSON; throw on non-OK responses
+
+## File layout
+
+- `shared/api/apiClient.js` — core fetch wrapper
+- `shared/api/authApi.js`, `userApi.js` — cross-cutting
+- `features/{name}/api/{name}Api.js` — feature-specific endpoints
+
+## Contract
+
+Company analysis shapes are defined in `src/mocks/companyAnalysis/types.js`.
+When adding fields, update types.js and coordinate with `darfin-main` DTOs.
+
+## Do not
+
+- Import axios for new code
+- Hardcode API URLs — use env var
+- Bypass apiClient for authenticated endpoints
