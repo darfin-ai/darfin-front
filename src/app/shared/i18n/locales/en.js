@@ -1,8 +1,8 @@
 export const en = {
   nav: {
-    company: "Company analysis",
-    disclosure: "Disclosure analysis",
-    trading: "Paper trading",
+    company: "Companies",
+    disclosure: "Filings",
+    trading: "Trading",
     community: "Community",
     login: "Log in",
     logout: "Log out",

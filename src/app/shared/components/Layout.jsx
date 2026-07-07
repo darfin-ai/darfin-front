@@ -56,21 +56,22 @@ export function Layout() {
     location.pathname === "/" ||
     location.pathname.startsWith("/company") ||
     location.pathname === "/disclosure" ||
-    location.pathname.startsWith("/trading");
+    location.pathname.startsWith("/trading") ||
+    location.pathname.startsWith("/community");
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col font-sans text-slate-900 dark:text-slate-100">
       <Toaster position="top-center" />
       <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center gap-8 min-w-0">
+          <div className="flex items-center justify-between gap-3 h-16">
+            <div className="flex items-center gap-4 lg:gap-6 min-w-0 flex-1">
               <Link to="/" className="flex items-center gap-2 group flex-shrink-0">
                 <span className="text-2xl font-bold text-slate-900 dark:text-slate-100">Darfin</span>
               </Link>
 
               {!hideHeaderSearch && (
-                <div className="hidden md:block">
+                <div className="hidden md:block min-w-0 flex-1 max-w-sm lg:max-w-md">
                   <form onSubmit={handleSearch} className="relative">
                     <label htmlFor="header-company-search" className="sr-only">
                       {t("nav.searchPlaceholderShort")}
@@ -82,8 +83,8 @@ export function Layout() {
                       id="header-company-search"
                       type="text"
                       name="query"
-                      className="block w-96 pl-10 pr-3 py-2 border border-slate-200 dark:border-slate-700 rounded-full text-sm placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 bg-slate-50 dark:bg-slate-800 dark:text-slate-100 transition-shadow"
-                      placeholder={t("nav.searchPlaceholder")}
+                      className="block w-full pl-10 pr-3 py-2 border border-slate-200 dark:border-slate-700 rounded-full text-sm placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 bg-slate-50 dark:bg-slate-800 dark:text-slate-100 transition-shadow"
+                      placeholder={t("nav.searchPlaceholderShort")}
                     />
                   </form>
                 </div>
@@ -103,19 +104,20 @@ export function Layout() {
               </button>
             </div>
 
-            <nav className="hidden md:flex items-center gap-4">
+            <nav className="hidden md:flex items-center gap-1.5 lg:gap-2.5 shrink-0">
               {navItems.map(({ to, icon, label }) => (
                 <Link
                   key={to}
                   to={to}
                   onClick={(e) => handleServiceClick(e, to)}
-                  className="text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors flex items-center gap-1.5"
+                  title={label}
+                  className="text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors flex items-center gap-1.5 px-1.5 py-1 rounded-md whitespace-nowrap"
                 >
                   {icon}
-                  {label}
+                  <span className="hidden xl:inline">{label}</span>
                 </Link>
               ))}
-              <div className="h-6 w-px bg-slate-200 dark:bg-slate-700" />
+              <div className="h-6 w-px bg-slate-200 dark:bg-slate-700 mx-0.5" />
               <LocaleToggle />
               <ThemeToggle />
 
@@ -131,15 +133,16 @@ export function Layout() {
               {isLoggedIn ? (
                 <button
                   onClick={handleLogout}
-                  className="text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-red-600 dark:hover:text-red-400 border border-slate-200 dark:border-slate-700 hover:border-red-200 dark:hover:border-red-900 px-4 py-2 rounded-full transition-colors ml-1 flex items-center gap-1.5"
+                  className="text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-red-600 dark:hover:text-red-400 border border-slate-200 dark:border-slate-700 hover:border-red-200 dark:hover:border-red-900 px-2.5 lg:px-4 py-2 rounded-full transition-colors flex items-center gap-1.5"
+                  title={t("nav.logout")}
                 >
                   <LogOut size={15} />
-                  {t("nav.logout")}
+                  <span className="hidden lg:inline">{t("nav.logout")}</span>
                 </button>
               ) : (
                 <Link
                   to="/login"
-                  className="text-sm font-medium text-white bg-blue-600 px-4 py-2 rounded-full hover:bg-blue-700 transition-colors ml-1"
+                  className="text-sm font-medium text-white bg-blue-600 px-3 lg:px-4 py-2 rounded-full hover:bg-blue-700 transition-colors whitespace-nowrap"
                 >
                   {t("nav.login")}
                 </Link>
