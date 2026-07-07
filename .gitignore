@@ -22,8 +22,10 @@ yarn-error.log*
 .env.*
 !.env.example
 
-# Cursor MCP config (may contain API tokens)
-.cursor/mcp.json
+# Agent context (local only)
+AGENTS.md
+CLAUDE.md
+.cursor/
 
 # Editor directories and files
 # VSCode, WebStorm 등 개인 에디터 설정 파일 및 macOS 시스템 파일입니다.
