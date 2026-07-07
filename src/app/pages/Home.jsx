@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, Link } from "react-router";
-import { motion, useReducedMotion, useInView } from "motion/react";
+import { motion, AnimatePresence, useReducedMotion, useInView } from "motion/react";
 import { ChevronRight, ArrowRight, Lightbulb, TrendingUp, Landmark, AlertTriangle, ShieldCheck, Check } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useAuth } from "../features/auth";
@@ -523,37 +523,167 @@ function CompanyMockup({ active = false }) {
   );
 }
 
+const TRADING_MOCK_CANDLES = [
+  { o: 70800, h: 71340, l: 70559, c: 71162, vol: 0.45 },
+  { o: 71185, h: 71635, l: 70908, c: 71477, vol: 0.53 },
+  { o: 71429, h: 71718, l: 70902, c: 71056, vol: 0.61 },
+  { o: 71112, h: 71715, l: 70963, c: 71521, vol: 0.69 },
+  { o: 71472, h: 72110, l: 71315, c: 71863, vol: 0.77 },
+  { o: 71833, h: 72417, l: 71585, c: 72136, vol: 0.85 },
+  { o: 72083, h: 72367, l: 71421, c: 71592, vol: 0.45 },
+  { o: 71560, h: 72301, l: 71271, c: 72001, vol: 0.53 },
+  { o: 71948, h: 72664, l: 71707, c: 72375, vol: 0.61 },
+  { o: 72321, h: 72808, l: 72039, c: 72657, vol: 0.69 },
+  { o: 72706, h: 72920, l: 72145, c: 72392, vol: 0.77 },
+  { o: 72350, h: 72938, l: 72064, c: 72768, vol: 0.85 },
+  { o: 72747, h: 73484, l: 72561, c: 73170, vol: 0.45 },
+  { o: 73123, h: 73800, l: 72820, c: 73551, vol: 0.53 },
+  { o: 73515, h: 73679, l: 72860, c: 73140, vol: 0.61 },
+  { o: 73171, h: 73751, l: 73016, c: 73467, vol: 0.69 },
+  { o: 73486, h: 73800, l: 73172, c: 73700, vol: 0.77 },
+  { o: 73708, h: 73800, l: 73441, c: 73700, vol: 0.85 },
+  { o: 73714, h: 73800, l: 72966, c: 73198, vol: 0.45 },
+  { o: 73176, h: 73705, l: 72858, c: 73519, vol: 0.53 },
+  { o: 73558, h: 73800, l: 73271, c: 73700, vol: 0.61 },
+  { o: 73678, h: 73800, l: 73451, c: 73700, vol: 0.69 },
+  { o: 73733, h: 73800, l: 73044, c: 73339, vol: 0.77 },
+  { o: 73288, h: 73800, l: 73041, c: 73598, vol: 0.85 },
+  { o: 73559, h: 73800, l: 73381, c: 73700, vol: 0.45 },
+  { o: 73759, h: 73800, l: 73550, c: 73700, vol: 0.53 },
+  { o: 73725, h: 73800, l: 73140, c: 73426, vol: 0.61 },
+  { o: 73320, h: 73620, l: 73180, c: 73400, vol: 0.9 },
+];
+
+function MiniTradingChart({ active = false }) {
+  const reduceMotion = useReducedMotion();
+  const candles = TRADING_MOCK_CANDLES;
+  const w = 320;
+  const h = 136;
+  const volH = 18;
+  const padL = 4;
+  const padR = 36;
+  const padT = 8;
+  const chartH = h - padT - volH - 8;
+  const n = candles.length;
+
+  const allPrices = candles.flatMap((c) => [c.h, c.l]);
+  const pMin = Math.min(...allPrices);
+  const pMax = Math.max(...allPrices);
+  const rawRng = pMax - pMin || 1;
+  const yPad = rawRng * 0.12;
+  const rMin = pMin - yPad;
+  const rMax = pMax + yPad;
+  const rng = rMax - rMin;
+  const y = (v) => padT + (1 - (v - rMin) / rng) * chartH;
+  const cw = (w - padL - padR) / n;
+  const bw = Math.max(3, cw * 0.72);
+  const maxVol = Math.max(...candles.map((c) => c.vol));
+  const volY = padT + chartH + 8;
+
+  const ticks = [0, 1, 2].map((i) => rMin + rng * (2 - i) / 2);
+  const formatPrice = (v) => `${Math.round(v / 1000)}k`;
+
+  return (
+    <svg viewBox={`0 0 ${w} ${h}`} className="w-full h-full" aria-hidden overflow="visible">
+      {ticks.map((tick) => (
+        <g key={tick}>
+          <line
+            x1={padL}
+            y1={y(tick)}
+            x2={w - padR}
+            y2={y(tick)}
+            className="stroke-slate-100 dark:stroke-slate-800"
+            strokeWidth="1"
+          />
+          <text
+            x={w - padR + 4}
+            y={y(tick) + 3}
+            className="fill-slate-400 dark:fill-slate-500"
+            fontSize="8"
+          >
+            {formatPrice(tick)}
+          </text>
+        </g>
+      ))}
+
+      {candles.map((c, i) => {
+        const cx = padL + i * cw + cw / 2;
+        const up = c.c >= c.o;
+        const color = up ? "#F04452" : "#3182F6";
+        const bodyTop = y(Math.max(c.o, c.c));
+        const bodyBot = y(Math.min(c.o, c.c));
+        const bodyH = Math.max(bodyBot - bodyTop, 5);
+        const volBarH = (c.vol / maxVol) * (volH - 2);
+
+        return (
+          <g key={i}>
+            <line x1={cx} y1={y(c.h)} x2={cx} y2={y(c.l)} stroke={color} strokeWidth="1.25" />
+            <motion.rect
+              x={cx - bw / 2}
+              y={bodyTop}
+              width={bw}
+              height={bodyH}
+              fill={color}
+              initial={false}
+              animate={{ opacity: active && !reduceMotion ? [0.35, 1] : 1 }}
+              transition={{ duration: 0.35, delay: active && !reduceMotion ? i * 0.012 : 0, ease: "easeOut" }}
+            />
+            <motion.rect
+              x={cx - bw / 2}
+              y={volY + volH - volBarH}
+              width={bw}
+              height={volBarH}
+              className={up ? "fill-red-200 dark:fill-red-900/50" : "fill-blue-200 dark:fill-blue-900/50"}
+              rx="0.5"
+              initial={false}
+              animate={{ scaleY: active && !reduceMotion ? [0.4, 1] : 1 }}
+              style={{ transformOrigin: `${cx}px ${volY + volH}px` }}
+              transition={{ duration: 0.35, delay: active && !reduceMotion ? i * 0.012 : 0, ease: "easeOut" }}
+            />
+          </g>
+        );
+      })}
+    </svg>
+  );
+}
+
 function TradingMockup({ active = false }) {
   const { t } = useLocale();
   const reduceMotion = useReducedMotion();
-  const bars = [40, 55, 35, 60, 50, 70, 65, 80, 58, 72, 68, 90];
   return (
     <BrowserChrome label={t("landing.mockups.tradingChrome")} active={active}>
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between mb-3">
         <div>
           <div className="font-medium text-slate-900 dark:text-slate-100">삼성전자</div>
-          <motion.div
-            className="text-sm font-medium text-slate-900 dark:text-slate-100 tabular-nums"
-            animate={active && !reduceMotion ? { y: [0, -2, 0] } : { y: 0 }}
-            transition={{ duration: 0.4, ease: "easeOut" }}
-          >
-            73,400<span className="text-xs font-normal text-slate-400 dark:text-slate-500 ml-1">원</span>
-          </motion.div>
+          <div className="flex items-baseline gap-2">
+            <motion.div
+              className="text-sm font-medium text-slate-900 dark:text-slate-100 tabular-nums"
+              animate={active && !reduceMotion ? { y: [0, -2, 0] } : { y: 0 }}
+              transition={{ duration: 0.4, ease: "easeOut" }}
+            >
+              73,400<span className="text-xs font-normal text-slate-400 dark:text-slate-500 ml-1">원</span>
+            </motion.div>
+            <span className="text-[10px] font-medium text-red-500 dark:text-red-400 tabular-nums">+1.24%</span>
+          </div>
         </div>
         <span className="rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 text-[10px] font-medium px-2 py-1">{t("landing.mockups.paperTrading")}</span>
       </div>
-      <div className="flex items-end gap-1 h-32 mb-6 flex-1">
-        {bars.map((h, i) => (
-          <motion.div
-            key={i}
-            className={`flex-1 rounded-sm origin-bottom ${i % 3 === 0 ? "bg-blue-200 dark:bg-blue-900/60" : "bg-red-200 dark:bg-red-900/50"}`}
-            initial={false}
-            animate={{ scaleY: active && !reduceMotion ? [0.55, 1] : 1 }}
-            style={{ height: `${h}%` }}
-            transition={{ duration: 0.45, delay: active && !reduceMotion ? i * 0.03 : 0, ease: "easeOut" }}
-          />
+
+      <div className="flex gap-1 mb-3 bg-slate-100/80 dark:bg-slate-800/80 rounded-lg p-0.5 text-[10px] font-medium w-fit">
+        {["일", "주", "월", "년"].map((label, i) => (
+          <span
+            key={label}
+            className={`px-2 py-1 rounded-md ${i === 0 ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-sm" : "text-slate-400 dark:text-slate-500"}`}
+          >
+            {label}
+          </span>
         ))}
       </div>
+
+      <div className="h-32 mb-4 flex-1 min-h-[8rem]">
+        <MiniTradingChart active={active} />
+      </div>
+
       <div className="grid grid-cols-2 gap-2 mb-4">
         <motion.button
           className="py-2 rounded-lg bg-red-500 text-white text-xs font-medium"
@@ -578,42 +708,232 @@ function TradingMockup({ active = false }) {
   );
 }
 
+function CommunityTypingIndicator({ paletteIndex = 0 }) {
+  return (
+    <div className="flex items-center gap-2 px-1 py-0.5">
+      <div
+        className={`h-6 w-6 shrink-0 rounded-full bg-gradient-to-br ${AVATAR_PALETTE[paletteIndex % AVATAR_PALETTE.length]} opacity-40`}
+      />
+      <div className="flex items-center gap-1 px-2.5 py-2 rounded-2xl bg-slate-100 dark:bg-slate-800 border border-slate-200/60 dark:border-slate-700/60">
+        {[0, 1, 2].map((i) => (
+          <motion.span
+            key={i}
+            className="w-1.5 h-1.5 rounded-full bg-slate-400 dark:bg-slate-500"
+            animate={{ y: [0, -3, 0], opacity: [0.35, 1, 0.35] }}
+            transition={{ duration: 0.55, repeat: Infinity, delay: i * 0.14, ease: "easeInOut" }}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function CommunityMockup({ active = false }) {
   const { t } = useLocale();
   const reduceMotion = useReducedMotion();
-  const posts = [
-    { company: "삼성전자", tag: "005930", replies: 3, resolved: true },
-    { company: "카카오페이", tag: "377300", replies: 1, resolved: false },
-    { company: "HD현대중공업", tag: "329180", replies: 0, resolved: false },
-  ];
-  const questions = t("landing.mockups.communityPosts");
+  const activeRef = useRef(active);
+  activeRef.current = active;
+
+  const thread = t("landing.mockups.communityThread");
+  const messages = thread.messages;
+
+  const [visibleCount, setVisibleCount] = useState(messages.length);
+  const [showTyping, setShowTyping] = useState(false);
+  const [showComposer, setShowComposer] = useState(true);
+  const timersRef = useRef([]);
+  const sequenceIdRef = useRef(0);
+
+  const clearTimers = useCallback(() => {
+    timersRef.current.forEach(clearTimeout);
+    timersRef.current = [];
+  }, []);
+
+  const schedule = useCallback((fn, ms) => {
+    const id = setTimeout(fn, ms);
+    timersRef.current.push(id);
+  }, []);
+
+  const runChatSequence = useCallback(() => {
+    const sequenceId = ++sequenceIdRef.current;
+    const isCurrent = () => sequenceId === sequenceIdRef.current;
+
+    clearTimers();
+    setVisibleCount(0);
+    setShowTyping(false);
+    setShowComposer(false);
+
+    if (reduceMotion) {
+      setVisibleCount(messages.length);
+      setShowComposer(true);
+      return;
+    }
+
+    const TYPING_MS = 850;
+    const MESSAGE_GAP_MS = 500;
+    const LOOP_PAUSE_MS = 3200;
+    let delay = 400;
+
+    schedule(() => {
+      if (!isCurrent()) return;
+      setShowTyping(true);
+    }, delay);
+    delay += TYPING_MS;
+
+    messages.forEach((_, i) => {
+      const nextCount = i + 1;
+      schedule(() => {
+        if (!isCurrent()) return;
+        setShowTyping(false);
+        setVisibleCount(nextCount);
+      }, delay);
+      delay += 380;
+
+      if (i < messages.length - 1) {
+        delay += MESSAGE_GAP_MS;
+        schedule(() => {
+          if (!isCurrent()) return;
+          setShowTyping(true);
+        }, delay);
+        delay += TYPING_MS;
+      }
+    });
+
+    schedule(() => {
+      if (!isCurrent()) return;
+      setShowComposer(true);
+    }, delay + 250);
+
+    schedule(() => {
+      if (!isCurrent() || !activeRef.current) return;
+      runChatSequence();
+    }, delay + LOOP_PAUSE_MS);
+  }, [clearTimers, messages, reduceMotion, schedule]);
+
+  useEffect(() => {
+    if (active) {
+      runChatSequence();
+    } else {
+      sequenceIdRef.current += 1;
+      clearTimers();
+      setVisibleCount(messages.length);
+      setShowTyping(false);
+      setShowComposer(true);
+    }
+    return clearTimers;
+  }, [active, runChatSequence, clearTimers, messages.length]);
+
+  const replyCount = Math.max(0, visibleCount - 1);
+
   return (
     <BrowserChrome label={t("landing.mockups.communityChrome")} active={active}>
-      <div className="divide-y divide-slate-100 dark:divide-slate-800 flex flex-col justify-center flex-1">
-        {posts.map((p, i) => (
-          <motion.div
-            key={p.company}
-            className="flex items-center gap-3 py-4 first:pt-0 last:pb-0"
-            animate={active && !reduceMotion ? { x: [10, 0], opacity: [0.55, 1] } : { x: 0, opacity: 1 }}
-            transition={{ duration: 0.35, delay: active && !reduceMotion ? i * 0.07 : 0, ease: "easeOut" }}
-          >
-            <div className={`h-8 w-8 shrink-0 rounded-full bg-gradient-to-br ${AVATAR_PALETTE[i % AVATAR_PALETTE.length]} text-white text-[10px] font-medium flex items-center justify-center`}>
-              {p.company.slice(0, 2)}
-            </div>
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-1.5 mb-0.5">
-                <span className="text-xs font-medium text-slate-700 dark:text-slate-200">{p.company}</span>
-                <span className="text-[10px] text-slate-400 dark:text-slate-500 tabular-nums">{p.tag}</span>
-              </div>
-              <p className="text-xs text-slate-700 dark:text-slate-300 truncate">{questions[i]?.q}</p>
-            </div>
-            <span className={`shrink-0 text-[10px] font-medium px-1.5 py-0.5 rounded-full ${p.resolved ? "bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-300 border border-blue-200 dark:border-blue-800" : "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400"}`}>
-              {p.resolved ? `${t("landing.mockups.replyCount")} ${p.replies}` : t("landing.mockups.awaitingReply")}
+        <div className="mb-3 pb-3 border-b border-slate-100 dark:border-slate-800 shrink-0">
+          <div className="flex items-center gap-1.5 mb-1.5">
+            <span className="px-1.5 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-[10px] font-medium rounded">
+              {thread.company} <span className="text-slate-400 dark:text-slate-500 tabular-nums">{thread.ticker}</span>
             </span>
-          </motion.div>
-        ))}
-      </div>
-    </BrowserChrome>
+            <motion.span
+              key={active ? replyCount : "final"}
+              initial={active && !reduceMotion ? { scale: 0.85, opacity: 0.5 } : false}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ type: "spring", stiffness: 500, damping: 24 }}
+              className="text-[10px] font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 px-1.5 py-0.5 rounded-full border border-blue-200 dark:border-blue-800 tabular-nums"
+            >
+              {replyCount > 0
+                ? `${thread.replyCountPrefix}${replyCount}${thread.replyCountSuffix}`
+                : thread.awaitingReply}
+            </motion.span>
+          </div>
+          <p className="text-xs font-medium text-slate-900 dark:text-slate-100 leading-snug">{thread.title}</p>
+        </div>
+
+        <div className="flex-1 space-y-2 overflow-hidden min-h-[9.5rem]">
+          <AnimatePresence initial={false} mode="popLayout">
+            {messages.slice(0, visibleCount).map((msg, i) => (
+              <motion.div
+                key={`${msg.author}-${i}`}
+                layout={active}
+                initial={active && !reduceMotion ? { opacity: 0, y: 14, scale: 0.96 } : false}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -10, scale: 0.96 }}
+                transition={{ type: "spring", stiffness: 420, damping: 26 }}
+                className={msg.isReply ? "ml-4" : undefined}
+              >
+                <motion.div
+                  layout
+                  className={`flex gap-2 rounded-lg p-2 ${
+                    msg.adopted
+                      ? "border border-emerald-200 dark:border-emerald-900/50 bg-emerald-50/60 dark:bg-emerald-950/20"
+                      : msg.isReply
+                        ? "border border-slate-100 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-800/40"
+                        : ""
+                  }`}
+                >
+                  <div
+                    className={`h-6 w-6 shrink-0 rounded-full bg-gradient-to-br ${AVATAR_PALETTE[i % AVATAR_PALETTE.length]} text-white text-[9px] font-medium flex items-center justify-center`}
+                  >
+                    {msg.initial}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5 mb-0.5 flex-wrap">
+                      <span className="text-[10px] font-medium text-slate-800 dark:text-slate-200">{msg.author}</span>
+                      <span className="text-[9px] text-slate-400 dark:text-slate-500">{msg.time}</span>
+                      {msg.adopted && visibleCount === messages.length && (
+                        <motion.span
+                          initial={active && !reduceMotion ? { opacity: 0, scale: 0.8 } : false}
+                          animate={{ opacity: 1, scale: 1 }}
+                          transition={{ delay: 0.2, type: "spring", stiffness: 500, damping: 22 }}
+                          className="text-[9px] font-medium text-emerald-600 dark:text-emerald-400"
+                        >
+                          {thread.adopted}
+                        </motion.span>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed">{msg.body}</p>
+                  </div>
+                </motion.div>
+              </motion.div>
+            ))}
+
+            {showTyping && (
+              <motion.div
+                key="typing"
+                layout
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -6, scale: 0.95 }}
+                transition={{ duration: 0.2, ease: "easeOut" }}
+              >
+                <CommunityTypingIndicator paletteIndex={visibleCount} />
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
+        <AnimatePresence>
+          {showComposer && (
+            <motion.div
+              initial={active && !reduceMotion ? { opacity: 0, y: 8 } : false}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 6 }}
+              transition={{ type: "spring", stiffness: 400, damping: 28 }}
+              className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center gap-2 shrink-0"
+            >
+              <div className="flex-1 h-7 rounded-md border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 px-2.5 flex items-center overflow-hidden">
+                <motion.span
+                  className="text-[10px] text-slate-400 dark:text-slate-500 truncate"
+                  animate={active && !reduceMotion ? { opacity: [0.5, 1, 0.5] } : { opacity: 1 }}
+                  transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut" }}
+                >
+                  {thread.placeholder}
+                </motion.span>
+              </div>
+              <span className="text-[10px] font-medium text-blue-600 dark:text-blue-400 px-2 py-1 rounded-md bg-blue-50 dark:bg-blue-950/40 shrink-0">
+                {thread.submit}
+              </span>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </BrowserChrome>
   );
 }
 
