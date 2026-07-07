@@ -1,15 +1,35 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { toast } from "sonner";
-import { User, Mail, Lock, Phone, MessageSquare } from "lucide-react";
+import { User, Mail, Lock, Phone, MessageSquare, Image as ImageIcon } from "lucide-react";
 import { signup } from "../../../shared/api/authApi";
 
 export function SignUp() {
   const navigate = useNavigate();
   const [form, setForm] = useState({ name: '', nickname: '', phone: '', email: '', password: '', confirmPassword: '' });
+  const [profileImage, setProfileImage] = useState(null);
   const [loading, setLoading] = useState(false);
+  const fileInputRef = useRef(null);
 
   const set = (field) => (e) => setForm((prev) => ({ ...prev, [field]: e.target.value }));
+
+  const handleImageChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      toast.error('이미지 파일만 업로드할 수 있습니다.');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('5MB 이하의 이미지만 업로드할 수 있습니다.');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (ev) => setProfileImage(ev.target.result);
+    reader.readAsDataURL(file);
+  };
 
   const handleSignUp = async (e) => {
     e.preventDefault();
@@ -25,6 +45,7 @@ export function SignUp() {
         name: form.name,
         phone: form.phone,
         nickname: form.nickname,
+        profileImage,
       });
       toast.success('회원가입이 완료되었습니다. 로그인해주세요.');
       navigate('/login');
@@ -45,6 +66,31 @@ export function SignUp() {
         </div>
 
         <form onSubmit={handleSignUp} className="space-y-4">
+          <div className="flex flex-col items-center gap-2 mb-2">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleImageChange}
+            />
+            <div
+              onClick={() => fileInputRef.current?.click()}
+              className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center text-slate-400 border-2 border-dashed border-slate-300 overflow-hidden relative group cursor-pointer hover:bg-slate-200 transition-colors"
+            >
+              {profileImage ? (
+                <img src={profileImage} alt="프로필 미리보기" className="w-full h-full object-cover" />
+              ) : (
+                <User size={32} className="group-hover:opacity-0 transition-opacity" />
+              )}
+              <div className="absolute inset-0 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/30 rounded-full">
+                <ImageIcon size={18} className="text-white mb-0.5" />
+                <span className="text-[10px] font-medium text-white">{profileImage ? '변경' : '업로드'}</span>
+              </div>
+            </div>
+            <p className="text-xs text-slate-400">프로필 사진 (선택, 미설정 시 기본 이미지 사용)</p>
+          </div>
+
           <div className="space-y-1">
             <label className="text-sm font-medium text-slate-700 block">이름</label>
             <div className="relative">

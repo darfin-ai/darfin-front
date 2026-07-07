@@ -88,6 +88,9 @@ export function MyPage() {
   const [customRefundReason, setCustomRefundReason] = useState("");
   const [selectedPaymentId, setSelectedPaymentId] = useState(null);
 
+  const [isCardNameModalOpen, setIsCardNameModalOpen] = useState(false);
+  const [cardNameInput, setCardNameInput] = useState("");
+
   const isLocalAccount = !user?.provider || user.provider === 'LOCAL';
 
   // 마운트 시 최신 프로필 조회
@@ -183,9 +186,20 @@ export function MyPage() {
     setIsRefundModalOpen(true);
   };
 
-  const handleAddCard = async () => {
+  const handleAddCard = () => {
+    setCardNameInput("");
+    setIsCardNameModalOpen(true);
+  };
+
+  const handleConfirmAddCard = async () => {
+    if (!cardNameInput.trim()) {
+      toast.error("카드 이름을 입력해주세요.");
+      return;
+    }
     setCardRegistering(true);
+    setIsCardNameModalOpen(false);
     try {
+      sessionStorage.setItem("pendingCardName", cardNameInput.trim());
       await startCardRegistration({
         userId: user?.userId,
         customerEmail: user?.email,
@@ -193,6 +207,7 @@ export function MyPage() {
       });
       // 성공 시 토스 페이지로 리다이렉트되므로 이후 코드는 실행되지 않음
     } catch (err) {
+      sessionStorage.removeItem("pendingCardName");
       toast.error(err?.message || "카드 등록을 시작할 수 없습니다.");
       setCardRegistering(false);
     }
@@ -500,8 +515,9 @@ export function MyPage() {
                   <CreditCard size={16} />
                 </div>
                 <div>
-                  <div className="text-sm font-bold text-slate-900">{method.cardCompany}{method.isDefault ? " (기본 결제수단)" : ""}</div>
-                  <div className="text-xs text-slate-500 font-mono tracking-widest mt-1">{method.maskedCardNum}</div>
+                  <div className="text-sm font-bold text-slate-900">{method.cardName || method.cardCompany}{method.isDefault ? " (기본 결제수단)" : ""}</div>
+                  <div className="text-xs text-slate-500 mt-1">{method.cardCompany}</div>
+                  <div className="text-xs text-slate-500 font-mono tracking-widest mt-0.5">{method.maskedCardNum}</div>
                 </div>
               </div>
               <button
@@ -651,6 +667,43 @@ export function MyPage() {
                   className="flex-1 py-3 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
                 >
                   {deleteLoading ? '처리 중...' : '탈퇴하기'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Card name modal */}
+      {isCardNameModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-200 px-4">
+          <div className="bg-white rounded-2xl w-full max-w-md overflow-hidden shadow-2xl">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+              <h3 className="font-bold text-lg text-slate-900">카드 이름 설정</h3>
+              <button onClick={() => setIsCardNameModalOpen(false)} className="text-slate-400 hover:text-slate-600 transition-colors">
+                <X size={24} />
+              </button>
+            </div>
+            <div className="p-6">
+              <p className="text-sm text-slate-600 mb-4">
+                결제 수단 목록에서 구분할 수 있도록 카드 이름을 입력해주세요.
+              </p>
+              <input
+                type="text"
+                autoFocus
+                maxLength={50}
+                value={cardNameInput}
+                onChange={(e) => setCardNameInput(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") handleConfirmAddCard(); }}
+                placeholder="예: 내 신한카드"
+                className="w-full h-11 px-4 bg-white border border-slate-300 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-slate-900 text-sm"
+              />
+              <div className="mt-6 flex gap-3">
+                <button onClick={() => setIsCardNameModalOpen(false)} className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl transition-colors">
+                  취소
+                </button>
+                <button onClick={handleConfirmAddCard} className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl transition-colors">
+                  다음
                 </button>
               </div>
             </div>

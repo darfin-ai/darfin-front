@@ -6,7 +6,7 @@ function Avatar({ src, alt, size = "sm" }) {
   const cls = size === "sm" ? "w-6 h-6" : "w-8 h-8";
   return (
     <img
-      src={src ?? "/default-avatar.png"}
+      src={src || "/profile.png"}
       alt={alt}
       className={`${cls} rounded-full object-cover bg-slate-100 flex-shrink-0`}
     />

@@ -1,9 +1,9 @@
 import { request, setTokens, BASE_URL } from './apiClient';
 
-export async function signup({ email, password, name, phone, nickname }) {
+export async function signup({ email, password, name, phone, nickname, profileImage }) {
   return request('/api/v1/auth/signup', {
     method: 'POST',
-    body: JSON.stringify({ email, password, name, phone, nickname }),
+    body: JSON.stringify({ email, password, name, phone, nickname, profileImage }),
   });
 }
 

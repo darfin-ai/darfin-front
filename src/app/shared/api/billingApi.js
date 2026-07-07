@@ -1,9 +1,9 @@
 import { request } from './apiClient';
 
-export async function registerCard(authKey) {
+export async function registerCard(authKey, cardName) {
   return request('/api/v1/billing/methods', {
     method: 'POST',
-    body: JSON.stringify({ authKey }),
+    body: JSON.stringify({ authKey, cardName }),
   });
 }
 

@@ -18,6 +18,9 @@ export function BillingCallback() {
     const authKey = params.get("authKey");
     const errorMessage = params.get("message");
 
+    const cardName = sessionStorage.getItem("pendingCardName") || "";
+    sessionStorage.removeItem("pendingCardName");
+
     if (!authKey) {
       setStatus("error");
       toast.error(errorMessage ? decodeURIComponent(errorMessage) : "카드 등록이 취소되었습니다.");
@@ -25,7 +28,7 @@ export function BillingCallback() {
       return;
     }
 
-    registerCard(authKey)
+    registerCard(authKey, cardName)
       .then(() => {
         setStatus("done");
         toast.success("카드가 등록되었습니다.");
