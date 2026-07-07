@@ -27,9 +27,9 @@ function avatarLabel(company) {
 export function CompanyQuickLinks({ companies, title, emptyMessage, isWatched, onToggleWatch }) {
   return (
     <div>
-      <h2 className="mb-4 text-sm font-medium text-slate-500">{title}</h2>
+      <h2 className="mb-4 text-sm font-medium text-slate-500 dark:text-slate-400">{title}</h2>
       {companies.length === 0 && emptyMessage ? (
-        <p className="py-12 text-center text-sm text-slate-500">{emptyMessage}</p>
+        <p className="py-12 text-center text-sm text-slate-500 dark:text-slate-400">{emptyMessage}</p>
       ) : (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
           {companies.map((company, index) => {
@@ -43,7 +43,7 @@ export function CompanyQuickLinks({ companies, title, emptyMessage, isWatched, o
               >
                 <Link
                   to={`/company/${company.id}`}
-                  className="group flex items-center gap-2 rounded-xl border border-slate-200 bg-white p-3 pr-2 transition-colors hover:border-blue-200 hover:bg-blue-50/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+                  className="group flex items-center gap-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-3 pr-2 transition-colors hover:border-blue-200 dark:hover:border-blue-800 hover:bg-blue-50/40 dark:hover:bg-blue-950/30 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-950"
                 >
                   <span
                     className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br text-xs font-semibold text-white ${AVATAR_PALETTE[index % AVATAR_PALETTE.length]}`}
@@ -51,10 +51,10 @@ export function CompanyQuickLinks({ companies, title, emptyMessage, isWatched, o
                     {avatarLabel(company)}
                   </span>
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-medium text-slate-900 group-hover:text-blue-700">
+                    <span className="block truncate text-sm font-medium text-slate-900 dark:text-slate-100 group-hover:text-blue-700 dark:group-hover:text-blue-400">
                       {company.name}
                     </span>
-                    <span className="block truncate text-xs text-slate-400">{company.ticker}</span>
+                    <span className="block truncate text-xs text-slate-400 dark:text-slate-500">{company.ticker}</span>
                   </span>
                   {onToggleWatch && (
                     <button
@@ -66,7 +66,7 @@ export function CompanyQuickLinks({ companies, title, emptyMessage, isWatched, o
                       }}
                       aria-pressed={watched}
                       aria-label={watched ? `${company.name} 관심기업에서 삭제` : `${company.name} 관심기업에 추가`}
-                      className="shrink-0 rounded-full p-1.5 text-slate-300 transition-colors hover:text-amber-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                      className="shrink-0 rounded-full p-1.5 text-slate-300 dark:text-slate-600 transition-colors hover:text-amber-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
                     >
                       <Star className={`h-4 w-4 ${watched ? 'fill-amber-400 text-amber-400' : ''}`} />
                     </button>

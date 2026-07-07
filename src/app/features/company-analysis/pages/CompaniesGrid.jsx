@@ -65,14 +65,14 @@ export function CompaniesGrid() {
   function renderPanel(sourceRows, quickLinkSections) {
     if (query.trim()) {
       if (loading) {
-        return <p className="py-12 text-center text-sm text-slate-400">불러오는 중...</p>;
+        return <p className="py-12 text-center text-sm text-slate-400 dark:text-slate-500">불러오는 중...</p>;
       }
       if (error) {
-        return <p className="py-12 text-center text-sm text-red-500">{error}</p>;
+        return <p className="py-12 text-center text-sm text-red-500 dark:text-red-400">{error}</p>;
       }
       if (sourceRows.length === 0) {
         return (
-          <p className="py-12 text-center text-sm text-slate-500">"{query}"에 해당하는 기업을 찾을 수 없어요.</p>
+          <p className="py-12 text-center text-sm text-slate-500 dark:text-slate-400">"{query}"에 해당하는 기업을 찾을 수 없어요.</p>
         );
       }
       return (
@@ -111,17 +111,25 @@ export function CompaniesGrid() {
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <div className="pt-10 pb-2">
           <div className="mb-6 text-center">
-            <h1 className="text-3xl font-bold tracking-tight text-slate-900">기업을 검색해보세요</h1>
-            <p className="mt-2 text-sm text-slate-500">
+            <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100">기업을 검색해보세요</h1>
+            <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
               기업명, 종목코드, 업종으로 검색하고 정기공시 변동을 확인하세요.
             </p>
           </div>
 
           <CompanySearchBar value={query} onChange={setQuery} inputRef={inputRef} />
 
-          <TabsList className="mx-auto mt-4 w-fit gap-1 bg-slate-100/80 p-1">
-            <TabsTrigger value="search">기업 검색</TabsTrigger>
-            <TabsTrigger value="watchlist">관심 기업{watchedIds.length > 0 ? ` (${watchedIds.length})` : ''}</TabsTrigger>
+          <TabsList className="mx-auto mt-4 w-fit gap-1 bg-slate-100/80 dark:bg-slate-800/80 p-1">
+            <TabsTrigger
+              value="search"
+              className="data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm dark:data-[state=active]:bg-slate-900 dark:data-[state=active]:text-slate-100 dark:text-slate-400"
+            >
+              기업 검색
+            </TabsTrigger>
+            <TabsTrigger
+              value="watchlist"
+              className="data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm dark:data-[state=active]:bg-slate-900 dark:data-[state=active]:text-slate-100 dark:text-slate-400"
+            >관심 기업{watchedIds.length > 0 ? ` (${watchedIds.length})` : ''}</TabsTrigger>
           </TabsList>
         </div>
 
