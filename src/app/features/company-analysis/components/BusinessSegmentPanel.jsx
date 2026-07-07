@@ -1,14 +1,13 @@
 import { useState } from 'react';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
 import { motion } from 'motion/react';
-import { Lightbulb } from 'lucide-react';
 import { SourceExcerptDialog } from './SourceExcerptDialog';
-import { Skeleton } from '../../../shared/components/ui/skeleton';
+import { SoWhatCallout } from './SoWhatCallout';
 import { isAiReady } from '../lib/aiStatus';
 
 const STATUS_BADGE = {
-  added:   { label: '신규', className: 'bg-blue-50 text-blue-700 border border-blue-200' },
-  removed: { label: '제거됨', className: 'bg-red-50 text-red-600 border border-red-200' },
+  added:   { label: '신규', className: 'bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800' },
+  removed: { label: '제거됨', className: 'bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-900' },
 };
 
 const SEGMENT_COLORS = ['#3b82f6', '#6366f1', '#94a3b8', '#cbd5e1', '#e2e8f0'];
@@ -17,9 +16,9 @@ function CustomTooltip({ active, payload }) {
   if (!active || !payload?.length) return null;
   const { fullName, value } = payload[0].payload;
   return (
-    <div className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm shadow-md">
-      <p className="font-semibold text-slate-800">{fullName}</p>
-      <p className="text-slate-500">매출 비중 <span className="font-bold text-slate-800">{value}%</span></p>
+    <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm shadow-md">
+      <p className="font-semibold text-slate-800 dark:text-slate-100">{fullName}</p>
+      <p className="text-slate-500 dark:text-slate-400">매출 비중 <span className="font-semibold text-slate-800 dark:text-slate-100">{value}%</span></p>
     </div>
   );
 }
@@ -30,8 +29,8 @@ function DonutCenterLabel({ segments, activeIdx }) {
   if (!seg) return null;
   return (
     <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-      <span className="text-xl font-bold tabular-nums text-slate-900">{seg.revenueShare}%</span>
-      <span className="mt-0.5 max-w-[72px] text-center text-[11px] leading-tight text-slate-500">
+      <span className="text-xl font-semibold tabular-nums text-slate-900 dark:text-slate-100">{seg.revenueShare}%</span>
+      <span className="mt-0.5 max-w-[72px] text-center text-[11px] leading-tight text-slate-500 dark:text-slate-400">
         {seg.name.split(' ')[0]}
       </span>
     </div>
@@ -54,7 +53,7 @@ export function BusinessSegmentPanel({ overview, profile }) {
   return (
     <section aria-labelledby="segment-heading">
       <div className="mb-4 flex items-center justify-between gap-3">
-        <h2 id="segment-heading" className="text-xl font-semibold text-slate-900">
+        <h2 id="segment-heading" className="text-lg font-semibold tracking-tight text-slate-900 dark:text-slate-100">
           사업 부문 현황
         </h2>
         {overview.segmentSourceRef && (
@@ -63,12 +62,12 @@ export function BusinessSegmentPanel({ overview, profile }) {
             excerpt={overview.segmentSourceRef.excerpt}
             sourceRef={overview.segmentSourceRef.sourceRef}
             label="공시 원문 보기"
-            className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-600 hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700"
+            className="rounded-full border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-2.5 py-1 text-xs font-medium text-slate-600 dark:text-slate-400 hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700 dark:hover:border-blue-800 dark:hover:bg-blue-950/40 dark:hover:text-blue-300"
           />
         )}
       </div>
 
-      <div className="rounded-lg border border-slate-200 bg-white p-4">
+      <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
           {/* Donut chart with center label */}
           <div className="relative mx-auto h-40 w-40 shrink-0 sm:mx-0">
@@ -110,7 +109,7 @@ export function BusinessSegmentPanel({ overview, profile }) {
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.25, delay: i * 0.05, ease: 'easeOut' }}
                 className={`flex items-start gap-3 rounded-md px-2 py-2 transition-colors duration-150 ${
-                  activeIdx === i ? 'bg-slate-50' : ''
+                  activeIdx === i ? 'bg-slate-50 dark:bg-slate-800/50' : ''
                 }`}
                 onMouseEnter={() => setActiveIdx(i)}
                 onMouseLeave={() => setActiveIdx(null)}
@@ -121,47 +120,28 @@ export function BusinessSegmentPanel({ overview, profile }) {
                 />
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-1.5">
-                    <span className="text-sm font-semibold text-slate-800">{seg.name}</span>
+                    <span className="text-sm font-semibold text-slate-800 dark:text-slate-200">{seg.name}</span>
                     {seg.status !== 'existing' && (
                       <span className={`rounded-full px-1.5 py-0.5 text-xs font-medium ${STATUS_BADGE[seg.status].className}`}>
                         {STATUS_BADGE[seg.status].label}
                       </span>
                     )}
-                    <span className="ml-auto text-sm font-bold tabular-nums text-slate-700">
+                    <span className="ml-auto text-sm font-semibold tabular-nums text-slate-700 dark:text-slate-300">
                       {seg.revenueShare}%
                     </span>
                   </div>
-                  <p className="mt-0.5 text-xs leading-relaxed text-slate-500">{seg.description}</p>
+                  <p className="mt-0.5 text-xs leading-relaxed text-slate-500 dark:text-slate-400">{seg.description}</p>
                 </div>
               </motion.div>
             ))}
           </div>
         </div>
 
-        {/* So what */}
-        {!isAiReady(overview) ? (
-          <div className="mt-4 flex gap-3 rounded-lg border border-blue-100 bg-blue-50/60 px-3 py-2.5">
-            <Lightbulb size={15} className="mt-0.5 shrink-0 text-blue-400" />
-            <div className="flex-1 space-y-1.5 py-0.5">
-              <Skeleton className="h-3 w-5/6" />
-              <Skeleton className="h-3 w-2/3" />
-            </div>
-          </div>
-        ) : (
-          overview.segmentInsight && (
-            <div className="mt-4 flex gap-3 rounded-lg border border-blue-100 bg-blue-50/60 px-3 py-2.5">
-              <Lightbulb size={15} className="mt-0.5 shrink-0 text-blue-500" />
-              <p className="text-sm leading-relaxed text-slate-700">
-                <span className="font-semibold text-blue-700">So what? </span>
-                {overview.segmentInsight}
-              </p>
-            </div>
-          )
-        )}
+        <SoWhatCallout ready={isAiReady(overview)} insight={overview.segmentInsight} />
 
         {/* Governance note */}
         {profile?.governanceNotes && (
-          <p className="mt-3 text-xs leading-relaxed text-slate-400">{profile.governanceNotes}</p>
+          <p className="mt-3 text-xs leading-relaxed text-slate-400 dark:text-slate-500">{profile.governanceNotes}</p>
         )}
       </div>
     </section>

@@ -19,17 +19,17 @@ export const SEVERITY_LABELS = {
  * "this is fine" for something that scored a finding at all.
  */
 export const SEVERITY_STYLES = {
-  high: { badge: 'bg-red-50 text-red-700 border-red-200', dot: 'bg-red-500', leftBorder: 'border-l-red-400' },
-  medium: { badge: 'bg-amber-50 text-amber-700 border-amber-200', dot: 'bg-amber-500', leftBorder: 'border-l-amber-400' },
-  low: { badge: 'bg-slate-100 text-slate-600 border-slate-200', dot: 'bg-slate-400', leftBorder: 'border-l-slate-300' },
+  high: { badge: 'bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-400 border-red-200 dark:border-red-900', dot: 'bg-red-500', leftBorder: 'border-l-red-400' },
+  medium: { badge: 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800', dot: 'bg-amber-500', leftBorder: 'border-l-amber-400' },
+  low: { badge: 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700', dot: 'bg-slate-400', leftBorder: 'border-l-slate-300 dark:border-l-slate-600' },
 };
 
 /** Same conservative palette, keyed by the grid card's coarser change-level signal. */
 export const CHANGE_LEVEL_STYLES = {
-  high: { dot: 'bg-red-500', text: 'text-red-700' },
-  medium: { dot: 'bg-amber-500', text: 'text-amber-700' },
-  low: { dot: 'bg-blue-400', text: 'text-slate-600' },
-  flat: { dot: 'bg-slate-300', text: 'text-slate-500' },
+  high: { dot: 'bg-red-500', text: 'text-red-700 dark:text-red-400' },
+  medium: { dot: 'bg-amber-500', text: 'text-amber-700 dark:text-amber-400' },
+  low: { dot: 'bg-blue-400', text: 'text-slate-600 dark:text-slate-400' },
+  flat: { dot: 'bg-slate-300 dark:bg-slate-600', text: 'text-slate-500 dark:text-slate-400' },
 };
 
 /** @param {import('../../../../mocks/companyAnalysis/types').ScoreComponent} component */

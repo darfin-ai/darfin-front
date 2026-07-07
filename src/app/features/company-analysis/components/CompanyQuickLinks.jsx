@@ -1,22 +1,7 @@
 import { Link } from 'react-router';
 import { motion } from 'motion/react';
 import { Star } from 'lucide-react';
-
-const AVATAR_PALETTE = [
-  'from-blue-500 to-blue-600',
-  'from-violet-500 to-violet-600',
-  'from-teal-500 to-teal-600',
-  'from-amber-500 to-amber-600',
-  'from-rose-500 to-rose-600',
-  'from-indigo-500 to-indigo-600',
-  'from-emerald-500 to-emerald-600',
-  'from-cyan-500 to-cyan-600',
-];
-
-function avatarLabel(company) {
-  const source = company.shortName ?? company.name;
-  return source.length <= 2 ? source : source.slice(0, 2);
-}
+import { AVATAR_PALETTE, avatarLabel } from '../lib/avatar';
 
 /**
  * Google-like "quick access" tiles — a browse entry point when the user

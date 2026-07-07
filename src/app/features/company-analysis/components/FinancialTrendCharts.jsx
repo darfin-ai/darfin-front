@@ -70,19 +70,19 @@ function AccountRow({ metric, rowStyle, expanded, onToggle }) {
   const isSection = rowStyle.role === 'section';
 
   return (
-    <li className={`border-b border-slate-100 last:border-b-0 ${classes.row}`}>
+    <li className={`border-b border-slate-100 dark:border-slate-800 last:border-b-0 ${classes.row}`}>
       <button
         type="button"
         onClick={onToggle}
         aria-expanded={expanded}
-        className={`flex w-full items-center gap-3 py-2.5 pr-4 text-left transition-colors hover:bg-slate-50/80 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500 ${
+        className={`flex w-full items-center gap-3 py-2.5 pr-4 text-left transition-colors hover:bg-slate-50/80 dark:hover:bg-slate-800/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500 ${
           isSection ? 'pt-3' : ''
         }`}
         style={{ paddingLeft: classes.pad }}
       >
         <ChevronDown
           size={14}
-          className={`shrink-0 text-slate-300 transition-transform ${expanded ? 'rotate-180' : ''} ${
+          className={`shrink-0 text-slate-300 dark:text-slate-600 transition-transform ${expanded ? 'rotate-180' : ''} ${
             isSection ? 'opacity-60' : ''
           }`}
         />
@@ -95,7 +95,7 @@ function AccountRow({ metric, rowStyle, expanded, onToggle }) {
         </span>
         <span
           className={`w-20 shrink-0 text-right text-xs font-medium tabular-nums ${
-            pct == null ? 'text-slate-300' : pct > 0 ? 'text-blue-600' : pct < 0 ? 'text-red-500' : 'text-slate-400'
+            pct == null ? 'text-slate-300 dark:text-slate-600' : pct > 0 ? 'text-blue-600 dark:text-blue-400' : pct < 0 ? 'text-red-500 dark:text-red-400' : 'text-slate-400 dark:text-slate-500'
           }`}
         >
           {pct == null ? '-' : formatPercent(pct)}
@@ -118,13 +118,13 @@ function AccountList({ metrics, statementType, expandedLabel, onToggle }) {
 
   if (metrics.length === 0) {
     return (
-      <p className="rounded-lg border border-dashed border-slate-200 p-6 text-center text-sm text-slate-400">
+      <p className="rounded-xl border border-dashed border-slate-200 dark:border-slate-700 p-6 text-center text-sm text-slate-400 dark:text-slate-500">
         조건에 맞는 계정이 없어요.
       </p>
     );
   }
   return (
-    <ul className="overflow-hidden rounded-lg border border-slate-200 bg-white">
+    <ul className="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
       {metrics.map((metric, index) => (
         <AccountRow
           key={metric.label}
@@ -187,10 +187,10 @@ export function FinancialTrendCharts({ financials, financialsSeparate }) {
   if (keyMetrics.length === 0 && statements.length === 0) {
     return (
       <section aria-labelledby="financial-trends-heading">
-        <h2 id="financial-trends-heading" className="mb-3 text-lg font-semibold text-slate-900">
+        <h2 id="financial-trends-heading" className="mb-3 text-lg font-semibold text-slate-900 dark:text-slate-100">
           재무 추이
         </h2>
-        <p className="rounded-lg border border-slate-200 bg-white py-12 text-center text-sm text-slate-500">
+        <p className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 py-12 text-center text-sm text-slate-500 dark:text-slate-400">
           아직 수집된 재무 지표가 없어요.
         </p>
       </section>
@@ -203,15 +203,15 @@ export function FinancialTrendCharts({ financials, financialsSeparate }) {
       <div>
         <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h2 id="financial-trends-heading" className="text-lg font-semibold text-slate-900">
+            <h2 id="financial-trends-heading" className="text-lg font-semibold text-slate-900 dark:text-slate-100">
               재무 추이
             </h2>
-            <p className="mt-0.5 text-xs text-slate-500">
+            <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
               {fsScope === 'separate' ? '별도재무제표' : '연결재무제표'} 기준
             </p>
           </div>
           {hasSeparate && (
-            <div className="flex w-fit gap-1 rounded-full bg-slate-100/80 p-1" role="tablist" aria-label="연결·별도 선택">
+            <div className="flex w-fit gap-1 rounded-full bg-slate-100/80 dark:bg-slate-800/80 p-1" role="tablist" aria-label="연결·별도 선택">
               <button
                 type="button"
                 role="tab"
@@ -222,7 +222,7 @@ export function FinancialTrendCharts({ financials, financialsSeparate }) {
                   setActiveStatement(null);
                 }}
                 className={`rounded-full px-3.5 py-1.5 text-sm font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
-                  fsScope === 'consolidated' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+                  fsScope === 'consolidated' ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
                 }`}
               >
                 연결
@@ -237,7 +237,7 @@ export function FinancialTrendCharts({ financials, financialsSeparate }) {
                   setActiveStatement(null);
                 }}
                 className={`rounded-full px-3.5 py-1.5 text-sm font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
-                  fsScope === 'separate' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+                  fsScope === 'separate' ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
                 }`}
               >
                 별도
@@ -256,19 +256,19 @@ export function FinancialTrendCharts({ financials, financialsSeparate }) {
       <div>
         <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h3 className="text-lg font-semibold text-slate-900">계정별 상세</h3>
-            <p className="mt-0.5 text-xs text-slate-500">
+            <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">계정별 상세</h3>
+            <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
               공시 원문의 재무제표 순서 그대로예요. 계정을 누르면 추이 차트가 열려요.
             </p>
           </div>
           <div className="relative">
-            <Search size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <Search size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
             <input
               type="search"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="계정명 검색 (예: 재고자산)"
-              className="w-56 rounded-full border border-slate-200 bg-white py-1.5 pl-8 pr-3 text-sm text-slate-700 placeholder:text-slate-400 focus:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-100"
+              className="w-56 rounded-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 py-1.5 pl-8 pr-3 text-sm text-slate-700 dark:text-slate-300 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-blue-300 dark:focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/40"
             />
           </div>
         </div>
@@ -276,13 +276,13 @@ export function FinancialTrendCharts({ financials, financialsSeparate }) {
         {searchResults ? (
           <div className="space-y-5">
             {searchResults.length === 0 ? (
-              <p className="rounded-lg border border-dashed border-slate-200 p-6 text-center text-sm text-slate-400">
+              <p className="rounded-xl border border-dashed border-slate-200 dark:border-slate-700 p-6 text-center text-sm text-slate-400 dark:text-slate-500">
                 "{query.trim()}"에 해당하는 계정이 없어요.
               </p>
             ) : (
               searchResults.map(([statement, metrics]) => (
                 <div key={statement}>
-                  <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-500">{statement}</p>
+                  <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">{statement}</p>
                   <AccountList
                     metrics={metrics}
                     statementType={statement}
@@ -295,7 +295,7 @@ export function FinancialTrendCharts({ financials, financialsSeparate }) {
           </div>
         ) : (
           <>
-            <div className="mb-3 flex w-fit gap-1 rounded-full bg-slate-100/80 p-1" role="tablist" aria-label="재무제표 선택">
+            <div className="mb-3 flex w-fit gap-1 rounded-full bg-slate-100/80 dark:bg-slate-800/80 p-1" role="tablist" aria-label="재무제표 선택">
               {statements.map(([statement, metrics]) => (
                 <button
                   key={statement}
@@ -308,11 +308,11 @@ export function FinancialTrendCharts({ financials, financialsSeparate }) {
                   }}
                   className={`rounded-full px-3.5 py-1.5 text-sm font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
                     statement === currentStatement
-                      ? 'bg-white text-slate-900 shadow-sm'
-                      : 'text-slate-500 hover:text-slate-700'
+                      ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-sm'
+                      : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
                   }`}
                 >
-                  {statement} <span className="text-xs text-slate-400">{metrics.length}</span>
+                  {statement} <span className="text-xs text-slate-400 dark:text-slate-500">{metrics.length}</span>
                 </button>
               ))}
             </div>

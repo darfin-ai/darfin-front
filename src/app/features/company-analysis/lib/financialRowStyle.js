@@ -193,11 +193,11 @@ export function rowStyleClasses(style) {
   const pad = 12 + depth * 14;
 
   const row = [
-    sectionBreak ? 'border-t-2 border-slate-300' : '',
+    sectionBreak ? 'border-t-2 border-slate-300 dark:border-slate-600' : '',
     {
-      section: 'bg-slate-100/90',
-      category: 'bg-slate-50/70',
-      total: 'border-t border-slate-200 bg-slate-50/90',
+      section: 'bg-slate-100/90 dark:bg-slate-800/50',
+      category: 'bg-slate-50/70 dark:bg-slate-800/30',
+      total: 'border-t border-slate-200 dark:border-slate-700 bg-slate-50/90 dark:bg-slate-800/40',
       item: '',
     }[role],
   ]
@@ -205,21 +205,25 @@ export function rowStyleClasses(style) {
     .join(' ');
 
   const label = {
-    section: 'text-xs font-bold uppercase tracking-wider text-slate-600',
-    category: 'text-sm font-semibold text-slate-800',
-    total: 'text-sm font-bold text-slate-900',
-    item: 'text-sm font-normal text-slate-600',
+    section: 'text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400',
+    category: 'text-sm font-semibold text-slate-800 dark:text-slate-200',
+    total: 'text-sm font-semibold text-slate-900 dark:text-slate-100',
+    item: 'text-sm font-normal text-slate-600 dark:text-slate-400',
   }[role];
 
   const value = {
-    section: 'text-sm font-bold text-slate-900',
-    category: 'text-sm font-semibold text-slate-900',
-    total: 'text-sm font-bold text-slate-900',
-    item: 'text-sm font-medium text-slate-800',
+    section: 'text-sm font-semibold text-slate-900 dark:text-slate-100',
+    category: 'text-sm font-semibold text-slate-900 dark:text-slate-100',
+    total: 'text-sm font-semibold text-slate-900 dark:text-slate-100',
+    item: 'text-sm font-medium text-slate-800 dark:text-slate-200',
   }[role];
 
   const accent =
-    role === 'category' ? 'border-l-[3px] border-l-blue-200' : role === 'total' ? 'border-l-[3px] border-l-slate-300' : '';
+    role === 'category'
+      ? 'border-l-[3px] border-l-blue-200 dark:border-l-blue-800'
+      : role === 'total'
+        ? 'border-l-[3px] border-l-slate-300 dark:border-l-slate-600'
+        : '';
 
   return { row: `${row} ${accent}`.trim(), label, value, pad };
 }

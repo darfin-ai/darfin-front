@@ -18,17 +18,17 @@ export function ReasoningChainItem({ finding, selectedHopSourceRef, onSelectHop,
       initial={{ opacity: 0, y: 14 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.08, duration: 0.35, ease: 'easeOut' }}
-      className={`rounded-lg border border-slate-200 bg-white p-5 border-l-4 ${severityStyle.leftBorder}`}
+      className={`rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 border-l-4 ${severityStyle.leftBorder}`}
     >
       <div className="flex flex-wrap items-center gap-2">
-        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
+        <span className="rounded-full bg-slate-100 dark:bg-slate-800 px-2 py-0.5 text-xs font-medium text-slate-600 dark:text-slate-400">
           {SCORE_COMPONENT_LABELS[finding.scoreComponent]}
         </span>
         <span className={`rounded-full border px-2 py-0.5 text-xs font-medium ${severityStyle.badge}`}>
           영향도 {SEVERITY_LABELS[finding.severity]}
         </span>
       </div>
-      <h3 className="mt-2 text-base font-semibold text-slate-900">{finding.summary}</h3>
+      <h3 className="mt-2 text-base font-semibold text-slate-900 dark:text-slate-100">{finding.summary}</h3>
 
       <ol className="mt-3 space-y-3">
         {finding.hops.map((hop, i) => (

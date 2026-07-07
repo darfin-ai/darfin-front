@@ -15,11 +15,11 @@ export function SimilarCompaniesPanel({ rows, sector }) {
         transition={{ duration: 0.3 }}
         className="mb-3"
       >
-        <h2 id="similar-companies-heading" className="text-xl font-semibold text-slate-900">
+        <h2 id="similar-companies-heading" className="text-lg font-semibold tracking-tight text-slate-900 dark:text-slate-100">
           동일 업종 유사 기업
         </h2>
-        <p className="mt-1 text-sm text-slate-500">
-          <span className="font-medium text-slate-700">{sector}</span> 업종의 다른 기업들이에요.
+        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+          <span className="font-medium text-slate-700 dark:text-slate-300">{sector}</span> 업종의 다른 기업들이에요.
         </p>
       </motion.div>
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">

@@ -19,16 +19,16 @@ export function ReasoningChainFeed({ findings, selectedHopSourceRef, onSelectHop
   return (
     <section aria-labelledby="reasoning-chain-heading">
       <div className="mb-4">
-        <h2 id="reasoning-chain-heading" className="text-xl font-semibold text-slate-900">
+        <h2 id="reasoning-chain-heading" className="text-lg font-semibold tracking-tight text-slate-900 dark:text-slate-100">
           AI 분석 근거
         </h2>
-        <p className="mt-1 text-sm text-slate-500">
+        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
           AI가 공시에서 발견한 주요 변화와 판단 근거입니다.
-          각 항목의 <span className="font-medium text-slate-700">원문 보기</span>를 클릭하면 실제 공시 발췌문을 확인할 수 있습니다.
+          각 항목의 <span className="font-medium text-slate-700 dark:text-slate-300">원문 보기</span>를 클릭하면 실제 공시 발췌문을 확인할 수 있습니다.
         </p>
       </div>
       {ranked.length === 0 ? (
-        <p className="rounded-lg border border-dashed border-slate-200 p-6 text-center text-sm text-slate-400">
+        <p className="rounded-xl border border-dashed border-slate-200 dark:border-slate-700 p-6 text-center text-sm text-slate-400 dark:text-slate-500">
           이번 분기 감지된 항목이 없어요.
         </p>
       ) : (
