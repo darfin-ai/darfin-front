@@ -8,6 +8,7 @@ import {
   PageShell, Empty, LoginGate,
 } from '../components/ui.jsx';
 import { fetchStoredPortfolioReports, generatePortfolioAnalysis, getDarfinUser, getDarfinUserId } from '../lib/aiEngine.js';
+import { normalizeUserText, userDisplayName } from '../../../shared/lib/userText.js';
 
 const AXES = [
   { n: '①', t: '행동 패턴', d: '매매 빈도 · 보유 기간 · 손절/익절 · 추격 매수' },
@@ -136,6 +137,7 @@ function normalizeReport(report) {
 
   return {
     ...r,
+    nickname: normalizeUserText(r.nickname),
     label: r.label || '-',
     labelReason: r.labelReason || '-',
     disclaimer: r.disclaimer || '이 리포트는 모의투자 학습을 목적으로 제공되며, 특정 종목의 매수·매도를 권유하지 않아요.',
@@ -211,7 +213,7 @@ ${sectionRows.map(([t, body]) => `<div class="sec"><h2>${esc(t)}</h2><div class=
 function ReportCard({ report: r }) {
   r = normalizeReport(r);
   const user = getDarfinUser();
-  const displayName = r.nickname || user?.nickname || user?.name || user?.email || '회원';
+  const displayName = normalizeUserText(r.nickname) || userDisplayName(user);
   const health = r.health;
   const b = r.behavior;
   const rk = r.risk;
@@ -424,7 +426,7 @@ export function AIReports() {
         const user = getDarfinUser();
         const report = {
           ...(aiResult.report || {}),
-          nickname: aiResult.report?.nickname || user?.nickname || user?.name || user?.email || '회원',
+          nickname: normalizeUserText(aiResult.report?.nickname) || userDisplayName(user),
         };
         addAiReport({
           ...report,
@@ -445,7 +447,7 @@ export function AIReports() {
           returns: { top3: [], bottom3: [], sectorContrib: [], text: '-' },
           adviceTop3: [],
           strategy: '-',
-          nickname: getDarfinUser()?.nickname || getDarfinUser()?.name || getDarfinUser()?.email || '회원',
+          nickname: userDisplayName(getDarfinUser()),
           geminiError,
         });
       }

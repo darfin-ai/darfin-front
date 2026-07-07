@@ -26,7 +26,7 @@ async function tryRefresh() {
 
   const res = await fetch(`${BASE_URL}/api/v1/auth/reissue`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json; charset=utf-8' },
     body: JSON.stringify({ refreshToken }),
   });
 
@@ -48,7 +48,7 @@ export async function request(path, options = {}) {
   const token = getAccessToken();
 
   const headers = {
-    'Content-Type': 'application/json',
+    'Content-Type': 'application/json; charset=utf-8',
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
     ...options.headers,
   };

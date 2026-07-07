@@ -1,4 +1,5 @@
 import { request } from '../../../shared/api/apiClient.js';
+import { normalizeUserObject, normalizeUserText, userDisplayName } from '../../../shared/lib/userText.js';
 
 // AI 분석 요청은 Spring Boot API가 받고, 서버에서 Python 분석 서버 호출/DB 저장을 담당한다.
 export const DISCLAIMER = '이 리포트는 모의투자 학습을 목적으로 제공되며, 특정 종목의 매수·매도를 권유하지 않아요.';
@@ -38,7 +39,7 @@ function normalizePortfolioReportEnvelope(item) {
     ...report,
     id: report.id || source.id || source.reportId || source.report_id || source.remoteReportId,
     ts: report.ts || source.ts || timestampOf(source.createdAt || source.created_at || source.generatedAt || source.generated_at),
-    nickname: report.nickname || source.nickname,
+    nickname: normalizeUserText(report.nickname || source.nickname),
     geminiAnalysis: report.geminiAnalysis || source.geminiAnalysis || source.analysis,
     remoteReportId: report.remoteReportId || source.remoteReportId || source.reportId || source.report_id || source.id,
     dbError: report.dbError || source.dbError || source.db_error,
@@ -56,7 +57,9 @@ function extractReportList(data) {
 
 export function getDarfinUser() {
   try {
-    return JSON.parse(sessionStorage.getItem('darfin_user') || 'null');
+    const user = normalizeUserObject(JSON.parse(sessionStorage.getItem('darfin_user') || 'null'));
+    if (user) sessionStorage.setItem('darfin_user', JSON.stringify(user));
+    return user;
   } catch {
     return null;
   }
@@ -121,7 +124,7 @@ export async function generatePortfolioAnalysis(state, getStock) {
   const data = await request(PORTFOLIO_ANALYSIS_PATH, {
     method: 'POST',
     body: JSON.stringify({
-      nickname: user?.nickname || user?.name || user?.email || '회원',
+      nickname: userDisplayName(user),
       state: {
         funds: payload.funds,
         holdings: payload.holdings,

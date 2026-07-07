@@ -1,11 +1,19 @@
 import { createContext, useContext, useState, useCallback } from "react";
 import { getAccessToken, getRefreshToken, setTokens, clearTokens } from "../../../shared/api/apiClient";
 import { logout as apiLogout } from "../../../shared/api/authApi";
+import { normalizeUserObject } from "../../../shared/lib/userText";
+
+function decodeBase64UrlUtf8(value) {
+  const base64 = value.replace(/-/g, '+').replace(/_/g, '/');
+  const padded = base64.padEnd(Math.ceil(base64.length / 4) * 4, '=');
+  const binary = atob(padded);
+  const bytes = Uint8Array.from(binary, ch => ch.charCodeAt(0));
+  return new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+}
 
 function parseJwt(token) {
   try {
-    const base64 = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
-    return JSON.parse(atob(base64));
+    return JSON.parse(decodeBase64UrlUtf8(token.split('.')[1]));
   } catch {
     return null;
   }
@@ -25,11 +33,15 @@ function userFromPayload(payload) {
 function loadUser() {
   const stored = sessionStorage.getItem('darfin_user');
   if (stored) {
-    try { return JSON.parse(stored); } catch { /* fall through */ }
+    try {
+      const normalized = normalizeUserObject(JSON.parse(stored));
+      sessionStorage.setItem('darfin_user', JSON.stringify(normalized));
+      return normalized;
+    } catch { /* fall through */ }
   }
   const token = getAccessToken();
   if (!token) return null;
-  return userFromPayload(parseJwt(token));
+  return normalizeUserObject(userFromPayload(parseJwt(token)));
 }
 
 const AuthContext = createContext(null);
@@ -46,6 +58,7 @@ export function AuthProvider({ children }) {
     if (!resolved) {
       resolved = userFromPayload(parseJwt(tokens.accessToken));
     }
+    resolved = normalizeUserObject(resolved);
     sessionStorage.setItem('darfin_user', JSON.stringify(resolved));
     setUser(resolved);
   }, []);
@@ -61,7 +74,7 @@ export function AuthProvider({ children }) {
 
   const updateUser = useCallback((patch) => {
     setUser((prev) => {
-      const next = { ...prev, ...patch };
+      const next = normalizeUserObject({ ...prev, ...patch });
       sessionStorage.setItem('darfin_user', JSON.stringify(next));
       return next;
     });
