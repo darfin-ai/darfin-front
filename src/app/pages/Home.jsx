@@ -1,12 +1,17 @@
-import { useState } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, Link } from "react-router";
-import { motion } from "motion/react";
-import { Search, ChevronRight, ArrowUpRight, ArrowDownRight, ArrowRight, Lightbulb, TrendingUp, Landmark, AlertTriangle, ShieldCheck, Check } from "lucide-react";
+import { motion, useReducedMotion, useInView } from "motion/react";
+import { ChevronRight, ArrowRight, Lightbulb, TrendingUp, Landmark, AlertTriangle, ShieldCheck, Check } from "lucide-react";
+import { useAuth } from "../features/auth";
 import { heroDemo, heroFindingsByLens } from "../../mocks/landing/heroDemo";
 import { topKospiCompanies } from "../../mocks/companyAnalysis/topKospi";
 import { topKosdaqCompanies } from "../../mocks/companyAnalysis/topKosdaq";
 
 const SECTION = "py-20 px-4 sm:px-6 lg:px-8";
+
+/* Muted brand blue for landing CTAs — less saturated than Tailwind blue-600 */
+const CTA_PRIMARY = "bg-[#1B64DA] hover:bg-[#1554BA]";
+const CTA_SECTION = "bg-[#1A4F7A]";
 
 /* Matches CompanyQuickLinks.jsx exactly, so avatar badges look identical to the real /company page. */
 const AVATAR_PALETTE = [
@@ -23,19 +28,6 @@ function avatarLabel(company) {
   const source = company.shortName ?? company.name;
   return source.length <= 2 ? source : source.slice(0, 2);
 }
-
-const TICKERS = [
-  { name: "삼성전자", code: "005930", price: 73400, change: 1.32, up: true },
-  { name: "SK하이닉스", code: "000660", price: 198500, change: 2.87, up: true },
-  { name: "LG에너지솔루션", code: "373220", price: 361000, change: -1.09, up: false },
-  { name: "삼성바이오로직스", code: "207940", price: 892000, change: 0.45, up: true },
-  { name: "현대차", code: "005380", price: 251000, change: -0.79, up: false },
-  { name: "NAVER", code: "035420", price: 195500, change: 1.55, up: true },
-  { name: "카카오", code: "035720", price: 41050, change: -2.13, up: false },
-  { name: "셀트리온", code: "068270", price: 178500, change: 3.22, up: true },
-  { name: "POSCO홀딩스", code: "005490", price: 312000, change: -0.32, up: false },
-  { name: "KB금융", code: "105560", price: 87800, change: 0.92, up: true },
-];
 
 const RECENT_DISCLOSURES = [
   { id: 1, company: "삼성전자", code: "005930", type: "분기보고서", title: "2026년 1분기 분기보고서 (주요 실적: 영업이익 7.8조 원)", time: "09:12" },
@@ -54,74 +46,191 @@ const LENS_STYLE = {
   governance: { icon: <ShieldCheck size={16} />, border: "border-l-slate-300", dot: "bg-slate-300", text: "text-slate-500", label: "영향 보통" },
 };
 
-function TickerBar() {
-  const doubled = [...TICKERS, ...TICKERS];
-  return (
-    <div className="bg-slate-900 border-b border-slate-700 overflow-hidden py-2.5 select-none" role="region" aria-label="실시간 시세 (참고용, 지연 시세)">
-      <div className="flex gap-0" style={{ animation: "ticker 40s linear infinite" }} aria-hidden="true">
-        {doubled.map((t, i) => (
-          <div key={i} className="flex items-center gap-2 px-6 border-r border-slate-700 flex-shrink-0">
-            <span className="text-slate-300 text-xs font-medium whitespace-nowrap">{t.name}</span>
-            <span className="text-white text-xs font-bold tabular-nums">{t.price.toLocaleString()}</span>
-            <span className={`text-xs font-bold tabular-nums flex items-center gap-0.5 ${t.up ? "text-red-400" : "text-blue-400"}`}>
-              {t.up ? <ArrowUpRight size={12} /> : <ArrowDownRight size={12} />}
-              {Math.abs(t.change)}%
-            </span>
-          </div>
-        ))}
+function HeroCta() {
+  const navigate = useNavigate();
+  const { isLoggedIn } = useAuth();
+
+  if (isLoggedIn) {
+    return (
+      <div className="flex flex-col sm:flex-row gap-3">
+        <button
+          type="button"
+          onClick={() => navigate("/company")}
+          className={`inline-flex items-center justify-center gap-2 px-7 py-4 ${CTA_PRIMARY} text-white text-sm font-bold rounded-xl transition-colors shadow-md shadow-[#1B64DA]/15`}
+        >
+          기업 분석 시작하기 <ArrowRight size={16} />
+        </button>
+        <Link
+          to="/trading"
+          className="inline-flex items-center justify-center gap-2 px-7 py-4 border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-sm font-bold rounded-xl transition-colors"
+        >
+          모의투자 해보기
+        </Link>
       </div>
-      <style>{`
-        @keyframes ticker {
-          from { transform: translateX(0); }
-          to { transform: translateX(-50%); }
-        }
-      `}</style>
+    );
+  }
+
+  return (
+    <div>
+      <div className="flex flex-col sm:flex-row gap-3">
+        <Link
+          to="/signup"
+          className={`inline-flex items-center justify-center gap-2 px-7 py-4 ${CTA_PRIMARY} text-white text-sm font-bold rounded-xl transition-colors shadow-md shadow-[#1B64DA]/15`}
+        >
+          무료로 시작하기 <ArrowRight size={16} />
+        </Link>
+        <Link
+          to="/login"
+          className="inline-flex items-center justify-center gap-2 px-7 py-4 border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-sm font-bold rounded-xl transition-colors"
+        >
+          로그인
+        </Link>
+      </div>
+      <p className="mt-4 text-sm text-slate-500">
+        신용카드 없이 가입 · 기업 분석·공시 분석·커뮤니티 무료 이용
+      </p>
     </div>
   );
 }
 
-function SearchBar() {
-  const navigate = useNavigate();
-  const [query, setQuery] = useState("");
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (query.trim()) navigate(`/company/${encodeURIComponent(query.trim())}`);
-  };
+const HERO_DEMO_BODY_HEIGHT = "h-[300px]";
+
+const CREDIBILITY_STATS = [
+  { label: "등록 기업 수", type: "count", to: 3200, suffix: "+", duration: 1.4, sub: "유가증권 + 코스닥 전 종목" },
+  { label: "분석된 공시 건수", type: "count", to: 2840000, suffix: "+", duration: 2.2, sub: "DART 전체 공시 커버" },
+  { label: "분석 방식", value: "DART 원문 기반", sub: "요약이 아니라 원문 근거를 함께 제시" },
+];
+
+function formatCount(n) {
+  return Math.round(n).toLocaleString("ko-KR");
+}
+
+function CountUpValue({ to, suffix = "+", duration = 1.4 }) {
+  const ref = useRef(null);
+  const isInView = useInView(ref, { once: true, margin: "-60px" });
+  const reduceMotion = useReducedMotion();
+  const [value, setValue] = useState(reduceMotion ? to : 0);
+
+  useEffect(() => {
+    if (reduceMotion) {
+      setValue(to);
+      return;
+    }
+    if (!isInView) return;
+
+    const start = performance.now();
+    let frame = 0;
+    const tick = (now) => {
+      const progress = Math.min((now - start) / (duration * 1000), 1);
+      const eased = 1 - (1 - progress) ** 3;
+      setValue(to * eased);
+      if (progress < 1) frame = requestAnimationFrame(tick);
+    };
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, [duration, isInView, reduceMotion, to]);
+
   return (
-    <form onSubmit={handleSubmit} className="relative w-full max-w-xl">
-      <label htmlFor="home-company-search" className="sr-only">기업명 또는 종목코드 검색</label>
-      <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-        <Search className="h-5 w-5 text-slate-400" aria-hidden="true" />
-      </div>
-      <input
-        id="home-company-search"
-        type="text"
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-        className="w-full pl-12 pr-32 py-4 bg-white border border-slate-200 rounded-2xl shadow-md text-sm placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
-        placeholder="기업명 또는 종목코드 검색 (예: 삼성전자, 005930)"
-      />
-      <button
-        type="submit"
-        className="absolute right-2 top-2 bottom-2 px-5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-xl transition-colors"
-      >
-        분석하기
-      </button>
-    </form>
+    <span ref={ref}>
+      {formatCount(value)}
+      {suffix}
+    </span>
   );
 }
 
+function CredibilityStatValue({ stat }) {
+  if (stat.type === "count") {
+    return <CountUpValue to={stat.to} suffix={stat.suffix} duration={stat.duration} />;
+  }
+  return stat.value;
+}
+
+const HERO_DEMO_FINAL_STEP = 8;
+
 function HeroDemo() {
-  const [tab, setTab] = useState("before");
+  const reduceMotion = useReducedMotion();
+  const [tab, setTab] = useState("after");
+  const [step, setStep] = useState(HERO_DEMO_FINAL_STEP);
+  const [hopIndex, setHopIndex] = useState(heroDemo.hops.length - 1);
+  const [highlightVisible, setHighlightVisible] = useState(true);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [isTouchDevice, setIsTouchDevice] = useState(false);
+  const timersRef = useRef([]);
+
+  const highlight = heroDemo.before.highlight ?? "";
+  const textParts = heroDemo.before.text.split(highlight || "###");
+
+  const clearTimers = useCallback(() => {
+    timersRef.current.forEach(clearTimeout);
+    timersRef.current = [];
+  }, []);
+
+  const showEndState = useCallback(() => {
+    clearTimers();
+    setIsPlaying(false);
+    setStep(HERO_DEMO_FINAL_STEP);
+    setHopIndex(heroDemo.hops.length - 1);
+    setHighlightVisible(true);
+    setTab("after");
+  }, [clearTimers]);
+
+  const playSequence = useCallback(() => {
+    if (reduceMotion) {
+      showEndState();
+      return;
+    }
+
+    clearTimers();
+    setIsPlaying(true);
+    setStep(0);
+    setHopIndex(-1);
+    setHighlightVisible(false);
+    setTab("after");
+
+    const schedule = (delay, fn) => {
+      timersRef.current.push(setTimeout(fn, delay));
+    };
+
+    schedule(350, () => setHighlightVisible(true));
+    schedule(950, () => setStep(6));
+    schedule(1300, () => setStep(7));
+    heroDemo.hops.forEach((_, i) => {
+      schedule(1400 + i * 280, () => setHopIndex(i));
+    });
+    schedule(1400 + heroDemo.hops.length * 280 + 100, () => setIsPlaying(false));
+  }, [clearTimers, reduceMotion, showEndState]);
+
+  useEffect(() => {
+    showEndState();
+    setIsTouchDevice(window.matchMedia("(hover: none)").matches);
+    return clearTimers;
+  }, [clearTimers, showEndState]);
+
+  const showSummary = step >= 6;
+  const showHops = step >= 7;
+
   return (
-    <div className="rounded-xl border border-slate-200 bg-white overflow-hidden shadow-sm">
+    <div
+      className="rounded-xl border border-slate-200 bg-white overflow-hidden shadow-sm lg:transition-shadow lg:hover:shadow-md"
+      onMouseEnter={() => { if (!reduceMotion) playSequence(); }}
+      onMouseLeave={() => { if (!reduceMotion) showEndState(); }}
+      onClick={() => {
+        if (!isTouchDevice || reduceMotion) return;
+        if (isPlaying) showEndState();
+        else playSequence();
+      }}
+    >
       <div className="px-5 py-3.5 flex items-center justify-between border-b border-slate-100">
         <div>
           <span className="text-sm font-semibold text-slate-900">{heroDemo.company.name}</span>
           <span className="ml-1.5 text-xs text-slate-500 tabular-nums">{heroDemo.company.ticker}</span>
         </div>
-        <span className="rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-600 border border-blue-200">
-          AI 분석 예시
+        <span className={`rounded-full px-2 py-0.5 text-xs font-medium border transition-colors duration-300 ${
+          isPlaying
+            ? "bg-amber-50 text-amber-700 border-amber-200"
+            : "bg-blue-50 text-blue-600 border-blue-200"
+        }`}>
+          {isPlaying ? "AI 분석 중" : "AI 분석 예시"}
         </span>
       </div>
 
@@ -140,34 +249,76 @@ function HeroDemo() {
         </button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 lg:divide-x lg:divide-slate-100">
-        <div className={`${tab === "before" ? "block" : "hidden"} lg:block p-5`}>
-          <div className="text-xs font-medium text-slate-400 mb-2">{heroDemo.before.sectionLabel}</div>
-          <p className="text-xs text-slate-600 leading-relaxed max-h-56 overflow-y-auto custom-scrollbar pr-2">
-            {heroDemo.before.text.split(heroDemo.before.highlight ?? "###").map((part, i, arr) => (
-              <span key={i}>
-                {part}
-                {i < arr.length - 1 && <mark className="bg-blue-100 text-blue-800 rounded px-0.5">{heroDemo.before.highlight}</mark>}
-              </span>
-            ))}
-          </p>
-        </div>
+      {!isPlaying && (
+        <p className="lg:hidden mx-5 mb-3 text-xs text-center text-slate-400">탭하여 AI 분석 다시 보기</p>
+      )}
 
-        <div className={`${tab === "after" ? "block" : "hidden"} lg:block p-5`}>
-          <div className="flex gap-2 rounded-md border border-blue-100 bg-blue-50/60 px-3 py-2.5 mb-3">
-            <Lightbulb size={14} className="mt-0.5 shrink-0 text-blue-500" />
-            <p className="text-xs leading-relaxed text-slate-700">
-              <span className="font-semibold text-blue-700">AI 요약. </span>
-              {heroDemo.finding.summary}
+      <div className={`grid grid-cols-1 lg:grid-cols-2 lg:divide-x lg:divide-slate-100 ${HERO_DEMO_BODY_HEIGHT}`}>
+        <div className={`${tab === "before" ? "flex" : "hidden"} lg:flex flex-col h-full min-h-0 px-5 py-4 overflow-hidden`}>
+          <div className="shrink-0 text-xs font-medium text-slate-400 mb-2">
+            {heroDemo.before.sectionLabel}
+          </div>
+          <div className="flex-1 min-h-0">
+            <p className="text-xs text-slate-600 leading-relaxed">
+              {textParts[0]}
+              {highlight && textParts.length > 1 && (
+                <span className="inline font-semibold">
+                  {highlight.split("").map((char, i) => (
+                    <motion.span
+                      key={i}
+                      className="rounded-[2px] box-decoration-clone"
+                      initial={false}
+                      animate={{
+                        backgroundColor: highlightVisible ? "rgb(191 219 254)" : "rgba(191, 219, 254, 0)",
+                        color: highlightVisible ? "rgb(15 23 42)" : "rgb(71 85 105)",
+                      }}
+                      transition={
+                        isPlaying && highlightVisible
+                          ? { duration: 0.06, delay: i * 0.045 }
+                          : { duration: 0 }
+                      }
+                    >
+                      {char}
+                    </motion.span>
+                  ))}
+                </span>
+              )}
+              {textParts[1] ?? ""}
             </p>
           </div>
-          <div className="divide-y divide-slate-100">
-            {heroDemo.hops.map((h) => (
-              <div key={h.sectionLabel} className="py-1.5 text-xs text-slate-500 leading-snug">
-                <span className="font-medium text-slate-600">{h.sectionLabel}</span> — {h.excerpt}
-              </div>
-            ))}
-          </div>
+        </div>
+
+        <div className={`${tab === "after" ? "block" : "hidden"} lg:block h-full min-h-0 px-5 py-4 overflow-hidden`}>
+          <motion.div
+            initial={false}
+            animate={{ opacity: showSummary ? 1 : 0 }}
+            transition={{ duration: 0.35, ease: "easeOut" }}
+            className="h-full min-h-0 flex flex-col"
+            aria-hidden={!showSummary}
+          >
+            <div className="flex gap-2 rounded-md border border-blue-100 bg-blue-50/60 px-3 py-2.5 mb-3 shrink-0">
+              <Lightbulb size={14} className="mt-0.5 shrink-0 text-blue-500" />
+              <p className="text-xs leading-relaxed text-slate-700 line-clamp-3">
+                <span className="font-semibold text-blue-700">AI 요약. </span>
+                {heroDemo.finding.summary}
+              </p>
+            </div>
+            <div className="divide-y divide-slate-100 min-h-0">
+              {heroDemo.hops.map((h, i) => (
+                showHops && hopIndex >= i ? (
+                  <motion.div
+                    key={h.sectionLabel}
+                    initial={{ opacity: 0, y: 4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.35, ease: "easeOut" }}
+                    className="py-1.5 text-xs text-slate-500 leading-snug"
+                  >
+                    <span className="font-medium text-slate-600">{h.sectionLabel}</span> — {h.excerpt}
+                  </motion.div>
+                ) : null
+              ))}
+            </div>
+          </motion.div>
         </div>
       </div>
 
@@ -185,11 +336,14 @@ function HeroDemo() {
 
 function CompanyBadge({ company, index }) {
   return (
-    <div className="flex items-center gap-2 flex-shrink-0 rounded-full border border-slate-200 bg-white pl-2 pr-4 py-1.5">
-      <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gradient-to-br text-[10px] font-semibold text-white ${AVATAR_PALETTE[index % AVATAR_PALETTE.length]}`}>
+    <div className="flex items-center gap-3 flex-shrink-0 rounded-2xl border border-slate-200 bg-white pl-3 pr-6 py-3 shadow-sm">
+      <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-br text-xs font-semibold text-white ${AVATAR_PALETTE[index % AVATAR_PALETTE.length]}`}>
         {avatarLabel(company)}
       </span>
-      <span className="text-xs font-semibold text-slate-700 whitespace-nowrap">{company.name}</span>
+      <div className="min-w-0">
+        <div className="text-sm font-semibold text-slate-800 whitespace-nowrap">{company.name}</div>
+        <div className="text-xs text-slate-400 tabular-nums mt-0.5">{company.ticker}</div>
+      </div>
     </div>
   );
 }
@@ -198,11 +352,11 @@ function CompanyMarquee() {
   const rowA = [...topKospiCompanies, ...topKospiCompanies];
   const rowB = [...topKosdaqCompanies, ...topKosdaqCompanies];
   return (
-    <div className="overflow-hidden space-y-3" aria-hidden="true">
-      <div className="flex gap-3 w-max" style={{ animation: "marquee 38s linear infinite" }}>
+    <div className="overflow-hidden space-y-5 py-2" aria-hidden="true">
+      <div className="flex gap-4 w-max" style={{ animation: "marquee 42s linear infinite" }}>
         {rowA.map((c, i) => <CompanyBadge key={`kospi-${c.id}-${i}`} company={c} index={i} />)}
       </div>
-      <div className="flex gap-3 w-max" style={{ animation: "marquee-reverse 38s linear infinite" }}>
+      <div className="flex gap-4 w-max" style={{ animation: "marquee-reverse 42s linear infinite" }}>
         {rowB.map((c, i) => <CompanyBadge key={`kosdaq-${c.id}-${i}`} company={c} index={i + 3} />)}
       </div>
       <style>{`
@@ -374,10 +528,9 @@ const WALKTHROUGH = [
 
 export function Home() {
   const navigate = useNavigate();
+  const { isLoggedIn } = useAuth();
   return (
     <div className="flex flex-col flex-1">
-      <TickerBar />
-
       {/* ── Hero ─────────────────────────────────────────── */}
       <section className="relative bg-white overflow-hidden">
         <div
@@ -394,28 +547,27 @@ export function Home() {
                 AI 공시 분석 · 모의투자 · 투자자 커뮤니티
               </div>
               <h1 className="text-5xl font-extrabold tracking-tight text-slate-900 leading-[1.15] mb-5">
-                50페이지 공시,<br />
-                <span className="text-blue-600">이렇게 읽습니다</span>
+                DART 원문 그대로,<br />
+                <span className="text-blue-600">AI가 읽어드립니다</span>
               </h1>
               <p className="text-lg text-slate-600 leading-relaxed mb-8 max-w-lg">
-                DART 공시 원문을 AI가 읽고 핵심 변화를 짚어드립니다. 오른쪽은 삼성전자의
-                실제 2026년 1분기 보고서로 만든 예시입니다.
+                요약이 아닌 공시 원문을 근거로, 코스피·코스닥 3,200여 상장사의 핵심 변화를 찾아냅니다.
               </p>
 
-              <SearchBar />
+              <HeroCta />
 
-              <div className="mt-5 flex flex-wrap items-center gap-x-6 gap-y-2 text-xs text-slate-500">
-                <span className="flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-blue-400" /> DART 실시간 연동</span>
+              <div className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-2 text-xs text-slate-500">
+                <span className="flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-blue-400" /> 금융감독원 DART 공식 데이터</span>
                 <span className="flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-blue-400" /> 3,200+ 상장 기업</span>
-                <span className="flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-blue-400" /> 무료로 시작 가능</span>
+                <span className="flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-blue-400" /> 모든 분석에 원문 근거 제공</span>
               </div>
 
-              <button
-                onClick={() => navigate("/company")}
+              <a
+                href="#features"
                 className="mt-8 inline-flex items-center gap-1.5 text-sm font-bold text-blue-600 hover:text-blue-700 transition-colors"
               >
-                무료로 둘러보기 <ArrowRight size={15} />
-              </button>
+                기능 미리보기 <ArrowRight size={15} />
+              </a>
             </motion.div>
 
             <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, delay: 0.1, ease: "easeOut" }}>
@@ -429,11 +581,7 @@ export function Home() {
       <section className={`bg-slate-50 border-y border-slate-200 ${SECTION}`}>
         <div className="max-w-7xl mx-auto">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-            {[
-              { label: "등록 기업 수", value: "3,200+", sub: "유가증권 + 코스닥 전 종목" },
-              { label: "분석된 공시 건수", value: "2,840,000+", sub: "DART 전체 공시 커버" },
-              { label: "분석 방식", value: "DART 원문 기반", sub: "요약이 아니라 원문 근거를 함께 제시" },
-            ].map((s, i) => (
+            {CREDIBILITY_STATS.map((s, i) => (
               <motion.div
                 key={s.label}
                 initial={{ opacity: 0, y: 16 }}
@@ -442,7 +590,9 @@ export function Home() {
                 transition={{ delay: i * 0.08, duration: 0.35, ease: "easeOut" }}
                 className="rounded-lg border border-slate-200 bg-white px-5 py-4 text-center"
               >
-                <div className="text-2xl font-bold tabular-nums text-slate-900 mb-1">{s.value}</div>
+                <div className="text-2xl font-bold tabular-nums text-slate-900 mb-1">
+                  <CredibilityStatValue stat={s} />
+                </div>
                 <div className="text-sm font-semibold text-blue-600 mb-0.5">{s.label}</div>
                 <div className="text-xs text-slate-400">{s.sub}</div>
               </motion.div>
@@ -456,16 +606,16 @@ export function Home() {
       </section>
 
       {/* ── Data coverage — real KOSPI/KOSDAQ companies as social proof ── */}
-      <section className="bg-white py-14 overflow-hidden">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center mb-8">
+      <section className="bg-white py-20 overflow-hidden">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center mb-12">
           <div className="text-xs font-semibold text-blue-600 uppercase tracking-widest mb-2">데이터 커버리지</div>
-          <h2 className="text-2xl font-extrabold text-slate-900">코스피·코스닥 상장사 전체를 분석합니다</h2>
+          <h2 className="text-3xl font-extrabold text-slate-900">코스피·코스닥 상장사 전체를 분석합니다</h2>
         </div>
         <CompanyMarquee />
       </section>
 
       {/* ── Product walkthrough — real UI mockups per feature ── */}
-      <section className={`bg-slate-50 border-y border-slate-200 ${SECTION}`}>
+      <section id="features" className={`bg-slate-50 border-y border-slate-200 ${SECTION}`}>
         <div className="max-w-7xl mx-auto">
           <motion.div
             initial={{ opacity: 0, y: 16 }}
@@ -629,19 +779,29 @@ export function Home() {
       </section>
 
       {/* ── Final CTA ─────────────────────────────────────── */}
-      <section className={`bg-blue-600 ${SECTION}`}>
+      <section className={`${CTA_SECTION} ${SECTION}`}>
         <motion.div initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.35 }} className="max-w-3xl mx-auto text-center">
-          <h2 className="text-4xl font-extrabold text-white mb-4">지금 확인해보세요</h2>
-          <p className="text-blue-100 text-lg mb-10">
-            회원가입 없이 기업 검색부터, 실제 돈 없이 모의투자까지 — 먼저 둘러본 뒤 결정하세요.
+          <h2 className="text-4xl font-extrabold text-white mb-4">지금 시작하세요</h2>
+          <p className="text-[#B8CCE4] text-lg mb-10">
+            DART 공시 기반 AI 분석부터 모의투자까지 — 무료로 가입하고 바로 이용해보세요.
           </p>
           <div className="flex flex-col sm:flex-row justify-center gap-4">
-            <button
-              onClick={() => navigate("/company")}
-              className="px-8 py-4 bg-white text-blue-700 font-extrabold rounded-xl hover:bg-blue-50 transition-colors shadow-lg"
-            >
-              기업 분석 무료로 시작하기
-            </button>
+            {isLoggedIn ? (
+              <button
+                type="button"
+                onClick={() => navigate("/company")}
+                className="px-8 py-4 bg-white text-[#1A4F7A] font-extrabold rounded-xl hover:bg-blue-50 transition-colors shadow-lg"
+              >
+                기업 분석 시작하기
+              </button>
+            ) : (
+              <Link
+                to="/signup"
+                className="px-8 py-4 bg-white text-[#1A4F7A] font-extrabold rounded-xl hover:bg-blue-50 transition-colors shadow-lg"
+              >
+                무료 회원가입
+              </Link>
+            )}
             <Link
               to="/trading"
               className="px-8 py-4 bg-white/10 border border-white/30 text-white font-bold rounded-xl hover:bg-white/20 transition-colors flex items-center justify-center gap-2"
