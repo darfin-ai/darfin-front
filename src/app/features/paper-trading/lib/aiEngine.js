@@ -108,8 +108,6 @@ export function buildPortfolioAnalysisPayload(state, getStock) {
 }
 
 export async function fetchStoredPortfolioReports(limit = 20) {
-  if (!getDarfinUserId()) return [];
-
   const data = await request(`${PORTFOLIO_ANALYSIS_PATH}/reports?limit=${encodeURIComponent(limit)}`, {
     method: 'GET',
   });
@@ -119,13 +117,10 @@ export async function fetchStoredPortfolioReports(limit = 20) {
 
 export async function generatePortfolioAnalysis(state, getStock) {
   const user = getDarfinUser();
-  const userId = getDarfinUserId();
   const payload = buildPortfolioAnalysisPayload(state, getStock);
   const data = await request(PORTFOLIO_ANALYSIS_PATH, {
     method: 'POST',
     body: JSON.stringify({
-      userId: userId ? String(userId) : null,
-      user_id: userId ? String(userId) : null,
       nickname: user?.nickname || user?.name || user?.email || '회원',
       state: {
         funds: payload.funds,

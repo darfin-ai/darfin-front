@@ -7,7 +7,7 @@ import {
   Card, primaryBtn,
   PageShell, Empty, LoginGate,
 } from '../components/ui.jsx';
-import { fetchStoredPortfolioReports, generatePortfolioAnalysis, getDarfinUser } from '../lib/aiEngine.js';
+import { fetchStoredPortfolioReports, generatePortfolioAnalysis, getDarfinUser, getDarfinUserId } from '../lib/aiEngine.js';
 
 const AXES = [
   { n: '①', t: '행동 패턴', d: '매매 빈도 · 보유 기간 · 손절/익절 · 추격 매수' },
@@ -393,13 +393,18 @@ export function AIReports() {
   const { state, getStock, addAiReport, setAiReports, navigate } = useStore();
   const [generating, setGenerating] = useState(false);
   const [reportsLoaded, setReportsLoaded] = useState(false);
+  const userKey = getDarfinUserId() || getDarfinUser()?.email || '';
+
+  useEffect(() => {
+    setReportsLoaded(false);
+  }, [state.isLoggedIn, userKey]);
 
   useEffect(() => {
     if (!state.isLoggedIn || reportsLoaded) return;
     let cancelled = false;
     fetchStoredPortfolioReports()
       .then((reports) => {
-        if (!cancelled && reports.length) setAiReports(reports);
+        if (!cancelled) setAiReports(reports);
       })
       .catch((error) => console.warn('저장된 AI 리포트 조회 실패', error))
       .finally(() => {

@@ -120,8 +120,8 @@ function loadState() {
     const saved = JSON.parse(raw);
     const base = defaultState();
     const merged = { ...base, ...saved, route: base.route }; // route always starts at home
-    // migrate: drop legacy AI reports (old format without .health) and remove old local community mock cache
-    merged.aiReports = (merged.aiReports || []).filter(r => r && r.health);
+    // AI reports are user-owned DB data. Never resurrect them from browser cache.
+    merged.aiReports = [];
     delete merged.community;
     // isLoggedIn/watchlist는 서버가 실제 출처(auth 세션 / DB) — 캐시된 값을 신뢰하지 않는다
     merged.isLoggedIn = false;
@@ -153,7 +153,9 @@ export function StoreProvider({ children, initialLoggedIn, onLogout }) {
 
   useEffect(() => {
     try {
-      localStorage.setItem(LS_KEY, JSON.stringify(state));
+      const persistable = { ...state };
+      delete persistable.aiReports;
+      localStorage.setItem(LS_KEY, JSON.stringify(persistable));
     } catch (e) {
       console.warn('모의투자 상태 저장 실패', e);
     }
@@ -187,7 +189,15 @@ export function StoreProvider({ children, initialLoggedIn, onLogout }) {
   // 실제 로그인 상태(AuthContext/JWT)를 state.isLoggedIn에 반영 — 이전에는 이 prop이
   // 버려져서 로그인 여부와 무관하게 항상 로그인된 것처럼 보이는 버그가 있었다.
   useEffect(() => {
-    setState(s => (s.isLoggedIn === !!initialLoggedIn ? s : { ...s, isLoggedIn: !!initialLoggedIn }));
+    setState(s => {
+      const nextLoggedIn = !!initialLoggedIn;
+      if (s.isLoggedIn === nextLoggedIn && (nextLoggedIn || s.aiReports.length === 0)) return s;
+      return {
+        ...s,
+        isLoggedIn: nextLoggedIn,
+        aiReports: nextLoggedIn ? s.aiReports : [],
+      };
+    });
   }, [initialLoggedIn]);
 
   // 관심종목: 로그인된 사용자의 DB 데이터를 서버에서 불러온다. 비로그인 시 빈 배열.
@@ -524,7 +534,7 @@ export function StoreProvider({ children, initialLoggedIn, onLogout }) {
   const setAiReports = useCallback((reports) => {
     setState(s => {
       const map = new Map();
-      [...(s.aiReports || []), ...(reports || [])].forEach((report) => {
+      (reports || []).forEach((report) => {
         if (!report || !report.health) return;
         const key = report.remoteReportId ? `remote:${report.remoteReportId}` : `local:${report.id || report.ts || Date.now()}`;
         map.set(key, {
