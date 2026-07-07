@@ -33,7 +33,7 @@ export function ReasoningChainItem({ finding, selectedHopSourceRef, onSelectHop,
       <ol className="mt-3 space-y-3">
         {finding.hops.map((hop, i) => (
           <ReasoningHopStep
-            key={hop.sourceRef}
+            key={`${hop.sourceRef}-${i}`}
             hop={hop}
             isLast={i === finding.hops.length - 1}
             isSelected={selectedHopSourceRef === hop.sourceRef}

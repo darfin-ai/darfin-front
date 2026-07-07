@@ -60,6 +60,10 @@ export function KeyRisksPanel({ overview }) {
           <RiskSkeletonCard />
           <RiskSkeletonCard />
         </div>
+      ) : risks.filter((r) => r.status !== 'removed').length === 0 ? (
+        <p className="rounded-lg border border-dashed border-slate-200 p-6 text-center text-sm text-slate-400">
+          이번 공시에서 별도 보고된 핵심 리스크가 없어요.
+        </p>
       ) : (
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {risks.filter((r) => r.status !== 'removed').map((risk, i) => {

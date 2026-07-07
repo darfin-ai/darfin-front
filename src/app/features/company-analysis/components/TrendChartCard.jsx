@@ -27,7 +27,7 @@ export function TrendChartCard({ metric, index = 0 }) {
     <motion.div
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.07, duration: 0.35, ease: 'easeOut' }}
+      transition={{ delay: Math.min(index * 0.07, 0.6), duration: 0.35, ease: 'easeOut' }}
       className="rounded-lg border border-slate-200 bg-white p-4"
     >
       <div className="flex items-start justify-between gap-2">

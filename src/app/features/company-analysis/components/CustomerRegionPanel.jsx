@@ -44,6 +44,11 @@ export function CustomerRegionPanel({ overview }) {
         </div>
 
         <div className="space-y-3 flex-1">
+          {customers.length === 0 && (
+            <p className="rounded-md border border-dashed border-slate-200 px-4 py-6 text-center text-sm text-slate-400">
+              최근 공시에 별도 기재된 주요 고객이 없어요.
+            </p>
+          )}
           {customers.map((c, i) => (
             <motion.div
               key={c.name}
@@ -106,6 +111,11 @@ export function CustomerRegionPanel({ overview }) {
         </div>
 
         <div className="flex-1 space-y-3">
+          {regions.length === 0 && (
+            <p className="rounded-md border border-dashed border-slate-200 px-4 py-6 text-center text-sm text-slate-400">
+              최근 공시에서 지역별 매출 내역을 찾지 못했어요.
+            </p>
+          )}
           {regions.map((r, i) => (
             <motion.div
               key={r.region}

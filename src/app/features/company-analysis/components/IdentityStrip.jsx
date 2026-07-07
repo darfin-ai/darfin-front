@@ -1,35 +1,61 @@
 import { Link } from 'react-router';
 import { ArrowLeft } from 'lucide-react';
 import { motion } from 'motion/react';
+import { avatarLabel, avatarGradient } from '../lib/avatar';
 
 /**
- * @param {{ company: import('../../../../mocks/companyAnalysis/types').Company }} props
+ * Sticky company header below the global nav. Mirrors the landing page's
+ * CompanyMockup header: avatar + name + ticker (+ market pill when the API
+ * provides one) on the left, AI composite score on the right.
+ * @param {{ company: import('../../../../mocks/companyAnalysis/types').Company, score?: number | null }} props
  */
-export function IdentityStrip({ company }) {
+export function IdentityStrip({ company, score = null }) {
   return (
     <motion.div
       initial={{ opacity: 0, y: -8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, ease: 'easeOut' }}
-      className="sticky top-16 z-30 w-full border-b border-slate-200 bg-white/95 backdrop-blur"
+      className="sticky top-16 z-30 w-full border-b border-slate-200 dark:border-slate-800 bg-white/95 dark:bg-slate-900/95 backdrop-blur"
     >
-      <div className="container grid grid-cols-[1fr_auto_1fr] items-center gap-4 py-3">
+      <div className="container flex items-center gap-3 py-3">
         <Link
           to="/company"
-          className="flex items-center gap-1 justify-self-start rounded-md text-sm text-slate-500 hover:text-blue-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+          className="flex shrink-0 items-center gap-1 rounded-md text-sm text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900"
         >
           <ArrowLeft size={15} />
-          목록
+          <span className="hidden sm:inline">목록</span>
         </Link>
 
-        <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-center">
-          <h1 className="text-2xl font-bold text-slate-900">{company.name}</h1>
-          <span className="text-sm text-slate-500">
-            {[company.ticker, company.sector].filter(Boolean).join(' · ')}
-          </span>
+        <div className="h-6 w-px shrink-0 bg-slate-200 dark:bg-slate-700" />
+
+        <span
+          className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br text-xs font-semibold text-white ${avatarGradient(company.ticker ?? company.id)}`}
+          aria-hidden="true"
+        >
+          {avatarLabel(company)}
+        </span>
+
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+            <h1 className="truncate text-xl font-semibold text-slate-900 dark:text-slate-100">{company.name}</h1>
+            <span className="text-sm text-slate-400 dark:text-slate-500 tabular-nums">{company.ticker}</span>
+            {company.market && (
+              <span className="rounded-full border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/40 px-1.5 py-0.5 text-[10px] font-medium text-blue-700 dark:text-blue-300">
+                {company.market}
+              </span>
+            )}
+          </div>
+          {company.sector && (
+            <div className="mt-0.5 truncate text-xs text-slate-400 dark:text-slate-500">{company.sector}</div>
+          )}
         </div>
 
-        <div aria-hidden="true" />
+        {score != null && (
+          <div className="shrink-0 text-right">
+            <div className="text-xs text-slate-400 dark:text-slate-500">AI 종합 스코어</div>
+            <div className="text-base font-semibold text-blue-600 dark:text-blue-400 tabular-nums">{score}</div>
+          </div>
+        )}
       </div>
     </motion.div>
   );

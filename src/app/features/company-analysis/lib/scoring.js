@@ -1,4 +1,4 @@
-export { SCORE_COMPONENT_LABELS } from '../../../../mocks/companyAnalysis';
+export { SCORE_COMPONENT_LABELS } from '../../../../mocks/companyAnalysis/types';
 
 export const HOP_TYPE_LABELS = {
   financial_anomaly: '재무제표',

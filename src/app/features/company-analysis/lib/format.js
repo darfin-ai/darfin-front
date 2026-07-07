@@ -22,12 +22,12 @@ export function formatPercent(value, digits = 1) {
   return `${sign}${value.toFixed(digits)}%`;
 }
 
-/** "2026Q1" -> "26.1Q" (compact, for chart axes) */
+/** "2026Q1" -> "26Q1" (compact, for chart axes) */
 export function formatQuarterAxis(quarter) {
   const match = /^(\d{4})Q(\d)$/.exec(quarter);
   if (!match) return quarter;
   const [, year, q] = match;
-  return `${year.slice(2)}.${q}Q`;
+  return `${year.slice(2)}Q${q}`;
 }
 
 /** "2026Q1" -> "2026년 1분기" (full, for labels/tooltips) */

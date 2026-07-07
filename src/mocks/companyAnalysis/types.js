@@ -63,6 +63,8 @@
  * @typedef {Object} FinancialMetric
  * @property {string} concept  e.g. "ifrs-full_Revenue"
  * @property {string} label    e.g. "매출액"
+ * @property {'재무상태표'|'손익계산서'|'현금흐름표'} statementType  공시 원문의 재무제표 구분.
+ *   배열은 (재무제표 장 순서, 원문 내 계정 등장 순서)로 이미 정렬되어 온다.
  * @property {string} unit     "KRW" | "%"
  * @property {FinancialSeriesPoint[]} series
  */
@@ -164,23 +166,17 @@
  */
 
 /**
- * A detected strategic shift surfaced from cross-quarter filing comparison.
- * `rationale` is the company's own stated explanation from MD&A / 사업의 내용.
- *
- * @typedef {Object} StrategyShiftMetric
- * @property {string} label
- * @property {string|null} from   null when there's no meaningful prior value (e.g. a metric that didn't exist before)
- * @property {string} to
- */
-
-/**
- * @typedef {Object} StrategyShift
- * @property {string} quarter          Quarter this shift was first detected, e.g. "2026Q1"
- * @property {string} from             Prior focus area (short phrase)
- * @property {string} to               New/emerging focus area (short phrase)
- * @property {StrategyShiftMetric[]} metrics  Before/after figures shown in the timeline's detail panel
- * @property {string} rationale        Management's stated reason from the filing
- * @property {string} sourceRef        Filing anchor for the primary evidence
+ * One filing that has a real MD&A (이사의 경영진단 및 분석의견) narrative —
+ * quarterly/half-year filings aren't legally required to include this section
+ * and are excluded upstream (they only ever contain boilerplate). No LLM
+ * judgment is involved: this is a plain, deterministic list of filings for
+ * the user to browse and read verbatim, not a "detected shift."
+ * @typedef {Object} MdnaHistoryEntry
+ * @property {string} rceptNo      Filing this excerpt came from
+ * @property {string} quarter      e.g. "2025Q4"
+ * @property {string} reportLabel  e.g. "2025년 사업보고서"
+ * @property {string} excerpt      Raw MD&A text, verbatim from the filing (not LLM-summarized)
+ * @property {string} sourceRef    Filing anchor for "원문 보기"
  */
 
 /**
@@ -250,11 +246,21 @@
 
 /**
  * 배당에 관한 사항, from the filing's dividend section.
+ * @typedef {Object} DividendHistoryPoint
+ * @property {string} [fiscalYear]  회계연도 (예: "2025")
+ * @property {string} [year]        구버전 호환 — 당기/전기/전전기
+ * @property {number|null} perShareKrw
+ * @property {boolean} [isPartial]  분기·반기 보고서 당기 누계 여부
+ */
+
+/**
  * @typedef {Object} DividendInfo
  * @property {number} perShareKrw
  * @property {number} yieldPct
  * @property {number} payoutRatioPct
- * @property {{ year: string, perShareKrw: number|null }[]} history  null perShareKrw = not yet declared
+ * @property {boolean} [isInterimReport]  분기·반기 보고서 여부
+ * @property {string} [reportLabel]       예: "2026년 1분기보고서"
+ * @property {DividendHistoryPoint[]} history
  * @property {string} insight
  * @property {FilingExcerptRef} sourceRef
  */
@@ -288,11 +294,12 @@
  * @typedef {Object} CompanyDetail
  * @property {Company} company
  * @property {ScoreComponent[]} scores
- * @property {FinancialMetric[]} financials
+ * @property {FinancialMetric[]} financials              연결재무제표 기준
+ * @property {FinancialMetric[]} [financialsSeparate]    별도재무제표 기준
  * @property {ReasoningChainFinding[]} findings
  * @property {SectionDiffEntry[]} diffs
  * @property {CompanyProfile} profile
- * @property {StrategyShift[]} strategyShifts
+ * @property {MdnaHistoryEntry[]} mdnaHistory
  * @property {RecentFiling[]} [recentFilings]
  * @property {CompanyOverview} [overview]
  */

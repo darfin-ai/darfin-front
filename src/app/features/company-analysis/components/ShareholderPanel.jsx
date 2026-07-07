@@ -6,13 +6,11 @@ import { SourceExcerptDialog } from './SourceExcerptDialog';
 import { Skeleton } from '../../../shared/components/ui/skeleton';
 import { isAiReady } from '../lib/aiStatus';
 
-// Colour palette: each ownership type gets a distinct but harmonious colour
-const HOLDER_COLORS = {
-  controlling:    '#1e40af',  // deep blue — controlling block
-  foreign:        '#3b82f6',  // blue — foreign institutions
-  nps:            '#6366f1',  // indigo — NPS / domestic institution
-  retail:         '#94a3b8',  // slate — retail / misc
-};
+// 지분율 내림차순(백엔드 정렬)에 맞춰 진한 색부터 배정한다 — API의 주주
+// 항목엔 유형 구분 필드가 없어 인덱스 기반으로만 칠할 수 있다.
+const SLICE_COLORS = ['#1e40af', '#3b82f6', '#6366f1', '#8b5cf6', '#0ea5e9', '#14b8a6', '#64748b', '#94a3b8'];
+
+const sliceColor = (index) => SLICE_COLORS[index % SLICE_COLORS.length];
 
 function CustomTooltip({ active, payload }) {
   if (!active || !payload?.length) return null;
@@ -27,7 +25,8 @@ function CustomTooltip({ active, payload }) {
 }
 
 function DonutCenter({ shareholders, activeIdx }) {
-  const h = activeIdx !== null ? shareholders[activeIdx] : shareholders[1]; // default: foreign (largest)
+  const largestIdx = shareholders.reduce((best, s, i) => (s.share > shareholders[best].share ? i : best), 0);
+  const h = activeIdx !== null ? shareholders[activeIdx] : shareholders[largestIdx];
   if (!h) return null;
   return (
     <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
@@ -69,6 +68,12 @@ export function ShareholderPanel({ overview }) {
       </div>
 
       <div className="rounded-lg border border-slate-200 bg-white p-4">
+        {shareholders.length === 0 && (
+          <p className="rounded-md border border-dashed border-slate-200 px-4 py-6 text-center text-sm text-slate-400">
+            최근 공시에서 주주 구성 내역을 찾지 못했어요.
+          </p>
+        )}
+        {shareholders.length > 0 && (
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
           {/* Donut */}
           <div className="relative mx-auto h-40 w-40 shrink-0 sm:mx-0">
@@ -86,11 +91,11 @@ export function ShareholderPanel({ overview }) {
                   onMouseLeave={() => setActiveIdx(null)}
                   stroke="none"
                 >
-                  {chartData.map((entry) => (
+                  {chartData.map((entry, i) => (
                     <Cell
                       key={entry.name}
-                      fill={HOLDER_COLORS[entry.id] ?? '#e2e8f0'}
-                      opacity={activeIdx === null || activeIdx === chartData.indexOf(entry) ? 1 : 0.35}
+                      fill={sliceColor(i)}
+                      opacity={activeIdx === null || activeIdx === i ? 1 : 0.35}
                       style={{ cursor: 'pointer', transition: 'opacity 0.15s' }}
                     />
                   ))}
@@ -115,7 +120,7 @@ export function ShareholderPanel({ overview }) {
               >
                 <span
                   className="h-3 w-3 shrink-0 rounded-full"
-                  style={{ backgroundColor: HOLDER_COLORS[h.id] ?? '#e2e8f0' }}
+                  style={{ backgroundColor: sliceColor(i) }}
                 />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-baseline justify-between gap-2">
@@ -128,6 +133,7 @@ export function ShareholderPanel({ overview }) {
             ))}
           </div>
         </div>
+        )}
 
         {/* So what */}
         {!isAiReady(overview) ? (
