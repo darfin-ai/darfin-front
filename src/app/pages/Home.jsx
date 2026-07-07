@@ -7,11 +7,19 @@ import { heroDemo, heroFindingsByLens } from "../../mocks/landing/heroDemo";
 import { topKospiCompanies } from "../../mocks/companyAnalysis/topKospi";
 import { topKosdaqCompanies } from "../../mocks/companyAnalysis/topKosdaq";
 
-const SECTION = "py-20 px-4 sm:px-6 lg:px-8";
+const SECTION = "py-16 sm:py-20 px-4 sm:px-6 lg:px-8";
 
-/* Muted brand blue for landing CTAs — less saturated than Tailwind blue-600 */
-const CTA_PRIMARY = "bg-[#1B64DA] hover:bg-[#1554BA]";
-const CTA_SECTION = "bg-[#1A4F7A]";
+/* Aligned with /company: blue-600 primary, restrained type weights */
+const CTA_PRIMARY = "bg-blue-600 hover:bg-blue-700";
+const CTA_SECTION = "bg-slate-900";
+
+const EYEBROW = "text-sm font-medium text-slate-500 mb-2";
+const SECTION_TITLE = "text-2xl sm:text-3xl font-semibold tracking-tight text-slate-900";
+const SECTION_DESC = "text-sm text-slate-500 leading-relaxed";
+
+const BTN_PRIMARY = `inline-flex items-center justify-center gap-2 px-5 py-2.5 ${CTA_PRIMARY} text-white text-sm font-medium rounded-lg transition-colors`;
+const BTN_SECONDARY = "inline-flex items-center justify-center gap-2 px-5 py-2.5 border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-sm font-medium rounded-lg transition-colors";
+const LINK_ACTION = "inline-flex items-center gap-1 text-sm font-medium text-blue-600 hover:text-blue-700 transition-colors";
 
 /* Matches CompanyQuickLinks.jsx exactly, so avatar badges look identical to the real /company page. */
 const AVATAR_PALETTE = [
@@ -56,13 +64,13 @@ function HeroCta() {
         <button
           type="button"
           onClick={() => navigate("/company")}
-          className={`inline-flex items-center justify-center gap-2 px-7 py-4 ${CTA_PRIMARY} text-white text-sm font-bold rounded-xl transition-colors shadow-md shadow-[#1B64DA]/15`}
+          className={BTN_PRIMARY}
         >
           기업 분석 시작하기 <ArrowRight size={16} />
         </button>
         <Link
           to="/trading"
-          className="inline-flex items-center justify-center gap-2 px-7 py-4 border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-sm font-bold rounded-xl transition-colors"
+          className={BTN_SECONDARY}
         >
           모의투자 해보기
         </Link>
@@ -75,13 +83,13 @@ function HeroCta() {
       <div className="flex flex-col sm:flex-row gap-3">
         <Link
           to="/signup"
-          className={`inline-flex items-center justify-center gap-2 px-7 py-4 ${CTA_PRIMARY} text-white text-sm font-bold rounded-xl transition-colors shadow-md shadow-[#1B64DA]/15`}
+          className={BTN_PRIMARY}
         >
           무료로 시작하기 <ArrowRight size={16} />
         </Link>
         <Link
           to="/login"
-          className="inline-flex items-center justify-center gap-2 px-7 py-4 border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-sm font-bold rounded-xl transition-colors"
+          className={BTN_SECONDARY}
         >
           로그인
         </Link>
@@ -93,7 +101,11 @@ function HeroCta() {
   );
 }
 
-const HERO_DEMO_BODY_HEIGHT = "h-[300px]";
+const HERO_DEMO_BODY_HEIGHT = "h-[352px]";
+const HERO_DEMO_FINAL_STEP = 8;
+const HERO_SUMMARY_TEXT = heroDemo.finding.summaryPreview;
+const HERO_SUMMARY_STREAM_MS = 16;
+const HERO_HOP_STAGGER_MS = 320;
 
 const CREDIBILITY_STATS = [
   { label: "등록 기업 수", type: "count", to: 3200, suffix: "+", duration: 1.4, sub: "유가증권 + 코스닥 전 종목" },
@@ -145,14 +157,13 @@ function CredibilityStatValue({ stat }) {
   return stat.value;
 }
 
-const HERO_DEMO_FINAL_STEP = 8;
-
 function HeroDemo() {
   const reduceMotion = useReducedMotion();
   const [tab, setTab] = useState("after");
   const [step, setStep] = useState(HERO_DEMO_FINAL_STEP);
   const [hopIndex, setHopIndex] = useState(heroDemo.hops.length - 1);
   const [highlightVisible, setHighlightVisible] = useState(true);
+  const [streamedLength, setStreamedLength] = useState(HERO_SUMMARY_TEXT.length);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isTouchDevice, setIsTouchDevice] = useState(false);
   const timersRef = useRef([]);
@@ -161,7 +172,10 @@ function HeroDemo() {
   const textParts = heroDemo.before.text.split(highlight || "###");
 
   const clearTimers = useCallback(() => {
-    timersRef.current.forEach(clearTimeout);
+    timersRef.current.forEach((id) => {
+      clearTimeout(id);
+      clearInterval(id);
+    });
     timersRef.current = [];
   }, []);
 
@@ -171,6 +185,7 @@ function HeroDemo() {
     setStep(HERO_DEMO_FINAL_STEP);
     setHopIndex(heroDemo.hops.length - 1);
     setHighlightVisible(true);
+    setStreamedLength(HERO_SUMMARY_TEXT.length);
     setTab("after");
   }, [clearTimers]);
 
@@ -185,6 +200,7 @@ function HeroDemo() {
     setStep(0);
     setHopIndex(-1);
     setHighlightVisible(false);
+    setStreamedLength(0);
     setTab("after");
 
     const schedule = (delay, fn) => {
@@ -192,12 +208,27 @@ function HeroDemo() {
     };
 
     schedule(350, () => setHighlightVisible(true));
-    schedule(950, () => setStep(6));
-    schedule(1300, () => setStep(7));
-    heroDemo.hops.forEach((_, i) => {
-      schedule(1400 + i * 280, () => setHopIndex(i));
+    schedule(950, () => {
+      setStep(6);
+      let len = 0;
+      const intervalId = setInterval(() => {
+        len += 1;
+        setStreamedLength(len);
+        if (len >= HERO_SUMMARY_TEXT.length) {
+          clearInterval(intervalId);
+          const hopsStart = 280;
+          schedule(hopsStart, () => setStep(7));
+          heroDemo.hops.forEach((_, i) => {
+            schedule(hopsStart + i * HERO_HOP_STAGGER_MS, () => setHopIndex(i));
+          });
+          schedule(
+            hopsStart + heroDemo.hops.length * HERO_HOP_STAGGER_MS + 100,
+            () => setIsPlaying(false),
+          );
+        }
+      }, HERO_SUMMARY_STREAM_MS);
+      timersRef.current.push(intervalId);
     });
-    schedule(1400 + heroDemo.hops.length * 280 + 100, () => setIsPlaying(false));
   }, [clearTimers, reduceMotion, showEndState]);
 
   useEffect(() => {
@@ -208,6 +239,7 @@ function HeroDemo() {
 
   const showSummary = step >= 6;
   const showHops = step >= 7;
+  const summaryStreaming = isPlaying && streamedLength < HERO_SUMMARY_TEXT.length;
 
   return (
     <div
@@ -288,7 +320,7 @@ function HeroDemo() {
           </div>
         </div>
 
-        <div className={`${tab === "after" ? "block" : "hidden"} lg:block h-full min-h-0 px-5 py-4 overflow-hidden`}>
+        <div className={`${tab === "after" ? "block" : "hidden"} lg:block h-full min-h-0 px-5 py-3`}>
           <motion.div
             initial={false}
             animate={{ opacity: showSummary ? 1 : 0 }}
@@ -296,24 +328,33 @@ function HeroDemo() {
             className="h-full min-h-0 flex flex-col"
             aria-hidden={!showSummary}
           >
-            <div className="flex gap-2 rounded-md border border-blue-100 bg-blue-50/60 px-3 py-2.5 mb-3 shrink-0">
+            <div className="flex gap-2 rounded-md border border-blue-100 bg-blue-50/60 px-3 py-2 mb-2 shrink-0">
               <Lightbulb size={14} className="mt-0.5 shrink-0 text-blue-500" />
-              <p className="text-xs leading-relaxed text-slate-700 line-clamp-3">
-                <span className="font-semibold text-blue-700">AI 요약. </span>
-                {heroDemo.finding.summary}
-              </p>
+              <div className="text-[11px] leading-snug text-slate-700 min-h-[3.5rem]">
+                <div className="font-semibold text-blue-700">AI 요약.</div>
+                <div className="mt-0.5">
+                  {HERO_SUMMARY_TEXT.slice(0, streamedLength)}
+                  {summaryStreaming && (
+                    <span
+                      className="inline-block w-[2px] h-3 ml-px align-middle bg-blue-500 animate-pulse"
+                      aria-hidden
+                    />
+                  )}
+                </div>
+              </div>
             </div>
-            <div className="divide-y divide-slate-100 min-h-0">
+            <div className="divide-y divide-slate-100">
               {heroDemo.hops.map((h, i) => (
                 showHops && hopIndex >= i ? (
                   <motion.div
                     key={h.sectionLabel}
-                    initial={{ opacity: 0, y: 4 }}
+                    initial={isPlaying ? { opacity: 0, y: -12 } : false}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.35, ease: "easeOut" }}
-                    className="py-1.5 text-xs text-slate-500 leading-snug"
+                    transition={{ duration: 0.4, ease: "easeOut" }}
+                    className="py-1 text-[11px] text-slate-500 leading-snug"
                   >
-                    <span className="font-medium text-slate-600">{h.sectionLabel}</span> — {h.excerpt}
+                    <div className="font-medium text-slate-600">{h.sectionLabel}</div>
+                    <div className="mt-0.5">{h.excerpt}</div>
                   </motion.div>
                 ) : null
               ))}
@@ -336,12 +377,12 @@ function HeroDemo() {
 
 function CompanyBadge({ company, index }) {
   return (
-    <div className="flex items-center gap-3 flex-shrink-0 rounded-2xl border border-slate-200 bg-white pl-3 pr-6 py-3 shadow-sm">
-      <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-br text-xs font-semibold text-white ${AVATAR_PALETTE[index % AVATAR_PALETTE.length]}`}>
+    <div className="flex items-center gap-2 flex-shrink-0 rounded-xl border border-slate-200 bg-white p-3 pr-5">
+      <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br text-xs font-semibold text-white ${AVATAR_PALETTE[index % AVATAR_PALETTE.length]}`}>
         {avatarLabel(company)}
       </span>
       <div className="min-w-0">
-        <div className="text-sm font-semibold text-slate-800 whitespace-nowrap">{company.name}</div>
+        <div className="text-sm font-medium text-slate-900 whitespace-nowrap">{company.name}</div>
         <div className="text-xs text-slate-400 tabular-nums mt-0.5">{company.ticker}</div>
       </div>
     </div>
@@ -387,15 +428,15 @@ function CompanyMockup() {
       <div className="flex items-center justify-between mb-4">
         <div>
           <div className="flex items-center gap-2">
-            <span className="font-bold text-slate-900">삼성전자</span>
+            <span className="font-semibold text-slate-900">삼성전자</span>
             <span className="text-xs text-slate-400 tabular-nums">005930</span>
-            <span className="rounded-full bg-blue-50 text-blue-700 border border-blue-200 text-[10px] font-bold px-1.5 py-0.5">KOSPI</span>
+            <span className="rounded-full bg-blue-50 text-blue-700 border border-blue-200 text-[10px] font-medium px-1.5 py-0.5">KOSPI</span>
           </div>
           <div className="text-xs text-slate-400 mt-0.5">반도체·전자제품</div>
         </div>
         <div className="text-right">
           <div className="text-xs text-slate-400">AI 종합 스코어</div>
-          <div className="text-xl font-bold text-blue-600 tabular-nums">78</div>
+          <div className="text-lg font-semibold text-blue-600 tabular-nums">78</div>
         </div>
       </div>
       <div className="flex gap-1 mb-4 bg-slate-100/80 rounded-lg p-1 text-xs font-semibold">
@@ -431,10 +472,10 @@ function TradingMockup() {
     <BrowserChrome label="모의투자 · 삼성전자">
       <div className="flex items-center justify-between mb-4">
         <div>
-          <div className="font-bold text-slate-900">삼성전자</div>
-          <div className="text-lg font-bold text-slate-900 tabular-nums">73,400<span className="text-xs font-medium text-slate-400 ml-1">원</span></div>
+          <div className="font-semibold text-slate-900">삼성전자</div>
+          <div className="text-base font-semibold text-slate-900 tabular-nums">73,400<span className="text-xs font-medium text-slate-400 ml-1">원</span></div>
         </div>
-        <span className="rounded-full bg-slate-100 text-slate-500 text-[10px] font-bold px-2 py-1">모의투자 · 실제 돈 아님</span>
+        <span className="rounded-full bg-slate-100 text-slate-500 text-[10px] font-medium px-2 py-1">모의투자 · 실제 돈 아님</span>
       </div>
       <div className="flex items-end gap-1 h-20 mb-4">
         {bars.map((h, i) => (
@@ -442,12 +483,12 @@ function TradingMockup() {
         ))}
       </div>
       <div className="grid grid-cols-2 gap-2 mb-4">
-        <button className="py-2 rounded-lg bg-red-500 text-white text-xs font-bold">매수</button>
-        <button className="py-2 rounded-lg border border-slate-200 text-slate-500 text-xs font-bold">매도</button>
+        <button className="py-2 rounded-lg bg-red-500 text-white text-xs font-medium">매수</button>
+        <button className="py-2 rounded-lg border border-slate-200 text-slate-500 text-xs font-medium">매도</button>
       </div>
       <div className="flex items-center justify-between text-xs border-t border-slate-100 pt-3">
         <span className="text-slate-400">평가손익</span>
-        <span className="font-bold text-red-500 tabular-nums">+12.4%</span>
+        <span className="font-semibold text-red-500 tabular-nums">+12.4%</span>
       </div>
     </BrowserChrome>
   );
@@ -533,24 +574,17 @@ export function Home() {
     <div className="flex flex-col flex-1">
       {/* ── Hero ─────────────────────────────────────────── */}
       <section className="relative bg-white overflow-hidden">
-        <div
-          className="absolute inset-0 pointer-events-none"
-          style={{
-            backgroundImage:
-              "radial-gradient(circle at 70% 40%, rgba(59,130,246,0.06) 0%, transparent 60%), radial-gradient(circle at 20% 80%, rgba(59,130,246,0.05) 0%, transparent 50%)",
-          }}
-        />
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-16">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-12 sm:pt-16 pb-16 sm:pb-20">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 items-center">
             <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, ease: "easeOut" }}>
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 border border-blue-200 text-blue-700 text-xs font-medium mb-6">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-100 border border-slate-200 text-slate-600 text-xs font-medium mb-6">
                 AI 공시 분석 · 모의투자 · 투자자 커뮤니티
               </div>
-              <h1 className="text-5xl font-extrabold tracking-tight text-slate-900 leading-[1.15] mb-5">
+              <h1 className="text-4xl sm:text-5xl font-bold tracking-tight text-slate-900 leading-[1.2] mb-5">
                 DART 원문 그대로,<br />
                 <span className="text-blue-600">AI가 읽어드립니다</span>
               </h1>
-              <p className="text-lg text-slate-600 leading-relaxed mb-8 max-w-lg">
+              <p className="text-base text-slate-500 leading-relaxed mb-8 max-w-lg">
                 요약이 아닌 공시 원문을 근거로, 코스피·코스닥 3,200여 상장사의 핵심 변화를 찾아냅니다.
               </p>
 
@@ -564,7 +598,7 @@ export function Home() {
 
               <a
                 href="#features"
-                className="mt-8 inline-flex items-center gap-1.5 text-sm font-bold text-blue-600 hover:text-blue-700 transition-colors"
+                className={`mt-8 ${LINK_ACTION}`}
               >
                 기능 미리보기 <ArrowRight size={15} />
               </a>
@@ -580,7 +614,7 @@ export function Home() {
       {/* ── Credibility band ─────────────────────────────── */}
       <section className={`bg-slate-50 border-y border-slate-200 ${SECTION}`}>
         <div className="max-w-7xl mx-auto">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
             {CREDIBILITY_STATS.map((s, i) => (
               <motion.div
                 key={s.label}
@@ -588,13 +622,13 @@ export function Home() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.08, duration: 0.35, ease: "easeOut" }}
-                className="rounded-lg border border-slate-200 bg-white px-5 py-4 text-center"
+                className="rounded-xl border border-slate-200 bg-white px-5 py-5 text-center"
               >
-                <div className="text-2xl font-bold tabular-nums text-slate-900 mb-1">
+                <div className="text-xl font-semibold tabular-nums text-slate-900 mb-1">
                   <CredibilityStatValue stat={s} />
                 </div>
-                <div className="text-sm font-semibold text-blue-600 mb-0.5">{s.label}</div>
-                <div className="text-xs text-slate-400">{s.sub}</div>
+                <div className="text-sm font-medium text-slate-600 mb-0.5">{s.label}</div>
+                <div className="text-xs text-slate-400 leading-relaxed">{s.sub}</div>
               </motion.div>
             ))}
           </div>
@@ -606,10 +640,10 @@ export function Home() {
       </section>
 
       {/* ── Data coverage — real KOSPI/KOSDAQ companies as social proof ── */}
-      <section className="bg-white py-20 overflow-hidden">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center mb-12">
-          <div className="text-xs font-semibold text-blue-600 uppercase tracking-widest mb-2">데이터 커버리지</div>
-          <h2 className="text-3xl font-extrabold text-slate-900">코스피·코스닥 상장사 전체를 분석합니다</h2>
+      <section className="bg-white py-16 sm:py-20 overflow-hidden">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center mb-10">
+          <div className={EYEBROW}>데이터 커버리지</div>
+          <h2 className={SECTION_TITLE}>코스피·코스닥 상장사 전체를 분석합니다</h2>
         </div>
         <CompanyMarquee />
       </section>
@@ -622,18 +656,18 @@ export function Home() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.35 }}
-            className="text-center mb-16"
+            className="text-center mb-14"
           >
-            <div className="text-xs font-semibold text-blue-600 uppercase tracking-widest mb-2">이용 흐름</div>
-            <h2 className="text-3xl font-extrabold text-slate-900 mb-3">분석하고, 연습하고, 함께 검증합니다</h2>
-            <p className="text-lg text-slate-500 max-w-xl mx-auto">하나로 이어지는 투자 리서치 흐름입니다.</p>
+            <div className={EYEBROW}>이용 흐름</div>
+            <h2 className={`${SECTION_TITLE} mb-3`}>분석하고, 연습하고, 함께 검증합니다</h2>
+            <p className={`${SECTION_DESC} max-w-xl mx-auto`}>하나로 이어지는 투자 리서치 흐름입니다.</p>
           </motion.div>
 
-          <div className="space-y-20">
+          <div className="space-y-24">
             {WALKTHROUGH.map((item, i) => {
               const Mockup = item.Mockup;
               return (
-                <div key={item.eyebrow} className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+                <div key={item.eyebrow} className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-14 items-center">
                   <motion.div
                     initial={{ opacity: 0, y: 16 }}
                     whileInView={{ opacity: 1, y: 0 }}
@@ -641,18 +675,18 @@ export function Home() {
                     transition={{ duration: 0.35, ease: "easeOut" }}
                     className={i % 2 === 1 ? "lg:order-2" : ""}
                   >
-                    <div className="text-xs font-semibold text-blue-600 uppercase tracking-widest mb-2">0{i + 1} · {item.eyebrow}</div>
-                    <h3 className="text-2xl font-extrabold text-slate-900 mb-3">{item.title}</h3>
-                    <p className="text-slate-500 mb-5 leading-relaxed">{item.desc}</p>
-                    <ul className="space-y-2 mb-6">
+                    <div className={EYEBROW}>0{i + 1} · {item.eyebrow}</div>
+                    <h3 className="text-xl font-semibold text-slate-900 mb-3">{item.title}</h3>
+                    <p className={`${SECTION_DESC} mb-6`}>{item.desc}</p>
+                    <ul className="space-y-2.5 mb-8">
                       {item.bullets.map((b) => (
-                        <li key={b} className="flex items-start gap-2 text-sm text-slate-600">
+                        <li key={b} className="flex items-start gap-2 text-sm text-slate-600 leading-relaxed">
                           <Check size={15} className="mt-0.5 text-blue-500 shrink-0" />
                           {b}
                         </li>
                       ))}
                     </ul>
-                    <Link to={item.link} className="inline-flex items-center gap-1 text-sm font-bold text-blue-600 hover:text-blue-700 transition-colors">
+                    <Link to={item.link} className={LINK_ACTION}>
                       {item.cta} <ChevronRight size={15} />
                     </Link>
                   </motion.div>
@@ -681,19 +715,19 @@ export function Home() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.35 }}
-            className="flex items-end justify-between mb-6"
+            className="flex items-end justify-between mb-8"
           >
             <div>
-              <div className="text-xs font-semibold text-blue-600 uppercase tracking-widest mb-2">실시간 공시 피드</div>
-              <h2 className="text-3xl font-extrabold text-slate-900">오늘의 주요 공시</h2>
-              <p className="text-slate-500 mt-1">AI가 분석한 오늘의 핵심 공시를 가장 빠르게 확인하세요.</p>
+              <div className={EYEBROW}>실시간 공시 피드</div>
+              <h2 className={SECTION_TITLE}>오늘의 주요 공시</h2>
+              <p className={`${SECTION_DESC} mt-2`}>AI가 분석한 오늘의 핵심 공시를 가장 빠르게 확인하세요.</p>
             </div>
-            <Link to="/disclosure" className="hidden sm:flex items-center gap-1 text-sm font-bold text-blue-600 hover:text-blue-700 transition-colors">
+            <Link to="/disclosure" className={`hidden sm:flex ${LINK_ACTION}`}>
               전체 보기 <ChevronRight size={16} />
             </Link>
           </motion.div>
 
-          <div className="rounded-lg border border-slate-200 bg-white p-2" role="feed" aria-label="오늘의 주요 공시 목록" aria-live="polite">
+          <div className="rounded-xl border border-slate-200 bg-white p-2" role="feed" aria-label="오늘의 주요 공시 목록" aria-live="polite">
             <div className="divide-y divide-slate-100">
               {RECENT_DISCLOSURES.map((d, i) => (
                 <motion.div key={d.id} initial={{ opacity: 0, y: 8 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.06, duration: 0.25 }}>
@@ -729,16 +763,16 @@ export function Home() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.35 }}
-            className="text-center mb-12"
+            className="text-center mb-10"
           >
-            <div className="text-xs font-semibold text-blue-600 uppercase tracking-widest mb-2">하나의 공시, 4가지 시선</div>
-            <h2 className="text-3xl font-extrabold text-slate-900 mb-3">같은 보고서에서 이만큼 찾아냅니다</h2>
-            <p className="text-lg text-slate-500 max-w-2xl mx-auto">
+            <div className={EYEBROW}>하나의 공시, 4가지 시선</div>
+            <h2 className={`${SECTION_TITLE} mb-3`}>같은 보고서에서 이만큼 찾아냅니다</h2>
+            <p className={`${SECTION_DESC} max-w-2xl mx-auto`}>
               위 예시와 같은 {heroDemo.company.name} 보고서 하나에서, AI는 재무·경영·리스크·지배구조 네 가지 관점의 변화를 함께 짚어냅니다.
             </p>
           </motion.div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {heroFindingsByLens.map((item, i) => {
               const style = LENS_STYLE[item.scoreComponent];
               return (
@@ -748,7 +782,7 @@ export function Home() {
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                   transition={{ delay: i * 0.06, duration: 0.25, ease: "easeOut" }}
-                  className={`flex flex-col rounded-lg border border-slate-200 border-l-4 bg-white p-4 ${style.border}`}
+                  className={`flex flex-col rounded-xl border border-slate-200 border-l-4 bg-white p-5 ${style.border}`}
                 >
                   <div className="flex items-center gap-2 mb-2">
                     <span className="text-blue-600">{style.icon}</span>
@@ -767,11 +801,11 @@ export function Home() {
       </section>
 
       {/* ── Pricing teaser ───────────────────────────────── */}
-      <section className="bg-white py-12 px-4 sm:px-6 lg:px-8">
+      <section className="bg-white py-16 px-4 sm:px-6 lg:px-8">
         <div className="max-w-3xl mx-auto text-center">
-          <p className="text-slate-600">
+          <p className="text-sm text-slate-500">
             무료로 시작해서, 필요할 때 Pro로.{" "}
-            <Link to="/subscription" className="font-bold text-blue-600 hover:text-blue-700 transition-colors">
+            <Link to="/subscription" className="font-medium text-blue-600 hover:text-blue-700 transition-colors">
               요금제 살펴보기 →
             </Link>
           </p>
@@ -781,30 +815,30 @@ export function Home() {
       {/* ── Final CTA ─────────────────────────────────────── */}
       <section className={`${CTA_SECTION} ${SECTION}`}>
         <motion.div initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.35 }} className="max-w-3xl mx-auto text-center">
-          <h2 className="text-4xl font-extrabold text-white mb-4">지금 시작하세요</h2>
-          <p className="text-[#B8CCE4] text-lg mb-10">
+          <h2 className="text-2xl sm:text-3xl font-semibold text-white mb-4">지금 시작하세요</h2>
+          <p className="text-slate-400 text-sm sm:text-base mb-10 max-w-lg mx-auto leading-relaxed">
             DART 공시 기반 AI 분석부터 모의투자까지 — 무료로 가입하고 바로 이용해보세요.
           </p>
-          <div className="flex flex-col sm:flex-row justify-center gap-4">
+          <div className="flex flex-col sm:flex-row justify-center gap-3">
             {isLoggedIn ? (
               <button
                 type="button"
                 onClick={() => navigate("/company")}
-                className="px-8 py-4 bg-white text-[#1A4F7A] font-extrabold rounded-xl hover:bg-blue-50 transition-colors shadow-lg"
+                className="px-6 py-2.5 bg-white text-slate-900 text-sm font-medium rounded-lg hover:bg-slate-100 transition-colors"
               >
                 기업 분석 시작하기
               </button>
             ) : (
               <Link
                 to="/signup"
-                className="px-8 py-4 bg-white text-[#1A4F7A] font-extrabold rounded-xl hover:bg-blue-50 transition-colors shadow-lg"
+                className="px-6 py-2.5 bg-white text-slate-900 text-sm font-medium rounded-lg hover:bg-slate-100 transition-colors"
               >
                 무료 회원가입
               </Link>
             )}
             <Link
               to="/trading"
-              className="px-8 py-4 bg-white/10 border border-white/30 text-white font-bold rounded-xl hover:bg-white/20 transition-colors flex items-center justify-center gap-2"
+              className="px-6 py-2.5 bg-white/10 border border-white/20 text-white text-sm font-medium rounded-lg hover:bg-white/15 transition-colors flex items-center justify-center gap-2"
             >
               모의투자 먼저 해보기 <ChevronRight size={16} />
             </Link>
