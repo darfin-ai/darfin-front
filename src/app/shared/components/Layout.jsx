@@ -42,12 +42,14 @@ export function Layout() {
   ];
 
   const isAuthPage = ["/login", "/signup", "/forgot-id", "/reset-password"].includes(location.pathname);
+  const isLanding = location.pathname === "/";
+  const shellWidth = isLanding ? "container" : "max-w-7xl mx-auto px-4 sm:px-6 lg:px-8";
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col font-sans text-slate-900 dark:text-slate-100">
       <Toaster position="top-center" />
       <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className={shellWidth}>
           <div className="flex items-center justify-between gap-3 h-16">
             <div className="flex items-center gap-4 lg:gap-6 min-w-0 flex-1">
               <Link to="/" className="flex items-center gap-2 group flex-shrink-0">
@@ -203,7 +205,7 @@ export function Layout() {
       </main>
 
       <footer className="bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 py-8 mt-auto">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-slate-500 dark:text-slate-400">
+        <div className={`${shellWidth} flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-slate-500 dark:text-slate-400`}>
           <p>{t("footer.copyright")}</p>
           <div className="flex gap-4">
             <a href="#" className="hover:text-slate-900 dark:hover:text-slate-100">

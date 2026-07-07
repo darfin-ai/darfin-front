@@ -8,15 +8,15 @@ import { useLocale } from "../shared/i18n";
 import { topKospiCompanies } from "../../mocks/companyAnalysis/topKospi";
 import { topKosdaqCompanies } from "../../mocks/companyAnalysis/topKosdaq";
 
-const SECTION = "py-14 sm:py-16 px-4 sm:px-6 lg:px-8";
+const SECTION = "py-14 sm:py-16";
 
 /* Aligned with /company: blue-600 primary, restrained type weights */
 const CTA_PRIMARY = "bg-blue-600 hover:bg-blue-700";
 const CTA_SECTION = "bg-slate-900";
 
 const EYEBROW = "text-xs font-medium text-slate-400 dark:text-slate-500 mb-2";
-const SECTION_TITLE = "text-xl sm:text-2xl font-semibold tracking-tight text-slate-900 dark:text-slate-100";
-const SECTION_DESC = "text-sm text-slate-500 dark:text-slate-400 leading-relaxed";
+const SECTION_TITLE = "text-2xl sm:text-3xl lg:text-4xl font-semibold tracking-tight text-slate-900 dark:text-slate-100";
+const SECTION_DESC = "text-base text-slate-500 dark:text-slate-400 leading-relaxed";
 
 const BTN_PRIMARY = `inline-flex items-center justify-center gap-2 h-10 px-5 ${CTA_PRIMARY} text-white text-sm font-medium rounded-md transition-colors`;
 const BTN_SECONDARY = "inline-flex items-center justify-center gap-2 h-10 px-5 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 text-sm font-medium rounded-md transition-colors";
@@ -432,24 +432,33 @@ function CompanyMarquee() {
   );
 }
 
-function BrowserChrome({ label, children }) {
+function BrowserChrome({ label, children, active = false }) {
   return (
-    <div className={`${CARD} overflow-hidden shadow-sm dark:shadow-none`}>
-      <div className="px-4 py-2.5 flex items-center gap-1.5 border-b border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50">
+    <motion.div
+      className={`${CARD} overflow-hidden flex flex-col min-h-[360px] sm:min-h-[400px]`}
+      animate={{
+        boxShadow: active
+          ? "0 20px 40px -12px rgba(15, 23, 42, 0.12), 0 0 0 1px rgba(148, 163, 184, 0.15)"
+          : "0 1px 3px 0 rgba(15, 23, 42, 0.06)",
+      }}
+      transition={{ duration: 0.35, ease: "easeOut" }}
+    >
+      <div className="px-4 py-2.5 flex items-center gap-1.5 border-b border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 shrink-0">
         <span className="h-2.5 w-2.5 rounded-full bg-red-300" />
         <span className="h-2.5 w-2.5 rounded-full bg-amber-300" />
         <span className="h-2.5 w-2.5 rounded-full bg-emerald-300" />
         <span className="ml-2 text-xs font-medium text-slate-400 truncate">{label}</span>
       </div>
-      <div className="p-5">{children}</div>
-    </div>
+      <div className="p-5 flex flex-col flex-1 justify-between">{children}</div>
+    </motion.div>
   );
 }
 
-function CompanyMockup() {
+function CompanyMockup({ active = false }) {
   const { t } = useLocale();
+  const reduceMotion = useReducedMotion();
   return (
-    <BrowserChrome label={t("landing.mockups.companyChrome")}>
+    <BrowserChrome label={t("landing.mockups.companyChrome")} active={active}>
       <div className="flex items-center justify-between mb-4">
         <div>
           <div className="flex items-center gap-2">
@@ -459,69 +468,108 @@ function CompanyMockup() {
           </div>
           <div className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">{t("landing.mockups.companySector")}</div>
         </div>
-        <div className="text-right">
+        <motion.div
+          className="text-right"
+          animate={active && !reduceMotion ? { scale: [1, 1.08, 1] } : { scale: 1 }}
+          transition={{ duration: 0.5, ease: "easeOut" }}
+        >
           <div className="text-xs text-slate-400 dark:text-slate-500">{t("landing.mockups.aiScore")}</div>
           <div className="text-base font-semibold text-blue-600 dark:text-blue-400 tabular-nums">78</div>
-        </div>
+        </motion.div>
       </div>
-      <div className="flex gap-1 mb-4 bg-slate-100/80 dark:bg-slate-800/80 rounded-lg p-1 text-xs font-medium">
+      <div className="flex gap-1 mb-6 bg-slate-100/80 dark:bg-slate-800/80 rounded-lg p-1 text-xs font-medium">
         <span className="flex-1 text-center py-1.5 bg-white dark:bg-slate-900 rounded-md text-slate-900 dark:text-slate-100 shadow-sm">{t("landing.mockups.tabOverview")}</span>
         <span className="flex-1 text-center py-1.5 text-slate-400 dark:text-slate-500">{t("landing.mockups.tabFinancials")}</span>
         <span className="flex-1 text-center py-1.5 text-slate-400 dark:text-slate-500">{t("landing.mockups.tabChanges")}</span>
       </div>
-      <div className="flex items-start justify-between mb-4 px-1">
+      <div className="flex items-start justify-between mb-6 px-1 flex-1">
         {["2024 Q1", "2025 Q1", "2026 Q1"].map((q, i) => (
           <div key={q} className="flex flex-col items-center gap-1 relative flex-1">
             {i > 0 && <div className="absolute right-1/2 top-3 w-full h-px bg-slate-200 dark:bg-slate-700 -z-10" />}
-            <div className={`h-6 w-6 rounded-full flex items-center justify-center text-[10px] font-bold ${i === 2 ? "bg-blue-600 text-white" : "bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400"}`}>
+            <motion.div
+              className={`h-6 w-6 rounded-full flex items-center justify-center text-[10px] font-bold ${i === 2 ? "bg-blue-600 text-white" : "bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400"}`}
+              animate={active && !reduceMotion && i === 2 ? { scale: [1, 1.2, 1] } : { scale: 1 }}
+              transition={{ duration: 0.45, ease: "easeOut" }}
+            >
               {i === 2 ? "●" : "✓"}
-            </div>
+            </motion.div>
             <span className="text-[10px] text-slate-400 dark:text-slate-500 tabular-nums">{q}</span>
           </div>
         ))}
       </div>
-      <div className="flex gap-2 rounded-md border border-blue-100 dark:border-blue-900/50 bg-blue-50/60 dark:bg-blue-950/30 px-3 py-2.5">
+      <motion.div
+        className="flex gap-2 rounded-md border border-blue-100 dark:border-blue-900/50 bg-blue-50/60 dark:bg-blue-950/30 px-3 py-2.5"
+        animate={active && !reduceMotion ? { y: [0, -3, 0] } : { y: 0 }}
+        transition={{ duration: 0.5, ease: "easeOut" }}
+      >
         <Lightbulb size={13} className="mt-0.5 shrink-0 text-blue-500 dark:text-blue-400" />
         <p className="text-xs leading-relaxed text-slate-700 dark:text-slate-300">
           <span className="font-medium text-blue-700 dark:text-blue-300">{t("landing.demo.aiSummary")} </span>
           {t("landing.mockups.aiSummaryText")}
         </p>
-      </div>
+      </motion.div>
     </BrowserChrome>
   );
 }
 
-function TradingMockup() {
+function TradingMockup({ active = false }) {
   const { t } = useLocale();
+  const reduceMotion = useReducedMotion();
   const bars = [40, 55, 35, 60, 50, 70, 65, 80, 58, 72, 68, 90];
   return (
-    <BrowserChrome label={t("landing.mockups.tradingChrome")}>
+    <BrowserChrome label={t("landing.mockups.tradingChrome")} active={active}>
       <div className="flex items-center justify-between mb-4">
         <div>
           <div className="font-medium text-slate-900 dark:text-slate-100">삼성전자</div>
-          <div className="text-sm font-medium text-slate-900 dark:text-slate-100 tabular-nums">73,400<span className="text-xs font-normal text-slate-400 dark:text-slate-500 ml-1">원</span></div>
+          <motion.div
+            className="text-sm font-medium text-slate-900 dark:text-slate-100 tabular-nums"
+            animate={active && !reduceMotion ? { y: [0, -2, 0] } : { y: 0 }}
+            transition={{ duration: 0.4, ease: "easeOut" }}
+          >
+            73,400<span className="text-xs font-normal text-slate-400 dark:text-slate-500 ml-1">원</span>
+          </motion.div>
         </div>
         <span className="rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 text-[10px] font-medium px-2 py-1">{t("landing.mockups.paperTrading")}</span>
       </div>
-      <div className="flex items-end gap-1 h-20 mb-4">
+      <div className="flex items-end gap-1 h-32 mb-6 flex-1">
         {bars.map((h, i) => (
-          <div key={i} className={`flex-1 rounded-sm ${i % 3 === 0 ? "bg-blue-200 dark:bg-blue-900/60" : "bg-red-200 dark:bg-red-900/50"}`} style={{ height: `${h}%` }} />
+          <motion.div
+            key={i}
+            className={`flex-1 rounded-sm origin-bottom ${i % 3 === 0 ? "bg-blue-200 dark:bg-blue-900/60" : "bg-red-200 dark:bg-red-900/50"}`}
+            initial={false}
+            animate={{ scaleY: active && !reduceMotion ? [0.55, 1] : 1 }}
+            style={{ height: `${h}%` }}
+            transition={{ duration: 0.45, delay: active && !reduceMotion ? i * 0.03 : 0, ease: "easeOut" }}
+          />
         ))}
       </div>
       <div className="grid grid-cols-2 gap-2 mb-4">
-        <button className="py-2 rounded-lg bg-red-500 text-white text-xs font-medium">{t("landing.mockups.buy")}</button>
+        <motion.button
+          className="py-2 rounded-lg bg-red-500 text-white text-xs font-medium"
+          animate={active && !reduceMotion ? { scale: [1, 1.03, 1] } : { scale: 1 }}
+          transition={{ duration: 0.35, ease: "easeOut" }}
+        >
+          {t("landing.mockups.buy")}
+        </motion.button>
         <button className="py-2 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 text-xs font-medium">{t("landing.mockups.sell")}</button>
       </div>
       <div className="flex items-center justify-between text-xs border-t border-slate-100 dark:border-slate-800 pt-3">
         <span className="text-slate-400 dark:text-slate-500">{t("landing.mockups.pnl")}</span>
-        <span className="font-medium text-red-500 dark:text-red-400 tabular-nums">+12.4%</span>
+        <motion.span
+          className="font-medium text-red-500 dark:text-red-400 tabular-nums"
+          animate={active && !reduceMotion ? { opacity: [0.7, 1, 0.7] } : { opacity: 1 }}
+          transition={{ duration: 0.8, ease: "easeInOut" }}
+        >
+          +12.4%
+        </motion.span>
       </div>
     </BrowserChrome>
   );
 }
 
-function CommunityMockup() {
+function CommunityMockup({ active = false }) {
   const { t } = useLocale();
+  const reduceMotion = useReducedMotion();
   const posts = [
     { company: "삼성전자", tag: "005930", replies: 3, resolved: true },
     { company: "카카오페이", tag: "377300", replies: 1, resolved: false },
@@ -529,10 +577,15 @@ function CommunityMockup() {
   ];
   const questions = t("landing.mockups.communityPosts");
   return (
-    <BrowserChrome label={t("landing.mockups.communityChrome")}>
-      <div className="divide-y divide-slate-100 dark:divide-slate-800">
+    <BrowserChrome label={t("landing.mockups.communityChrome")} active={active}>
+      <div className="divide-y divide-slate-100 dark:divide-slate-800 flex flex-col justify-center flex-1">
         {posts.map((p, i) => (
-          <div key={p.company} className="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
+          <motion.div
+            key={p.company}
+            className="flex items-center gap-3 py-4 first:pt-0 last:pb-0"
+            animate={active && !reduceMotion ? { x: [10, 0], opacity: [0.55, 1] } : { x: 0, opacity: 1 }}
+            transition={{ duration: 0.35, delay: active && !reduceMotion ? i * 0.07 : 0, ease: "easeOut" }}
+          >
             <div className={`h-8 w-8 shrink-0 rounded-full bg-gradient-to-br ${AVATAR_PALETTE[i % AVATAR_PALETTE.length]} text-white text-[10px] font-medium flex items-center justify-center`}>
               {p.company.slice(0, 2)}
             </div>
@@ -546,10 +599,65 @@ function CommunityMockup() {
             <span className={`shrink-0 text-[10px] font-medium px-1.5 py-0.5 rounded-full ${p.resolved ? "bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-300 border border-blue-200 dark:border-blue-800" : "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400"}`}>
               {p.resolved ? `${t("landing.mockups.replyCount")} ${p.replies}` : t("landing.mockups.awaitingReply")}
             </span>
-          </div>
+          </motion.div>
         ))}
       </div>
     </BrowserChrome>
+  );
+}
+
+const WALKTHROUGH_MOCKUP_TILTS = [-0.6, 0.6, -0.5];
+
+function WalkthroughRow({ item, index, Mockup, link }) {
+  const [hovered, setHovered] = useState(false);
+  const reduceMotion = useReducedMotion();
+  const textOnRight = index % 2 === 1;
+
+  return (
+    <div
+      className="grid grid-cols-1 lg:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)] gap-8 lg:gap-6 items-center"
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true }}
+        transition={{ duration: 0.35, ease: "easeOut" }}
+        className={textOnRight ? "lg:order-2" : ""}
+      >
+        <div className={EYEBROW}>0{index + 1} · {item.eyebrow}</div>
+        <h3 className="text-xl font-semibold text-slate-900 dark:text-slate-100 mb-2">{item.title}</h3>
+        <p className={`${SECTION_DESC} mb-5`}>{item.desc}</p>
+        <ul className="space-y-2 mb-6">
+          {item.bullets.map((b) => (
+            <li key={b} className="flex items-start gap-2 text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+              <Check size={15} className="mt-0.5 text-blue-500 dark:text-blue-400 shrink-0" />
+              {b}
+            </li>
+          ))}
+        </ul>
+        <Link to={link} className={LINK_ACTION}>
+          {item.cta} <ChevronRight size={15} />
+        </Link>
+      </motion.div>
+
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true }}
+        transition={{ duration: 0.35, delay: 0.1, ease: "easeOut" }}
+        className={textOnRight ? "lg:order-1" : ""}
+        animate={
+          hovered && !reduceMotion
+            ? { y: -6, rotate: WALKTHROUGH_MOCKUP_TILTS[index] ?? 0, scale: 1.015 }
+            : { y: 0, rotate: 0, scale: 1 }
+        }
+        transition={{ type: "spring", stiffness: 260, damping: 22 }}
+      >
+        <Mockup active={hovered} />
+      </motion.div>
+    </div>
   );
 }
 
@@ -570,17 +678,22 @@ export function Home() {
     <div className="flex flex-col flex-1">
       {/* ── Hero ─────────────────────────────────────────── */}
       <section className="relative overflow-hidden">
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 sm:pt-12 pb-14 sm:pb-16">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-14 items-center">
-            <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, ease: "easeOut" }}>
+        <div className="container pt-10 sm:pt-12 pb-14 sm:pb-16">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-12 items-center">
+            <motion.div
+              className="max-w-[44rem]"
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.35, ease: "easeOut" }}
+            >
               <p className="text-xs font-medium text-slate-400 dark:text-slate-500 mb-4">
                 {t("landing.hero.tagline")}
               </p>
-              <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-slate-900 dark:text-slate-100 leading-snug mb-4">
+              <h1 className="text-4xl sm:text-5xl lg:text-[3.5rem] font-semibold tracking-tight text-slate-900 dark:text-slate-100 leading-[1.15] mb-4">
                 {t("landing.hero.titleLine1")}<br />
                 {t("landing.hero.titleLine2")}
               </h1>
-              <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed mb-8 max-w-md">
+              <p className="text-base text-slate-500 dark:text-slate-400 leading-relaxed mb-8 max-w-[36rem]">
                 {t("landing.hero.subtitle")}
               </p>
 
@@ -611,7 +724,7 @@ export function Home() {
 
       {/* ── Credibility band ─────────────────────────────── */}
       <section className={SECTION}>
-        <div className="max-w-7xl mx-auto">
+        <div className="container">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-px rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-200 dark:bg-slate-800 overflow-hidden mb-6">
             {CREDIBILITY_STAT_KEYS.map((meta, i) => {
               const copy = credibilityStats[i];
@@ -633,7 +746,7 @@ export function Home() {
               </motion.div>
             );})}
           </div>
-          <p className="text-center text-xs text-slate-500 dark:text-slate-400 max-w-2xl mx-auto">
+          <p className="text-center text-sm text-slate-500 dark:text-slate-400 max-w-[45rem] mx-auto">
             {t("landing.credibility.disclaimer")}
           </p>
         </div>
@@ -641,7 +754,7 @@ export function Home() {
 
       {/* ── Data coverage — real KOSPI/KOSDAQ companies as social proof ── */}
       <section className={`${SECTION} pt-0 overflow-hidden`}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center mb-8">
+        <div className="container text-center mb-8">
           <div className={EYEBROW}>{t("landing.coverage.eyebrow")}</div>
           <h2 className={SECTION_TITLE}>{t("landing.coverage.title")}</h2>
         </div>
@@ -650,57 +763,30 @@ export function Home() {
 
       {/* ── Product walkthrough — real UI mockups per feature ── */}
       <section id="features" className={SECTION}>
-        <div className="max-w-7xl mx-auto">
+        <div className="container">
           <motion.div
             initial={{ opacity: 0, y: 16 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.35 }}
-            className="text-center mb-12"
+            className="max-w-[45rem] mx-auto text-center mb-12"
           >
             <div className={EYEBROW}>{t("landing.walkthrough.eyebrow")}</div>
             <h2 className={`${SECTION_TITLE} mb-3`}>{t("landing.walkthrough.title")}</h2>
-            <p className={`${SECTION_DESC} max-w-xl mx-auto`}>{t("landing.walkthrough.subtitle")}</p>
+            <p className={SECTION_DESC}>{t("landing.walkthrough.subtitle")}</p>
           </motion.div>
 
-          <div className="space-y-20">
+          <div className="space-y-16 lg:space-y-20">
             {walkthroughItems.map((item, i) => {
               const Mockup = WALKTHROUGH_MOCKUPS[i];
               return (
-                <div key={item.eyebrow} className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-center">
-                  <motion.div
-                    initial={{ opacity: 0, y: 16 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ duration: 0.35, ease: "easeOut" }}
-                    className={i % 2 === 1 ? "lg:order-2" : ""}
-                  >
-                    <div className={EYEBROW}>0{i + 1} · {item.eyebrow}</div>
-                    <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-2">{item.title}</h3>
-                    <p className={`${SECTION_DESC} mb-5`}>{item.desc}</p>
-                    <ul className="space-y-2 mb-6">
-                      {item.bullets.map((b) => (
-                        <li key={b} className="flex items-start gap-2 text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-                          <Check size={15} className="mt-0.5 text-blue-500 dark:text-blue-400 shrink-0" />
-                          {b}
-                        </li>
-                      ))}
-                    </ul>
-                    <Link to={WALKTHROUGH_LINKS[i]} className={LINK_ACTION}>
-                      {item.cta} <ChevronRight size={15} />
-                    </Link>
-                  </motion.div>
-
-                  <motion.div
-                    initial={{ opacity: 0, y: 16 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ duration: 0.35, delay: 0.1, ease: "easeOut" }}
-                    className={i % 2 === 1 ? "lg:order-1" : ""}
-                  >
-                    <Mockup />
-                  </motion.div>
-                </div>
+                <WalkthroughRow
+                  key={item.eyebrow}
+                  item={item}
+                  index={i}
+                  Mockup={Mockup}
+                  link={WALKTHROUGH_LINKS[i]}
+                />
               );
             })}
           </div>
@@ -709,7 +795,7 @@ export function Home() {
 
       {/* ── Latest Disclosures ──────────────────────── */}
       <section className={SECTION}>
-        <div className="max-w-7xl mx-auto">
+        <div className="container">
           <motion.div
             initial={{ opacity: 0, y: 16 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -757,17 +843,17 @@ export function Home() {
 
       {/* ── Analysis lenses — grounded in the same real Samsung filing as the hero ── */}
       <section className={SECTION}>
-        <div className="max-w-7xl mx-auto">
+        <div className="container">
           <motion.div
             initial={{ opacity: 0, y: 16 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.35 }}
-            className="text-center mb-8"
+            className="max-w-[45rem] mx-auto text-center mb-8"
           >
             <div className={EYEBROW}>{t("landing.lenses.eyebrow")}</div>
             <h2 className={`${SECTION_TITLE} mb-3`}>{t("landing.lenses.title")}</h2>
-            <p className={`${SECTION_DESC} max-w-2xl mx-auto`}>
+            <p className={SECTION_DESC}>
               {t("landing.lenses.subtitlePrefix")} {demoSnapshot.companyName} {t("landing.lenses.subtitleSuffix")}
             </p>
           </motion.div>
@@ -801,9 +887,9 @@ export function Home() {
       </section>
 
       {/* ── Pricing teaser ───────────────────────────────── */}
-      <section className="py-10 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-3xl mx-auto text-center">
-          <p className="text-sm text-slate-500 dark:text-slate-400">
+      <section className="py-10">
+        <div className="container-sm text-center">
+          <p className="text-base text-slate-500 dark:text-slate-400 leading-relaxed">
             {t("landing.pricing.text")}{" "}
             <Link to="/subscription" className="font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors">
               {t("landing.pricing.link")}
@@ -813,10 +899,16 @@ export function Home() {
       </section>
 
       {/* ── Final CTA ─────────────────────────────────────── */}
-      <section className={`${CTA_SECTION} py-14 sm:py-16 px-4 sm:px-6 lg:px-8`}>
-        <motion.div initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.35 }} className="max-w-2xl mx-auto text-center">
-          <h2 className="text-xl sm:text-2xl font-semibold text-white mb-3">{t("landing.finalCta.title")}</h2>
-          <p className="text-slate-400 text-sm mb-8 leading-relaxed">
+      <section className={`${CTA_SECTION} py-14 sm:py-16`}>
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.35 }}
+          className="container-sm text-center"
+        >
+          <h2 className="text-2xl sm:text-3xl font-semibold text-white mb-3">{t("landing.finalCta.title")}</h2>
+          <p className="text-slate-400 text-base mb-8 leading-relaxed">
             {t("landing.finalCta.subtitle")}
           </p>
           <div className="flex flex-col sm:flex-row justify-center gap-3">
