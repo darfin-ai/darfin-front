@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router";
 import { getAnalysisCategoryLabel } from "../constants";
 import { useLocale } from "@/app/shared/i18n";
@@ -42,78 +42,8 @@ import {
   getDisclosureTerms
 } from "../api/disclosureApi";
 import { RiskBadge, RiskBadgeGroup } from "../components/RiskBadge";
-
-// ── 하이라이트 마스크 빌더 ─────────────────────────────────────
-// AI 분석 항목(charOffset 기반)과 전문용어(startIndex 기반)를
-// 원문 전체(originalText) 길이의 마스크 배열 하나로 병합한다. 좌표계는 항상 원문 전체 기준이며,
-// 문단/표 블록은 이 마스크의 일부 구간을 sliceToSegments로 잘라서 사용한다.
-// 우선순위: 두 종류가 겹치면 highlight > term (AI 분석 우선)
-// 전문용어는 termId 기준으로 원문에서 첫 번째 등장 위치에만 밑줄을 친다.
-function buildHighlightMask(text, analysisItems, termHighlights, showHighlight, showTerms) {
-  const mask = new Array(text.length).fill(null); // null | { type: "highlight", item } | { type: "term", th }
-
-  if (showHighlight) {
-    for (const item of analysisItems) {
-      const s = item.charOffsetStart, e = item.charOffsetEnd;
-      if (s >= 0 && e > s && e <= text.length) {
-        for (let i = s; i < e; i++) {
-          if (mask[i] === null) mask[i] = { type: "highlight", item };
-        }
-      }
-    }
-  }
-
-  // 전문용어 밑줄 — termId 기준 첫 번째 등장 위치에만 적용
-  // (백엔드에서 중복이 내려오거나 캐시 데이터가 남아있어도 프론트에서 한 번 더 보장)
-  if (showTerms) {
-    const seenTermIds = new Set();
-    // startIndex 오름차순으로 정렬해서 원문 앞쪽 등장이 항상 첫 번째가 되도록 한다
-    const sortedTerms = [...termHighlights].sort((a, b) => a.startIndex - b.startIndex);
-
-    for (const th of sortedTerms) {
-      if (seenTermIds.has(th.termId)) continue; // 이미 처리한 용어 skip
-
-      const s = th.startIndex, e = th.endIndex;
-      if (s >= 0 && e > s && e <= text.length) {
-        for (let i = s; i < e; i++) {
-          if (mask[i] === null) mask[i] = { type: "term", th };
-        }
-        seenTermIds.add(th.termId); // 첫 번째 등장 완료 → 이후 중복 skip
-      }
-    }
-  }
-
-  return mask;
-}
-
-// mask의 [start, end) 구간을 연속 세그먼트 배열로 변환한다.
-// 타입: "plain" | "highlight"(AI 핵심 문장) | "term"(전문용어)
-function sliceToSegments(text, mask, start, end) {
-  const segments = [];
-  let i = start;
-  while (i < end) {
-    const cell = mask[i];
-    if (cell === null) {
-      let j = i + 1;
-      while (j < end && mask[j] === null) j++;
-      segments.push({ type: "plain", text: text.slice(i, j) });
-      i = j;
-    } else if (cell.type === "highlight") {
-      const item = cell.item;
-      let j = i + 1;
-      while (j < end && mask[j] !== null && mask[j].type === "highlight" && mask[j].item === item) j++;
-      segments.push({ type: "highlight", text: text.slice(i, j), item });
-      i = j;
-    } else {
-      const th = cell.th;
-      let j = i + 1;
-      while (j < end && mask[j] !== null && mask[j].type === "term" && mask[j].th === th) j++;
-      segments.push({ type: "term", text: text.slice(i, j), th });
-      i = j;
-    }
-  }
-  return segments;
-}
+import { OriginalDocument } from "../components/OriginalDocument";
+import { DocumentToc } from "../components/DocumentToc";
 
 // ── 토글 스위치 컴포넌트 ─────────────────────────────────────────
 function ToggleSwitch({ label, icon, checked, onCheckedChange, disabled, checkedBg }) {
@@ -172,6 +102,8 @@ export function DisclosureViewer() {
   const [isDownloading, setIsDownloading] = useState(false);
   const [showDownloadMenu, setShowDownloadMenu] = useState(false);
 
+  const [activeHeadingId, setActiveHeadingId] = useState(null);
+
   const originalPanelRef = useRef(null);
   const glossaryListRef = useRef(null);
 
@@ -228,7 +160,51 @@ export function DisclosureViewer() {
     return acc;
   }, []);
 
+  // 좌측 목차 레일용 제목 목록. OriginalDocument가 그리는 anchor id(odoc-h-{블록index})와
+  // 동일한 index 기준으로 만들어야 스크롤/활성표시가 맞물린다(둘 다 originalBlocks를 쓴다).
+  const headings = useMemo(() => {
+    if (!originalBlocks) return [];
+    return originalBlocks
+      .map((b, i) => ({ b, i }))
+      .filter(({ b }) => b.type === "heading" && b.text)
+      .map(({ b, i }) => ({ id: `odoc-h-${i}`, level: b.level || 2, text: b.text }));
+  }, [originalBlocks]);
+
   // ── 상호작용 핸들러 ──────────────────────────────────────────
+
+  // 좌측 목차 클릭 → 원문 패널에서 해당 제목으로 스크롤
+  const scrollToHeadingInPanel = useCallback((id) => {
+    const root = originalPanelRef.current;
+    const el = root?.querySelector(`#${CSS.escape(id)}`);
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, []);
+
+  // 스크롤 추적(scroll-spy) — 원문 패널을 스크롤하면 현재 위치의 제목을 목차에서 강조한다.
+  // 관찰 대상은 OriginalDocument가 그린 제목 anchor이고, 뷰포트 상단 근처를 기준선으로 삼는다.
+  useEffect(() => {
+    const root = originalPanelRef.current;
+    if (!root || headings.length === 0) return;
+    const els = headings
+      .map((h) => root.querySelector(`#${CSS.escape(h.id)}`))
+      .filter(Boolean);
+    if (els.length === 0) return;
+
+    const visible = new Set();
+    const io = new IntersectionObserver(
+      (entries) => {
+        for (const e of entries) {
+          if (e.isIntersecting) visible.add(e.target.id);
+          else visible.delete(e.target.id);
+        }
+        // 화면에 걸친 제목 중 문서 순서상 가장 앞선 것을 활성으로 (없으면 유지)
+        const first = headings.find((h) => visible.has(h.id));
+        if (first) setActiveHeadingId(first.id);
+      },
+      { root, rootMargin: "0px 0px -70% 0px", threshold: 0 }
+    );
+    els.forEach((el) => io.observe(el));
+    return () => io.disconnect();
+  }, [headings, originalText]);
 
   // AI 분석 카드 클릭 → 원문 해당 문장으로 스크롤
   const handleAnalysisItemClick = useCallback((item) => {
@@ -300,9 +276,21 @@ export function DisclosureViewer() {
 
   const handleOpenDartViewer = () => { setShowDownloadMenu(false); window.open(getDartViewerUrl(rceptNo), "_blank", "noopener,noreferrer"); };
 
+  // 원문 속 하이라이트(mark) 클릭 → 분석 탭으로 전환 + 해당 카드 강조
+  // (렌더링 자체는 OriginalDocument가 담당하고, 여기서는 탭 전환만 책임진다)
+  const handleHighlightSelectFromText = useCallback((targetKey) => {
+    setActiveTab("analysis");
+    setActiveHighlightKey(targetKey);
+    setTimeout(() => setActiveHighlightKey(null), 2000);
+  }, []);
+
   if (isLoading) {
     return (
+<<<<<<< HEAD
       <div className="h-[calc(100vh-11rem)] min-h-[720px] flex items-center justify-center text-slate-400 dark:text-slate-500">
+=======
+      <div className="h-[calc(100vh-11rem)] min-h-[720px] flex items-center justify-center text-slate-400 px-4 sm:px-6 lg:px-8 py-8">
+>>>>>>> 21dbc68 (feat: documentToc.jsx , OriginalDocument.jsx 파일 생성)
         <Loader2 size={28} className="animate-spin mr-3" />
         {t("disclosure.viewer.loading")}
       </div>
@@ -311,14 +299,22 @@ export function DisclosureViewer() {
 
   if (loadError || !disclosure) {
     return (
+<<<<<<< HEAD
       <div className="h-[calc(100vh-11rem)] min-h-[720px] flex flex-col items-center justify-center text-slate-500 dark:text-slate-400 gap-3">
         <AlertTriangle size={32} className="text-red-400 dark:text-red-500" />
         <p>{loadError ?? t("disclosure.viewer.notFound")}</p>
         <Link to="/disclosure" className="text-blue-600 dark:text-blue-400 text-sm font-medium hover:underline">{t("disclosure.viewer.backToSearch")}</Link>
+=======
+      <div className="h-[calc(100vh-11rem)] min-h-[720px] flex flex-col items-center justify-center text-slate-500 gap-3 px-4 sm:px-6 lg:px-8 py-8">
+        <AlertTriangle size={32} className="text-red-400" />
+        <p>{loadError ?? "공시 정보를 찾을 수 없습니다."}</p>
+        <Link to="/disclosure" className="text-blue-600 text-sm font-medium hover:underline">공시 통합검색으로 돌아가기</Link>
+>>>>>>> 21dbc68 (feat: documentToc.jsx , OriginalDocument.jsx 파일 생성)
       </div>
     );
   }
 
+<<<<<<< HEAD
   // 원문 전체 기준 하이라이트 마스크 (문단/표 블록이 이 마스크의 구간을 나눠 쓴다)
   const highlightMask = originalText
     ? buildHighlightMask(originalText, analysisItems, termHighlights, highlightEnabled, termsEnabled)
@@ -428,8 +424,10 @@ export function DisclosureViewer() {
     );
   };
 
+=======
+>>>>>>> 21dbc68 (feat: documentToc.jsx , OriginalDocument.jsx 파일 생성)
   return (
-    <div className="h-[calc(100vh-11rem)] min-h-[720px] flex flex-col -mt-4 animate-in fade-in duration-300">
+    <div className="h-[calc(100vh-11rem)] min-h-[720px] flex flex-col px-4 sm:px-6 lg:px-8 pt-4 pb-8 animate-in fade-in duration-300">
 
       {/* ── 헤더 ──────────────────────────────────────────────── */}
       <div className="flex items-center justify-between pb-4 border-b border-slate-200 dark:border-slate-800 mb-4">
@@ -443,9 +441,15 @@ export function DisclosureViewer() {
           </button>
           <div className="min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
+<<<<<<< HEAD
               <span className="text-xs font-medium px-2 py-0.5 rounded bg-blue-100 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300">{disclosure.typeLabel}</span>
               <span className={`text-sm ${META}`}>{disclosure.filedAt}</span>
               {hasSummary && <RiskBadge riskLabel={disclosure.riskLabel} riskTier={disclosure.riskTier} size="sm" />}
+=======
+              <span className="text-xs font-semibold px-2 py-0.5 rounded bg-blue-100 text-blue-700">{disclosure.typeLabel}</span>
+              <span className="text-sm text-slate-500">{disclosure.filedAt}</span>
+              {hasSummary && <RiskBadge riskLabel={disclosure.riskLabel} riskTier={disclosure.riskTier} size="lg" />}
+>>>>>>> 21dbc68 (feat: documentToc.jsx , OriginalDocument.jsx 파일 생성)
             </div>
             <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-100 mt-1 truncate">{disclosure.title} - {companyName}</h1>
           </div>
@@ -489,8 +493,22 @@ export function DisclosureViewer() {
 
       <div className="flex-1 flex gap-6 overflow-hidden">
 
+<<<<<<< HEAD
         {/* ── 좌측: 공시 원문 패널 ──────────────────────────── */}
         <section className={`flex-1 ${CARD} shadow-sm flex flex-col overflow-hidden`}>
+=======
+        {/* ── 좌측: 목차 레일 (제목 2개 이상일 때만) ─────────────── */}
+        {!isLoadingOriginal && !originalTextError && headings.length >= 2 && (
+          <DocumentToc
+            headings={headings}
+            activeId={activeHeadingId}
+            onSelect={scrollToHeadingInPanel}
+          />
+        )}
+
+        {/* ── 가운데: 공시 원문 패널 ──────────────────────────── */}
+        <section className="flex-1 bg-white border border-slate-200 rounded-2xl shadow-sm flex flex-col overflow-hidden">
+>>>>>>> 21dbc68 (feat: documentToc.jsx , OriginalDocument.jsx 파일 생성)
 
           {/* 패널 헤더 — 두 개 독립 토글 */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50 shrink-0 gap-4">
@@ -560,6 +578,7 @@ export function DisclosureViewer() {
             </div>
           ) : (
             <div className="flex-1 overflow-y-auto p-6" ref={originalPanelRef}>
+<<<<<<< HEAD
               {originalBlocks && originalBlocks.length > 0 ? (
                 originalBlocks.map((block, bi) => renderBlock(block, `b${bi}`))
               ) : (
@@ -569,6 +588,20 @@ export function DisclosureViewer() {
                     : originalText}
                 </p>
               )}
+=======
+              <OriginalDocument
+                text={originalText}
+                blocks={originalBlocks}
+                analysisItems={analysisItems}
+                termHighlights={termHighlights}
+                highlightEnabled={highlightEnabled}
+                termsEnabled={termsEnabled}
+                activeHighlightKey={activeHighlightKey}
+                activeTermId={activeTermId}
+                onHighlightSelect={handleHighlightSelectFromText}
+                onTermSelect={handleTermInTextClick}
+              />
+>>>>>>> 21dbc68 (feat: documentToc.jsx , OriginalDocument.jsx 파일 생성)
             </div>
           )}
         </section>
@@ -607,6 +640,7 @@ export function DisclosureViewer() {
               {hasSummary ? (
                 <>
                   <div className="flex items-center justify-between gap-2 mb-2 flex-wrap">
+<<<<<<< HEAD
                     <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400 font-semibold"><Sparkles size={18} /><span>{t("disclosure.viewer.summaryTitle")}</span></div>
                     <RiskBadgeGroup badges={summaryBadges} size="md" />
                   </div>
@@ -618,6 +652,13 @@ export function DisclosureViewer() {
                       {disclosure.investorComment}
                     </p>
                   </div>
+=======
+                    <div className="flex items-center gap-2 text-blue-600 font-bold"><Sparkles size={18} /><span>핵심 내용 정리</span></div>
+                    <RiskBadgeGroup badges={summaryBadges} size="lg" />
+                  </div>
+                  <p className="text-base font-semibold text-slate-800 leading-relaxed">{disclosure.summaryText}</p>
+                  <p className="text-sm text-slate-600 leading-relaxed bg-blue-50 p-4 rounded-lg">{disclosure.investorComment}</p>
+>>>>>>> 21dbc68 (feat: documentToc.jsx , OriginalDocument.jsx 파일 생성)
                 </>
               ) : (
                 <>
@@ -653,7 +694,11 @@ export function DisclosureViewer() {
                             <h4 className={`font-semibold text-slate-800 dark:text-slate-100 ${isSingle ? "text-base" : "text-sm"}`}>{getAnalysisCategoryLabel(t, item.analysisCategory)}</h4>
                             {hasCoords && <span className={`flex items-center gap-0.5 text-[10px] ${META}`}><ChevronRight size={10} />{t("disclosure.viewer.goToOriginal")}</span>}
                           </div>
+<<<<<<< HEAD
                           <RiskBadge riskLabel={item.riskLevel} riskTier={item.riskTier} size="sm" />
+=======
+                          <RiskBadge axisLabel="위험도" riskLabel={item.riskLevel} riskTier={item.riskTier} size="md" />
+>>>>>>> 21dbc68 (feat: documentToc.jsx , OriginalDocument.jsx 파일 생성)
                         </div>
                         <p className={`text-slate-500 dark:text-slate-400 mb-2 bg-amber-50 dark:bg-amber-950/30 border border-amber-100 dark:border-amber-900/50 px-2 py-1 rounded italic leading-relaxed ${isSingle ? "text-sm" : "text-xs"}`}>"{item.targetKey}"</p>
                         <p className={`text-slate-600 dark:text-slate-300 leading-relaxed ${isSingle ? "text-base" : "text-sm"}`}>{item.materialImpact}</p>

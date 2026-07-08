@@ -36,17 +36,28 @@ export const RISK_TIER_STYLE = {
 export function RiskBadge({ axisLabel, riskLabel, riskTier, size = "sm", compact = false }) {
   const { t } = useLocale();
   const style = RISK_TIER_STYLE[riskTier] ?? RISK_TIER_STYLE[3];
+<<<<<<< HEAD
   const sizeClass = size === "md" ? "text-xs px-3 py-1.5" : "text-[11px] px-2 py-1";
   const resolvedAxisLabel = axisLabel ?? t("disclosure.risk.axisLabel");
   const tier = riskTier ?? 3;
   const description = t(`disclosure.riskTier.${tier}`);
+=======
+  const sizeClass =
+    size === "lg"
+      ? "text-sm px-3.5 py-1.5"
+      : size === "md"
+        ? "text-xs px-3 py-1.5"
+        : "text-[11px] px-2 py-1";
+  const dotClass = size === "lg" ? "w-2.5 h-2.5" : size === "md" ? "w-2 h-2" : "w-1.5 h-1.5";
+  const description = RISK_TIER_DESCRIPTION[riskTier] ?? RISK_TIER_DESCRIPTION[3];
+>>>>>>> 21dbc68 (feat: documentToc.jsx , OriginalDocument.jsx 파일 생성)
 
   return (
     <span
       title={`${resolvedAxisLabel} · ${riskLabel}: ${description}`}
       className={`inline-flex items-center gap-1.5 rounded-full border font-medium whitespace-nowrap cursor-help ${style.bg} ${style.border} ${style.text} ${sizeClass}`}
     >
-      <span className={`w-1.5 h-1.5 rounded-full ${style.dot} shrink-0`} />
+      <span className={`${dotClass} rounded-full ${style.dot} shrink-0`} />
       {!compact && (
         <>
           {resolvedAxisLabel}
