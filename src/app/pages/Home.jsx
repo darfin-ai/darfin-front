@@ -12,14 +12,14 @@ const SECTION = "py-14 sm:py-16";
 
 /* Aligned with /company: blue-600 primary, restrained type weights */
 const CTA_PRIMARY = "bg-blue-600 hover:bg-blue-700";
-const CTA_SECTION = "bg-slate-900";
+const CTA_SECTION = "bg-slate-50 dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800";
 
 const EYEBROW = "text-xs font-medium text-slate-400 dark:text-slate-500 mb-2";
 const SECTION_TITLE = "text-2xl sm:text-3xl lg:text-4xl font-semibold tracking-tight text-slate-900 dark:text-slate-100";
 const SECTION_DESC = "text-base text-slate-500 dark:text-slate-400 leading-relaxed";
 
-const BTN_PRIMARY = `inline-flex items-center justify-center gap-2 h-10 px-5 ${CTA_PRIMARY} text-white text-sm font-medium rounded-md transition-colors`;
-const BTN_SECONDARY = "inline-flex items-center justify-center gap-2 h-10 px-5 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 text-sm font-medium rounded-md transition-colors";
+const BTN_PRIMARY = `inline-flex w-fit items-center justify-center gap-2 h-10 px-5 ${CTA_PRIMARY} text-white text-sm font-medium rounded-md transition-colors`;
+const BTN_SECONDARY = "inline-flex w-fit items-center justify-center gap-2 h-10 px-5 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 text-sm font-medium rounded-md transition-colors";
 const LINK_ACTION = "inline-flex items-center gap-1 text-sm font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors";
 const LINK_SUBTLE = "inline-flex items-center gap-1 text-xs text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition-colors";
 const CARD = "rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900";
@@ -58,7 +58,7 @@ function HeroCta() {
 
   if (isLoggedIn) {
     return (
-      <div className="flex flex-col sm:flex-row gap-3">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
         <button
           type="button"
           onClick={() => navigate("/company")}
@@ -78,7 +78,7 @@ function HeroCta() {
 
   return (
     <div>
-      <div className="flex flex-col sm:flex-row gap-3">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
         <Link
           to="/signup"
           className={BTN_PRIMARY}
@@ -1289,30 +1289,30 @@ export function Home() {
           transition={{ duration: 0.35 }}
           className="container-sm text-center"
         >
-          <h2 className="text-2xl sm:text-3xl font-semibold text-white mb-3">{t("landing.finalCta.title")}</h2>
-          <p className="text-slate-400 text-base mb-8 leading-relaxed">
+          <h2 className="text-2xl sm:text-3xl font-semibold text-slate-900 dark:text-white mb-3">{t("landing.finalCta.title")}</h2>
+          <p className="text-slate-500 dark:text-slate-400 text-base mb-8 leading-relaxed">
             {t("landing.finalCta.subtitle")}
           </p>
-          <div className="flex flex-col sm:flex-row justify-center gap-3">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
             {isLoggedIn ? (
               <button
                 type="button"
                 onClick={() => navigate("/company")}
-                className="h-10 px-5 bg-white text-slate-900 text-sm font-medium rounded-md hover:bg-slate-100 transition-colors"
+                className={`${BTN_PRIMARY} dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100`}
               >
                 {t("landing.finalCta.company")}
               </button>
             ) : (
               <Link
                 to="/signup"
-                className="inline-flex items-center justify-center h-10 px-5 bg-white text-slate-900 text-sm font-medium rounded-md hover:bg-slate-100 transition-colors"
+                className={`${BTN_PRIMARY} dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100`}
               >
                 {t("landing.finalCta.signup")}
               </Link>
             )}
             <Link
               to="/trading"
-              className="inline-flex items-center justify-center h-10 px-5 bg-white/10 border border-white/20 text-white text-sm font-medium rounded-md hover:bg-white/15 transition-colors gap-2"
+              className={`${BTN_SECONDARY} dark:bg-white/10 dark:border-white/20 dark:text-white dark:hover:bg-white/15 gap-2`}
             >
               {t("landing.finalCta.trading")} <ChevronRight size={16} />
             </Link>
