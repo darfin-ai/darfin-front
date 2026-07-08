@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from 'react';
-import { motion } from 'motion/react';
 import { Search } from 'lucide-react';
 import { useLocale } from '../../../shared/i18n';
 
@@ -76,13 +75,6 @@ export function CompanySearchBar({ value, onChange, inputRef }) {
 
   return (
     <div className="relative mx-auto w-full max-w-2xl">
-      <motion.div
-        className="pointer-events-none absolute -inset-3 -z-10 rounded-full bg-gradient-to-r from-blue-400/60 via-violet-400/60 to-teal-400/60 blur-xl dark:from-blue-500/25 dark:via-violet-500/20 dark:to-teal-500/20"
-        aria-hidden="true"
-        animate={{ opacity: [0.45, 0.8, 0.45] }}
-        transition={{ duration: 3.2, repeat: Infinity, ease: 'easeInOut' }}
-      />
-
       <div className="group relative flex h-14 items-center gap-3 rounded-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-5 shadow-sm dark:shadow-none transition-all duration-300 focus-within:border-blue-300 dark:focus-within:border-blue-600 focus-within:shadow-lg focus-within:shadow-blue-500/10 dark:focus-within:shadow-blue-500/5 focus-within:ring-4 focus-within:ring-blue-500/10 dark:focus-within:ring-blue-500/20">
         <Search className="h-5 w-5 shrink-0 text-slate-400 dark:text-slate-500 transition-colors group-focus-within:text-blue-500 dark:group-focus-within:text-blue-400" />
         <input

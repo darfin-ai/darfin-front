@@ -1,20 +1,97 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import {
+  ArrowDown,
+  ArrowRight,
+  ArrowUp,
+  ArrowUpDown,
+  Calendar as CalendarIcon,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  FileText,
+  Search,
+  SlidersHorizontal,
+} from "lucide-react";
+import { DayPicker } from "react-day-picker";
+import {
+  format,
+  startOfDay,
+  endOfDay,
+  startOfWeek,
+  startOfMonth,
+  subMonths,
+  isSameDay,
+} from "date-fns";
+import * as Popover from "@radix-ui/react-popover";
+import { DISCLOSURE_GROUPS, getDisclosureGroupLabel } from "../constants";
+import { useLocale } from "@/app/shared/i18n";
+import { getDateFnsLocale } from "@/app/shared/i18n/localeFormat";
+import { searchDisclosures } from "../api/disclosureApi";
+import { RiskBadge } from "../components/RiskBadge";
+import {
+  CARD,
+  LABEL,
+  ALERT_INFO,
+  ALERT_ERROR,
+  BADGE_NEUTRAL,
+  ROW_HOVER,
+  ROW_DIVIDER,
+} from "@/app/shared/lib/uiRecipes";
+import "react-day-picker/dist/style.css";
 
 const SESSION_KEY = "disclosureSearchState";
+const PAGE_SIZE = 5;
+
+const DATE_PRESET_IDS = ["today", "week", "month", "sixMonths", "custom"];
+
+function getDateRangeForPreset(preset) {
+  const now = new Date();
+  const end = endOfDay(now);
+  switch (preset) {
+    case "today":
+      return { from: startOfDay(now), to: end };
+    case "week":
+      return { from: startOfWeek(now, { weekStartsOn: 1 }), to: end };
+    case "month":
+      return { from: startOfMonth(now), to: end };
+    case "sixMonths":
+      return { from: startOfDay(subMonths(now, 6)), to: end };
+    default:
+      return null;
+  }
+}
+
+function inferDatePreset(range) {
+  if (!range?.from || !range?.to) return "sixMonths";
+  for (const preset of DATE_PRESET_IDS) {
+    if (preset === "custom") continue;
+    const expected = getDateRangeForPreset(preset);
+    if (
+      expected &&
+      isSameDay(range.from, expected.from) &&
+      isSameDay(range.to, expected.to)
+    ) {
+      return preset;
+    }
+  }
+  return "custom";
+}
 
 function loadState() {
   try {
     const raw = sessionStorage.getItem(SESSION_KEY);
     if (!raw) return null;
     const s = JSON.parse(raw);
-    // Date 객체 복원
+    const dateRange = {
+      from: s.dateRange?.from ? new Date(s.dateRange.from) : null,
+      to: s.dateRange?.to ? new Date(s.dateRange.to) : null,
+    };
     return {
       ...s,
-      dateRange: {
-        from: s.dateRange?.from ? new Date(s.dateRange.from) : null,
-        to:   s.dateRange?.to   ? new Date(s.dateRange.to)   : null,
-      },
+      dateRange,
+      datePreset: s.datePreset ?? inferDatePreset(dateRange),
     };
   } catch {
     return null;
@@ -26,57 +103,47 @@ function saveState(state) {
     sessionStorage.setItem(SESSION_KEY, JSON.stringify(state));
   } catch {}
 }
-import {
-  ArrowDown,
-  ArrowUp,
-  ArrowUpDown,
-  Building2,
-  Calendar as CalendarIcon,
-  CheckCircle2,
-  ChevronLeft,
-  ChevronRight,
-  FileText,
-  Filter,
-  LayoutGrid,
-  Search
-} from "lucide-react";
-import { DayPicker } from "react-day-picker";
-import { format } from "date-fns";
-import * as Popover from "@radix-ui/react-popover";
-import { DISCLOSURE_GROUPS, getDisclosureGroupLabel } from "../constants";
-import { useLocale } from "@/app/shared/i18n";
-import { getDateFnsLocale } from "@/app/shared/i18n/localeFormat";
-import { searchDisclosures } from "../api/disclosureApi";
-import { RiskBadge } from "../components/RiskBadge";
-import {
-  CARD,
-  PAGE_TITLE,
-  PAGE_DESC,
-  LABEL,
-  INPUT,
-  BTN_PRIMARY,
-  ALERT_INFO,
-  ALERT_ERROR,
-  BADGE_NEUTRAL,
-  ROW_HOVER,
-  ROW_DIVIDER,
-} from "@/app/shared/lib/uiRecipes";
-import "react-day-picker/dist/style.css";
 
-const PAGE_SIZE = 5;
+/** Stagger presets aligned with company-analysis list entrances (CompanyQuickLinks, CompanyCard). */
+function getStaggerVariants(reduceMotion, { stagger = 0.03, delayChildren = 0 } = {}) {
+  if (reduceMotion) {
+    return {
+      container: { hidden: {}, show: {} },
+      item: { hidden: {}, show: {} },
+    };
+  }
+  return {
+    container: {
+      hidden: {},
+      show: {
+        transition: { staggerChildren: stagger, delayChildren },
+      },
+    },
+    item: {
+      hidden: { opacity: 0, y: 8 },
+      show: {
+        opacity: 1,
+        y: 0,
+        transition: { duration: 0.3, ease: "easeOut" },
+      },
+    },
+  };
+}
 
 export function DisclosureSearch() {
   const navigate = useNavigate();
   const { t, locale } = useLocale();
   const dateFnsLocale = getDateFnsLocale(locale);
   const today = new Date();
-  const firstDayOfYear = new Date(today.getFullYear(), 0, 1);
 
   const saved = loadState();
+  const defaultPreset = "sixMonths";
+  const defaultRange = getDateRangeForPreset(defaultPreset);
 
   const [searchTerm, setSearchTerm] = useState(saved?.searchTerm ?? "");
   const [selectedTypeCodes, setSelectedTypeCodes] = useState(saved?.selectedTypeCodes ?? []);
-  const [dateRange, setDateRange] = useState(saved?.dateRange ?? { from: firstDayOfYear, to: today });
+  const [datePreset, setDatePreset] = useState(saved?.datePreset ?? defaultPreset);
+  const [dateRange, setDateRange] = useState(saved?.dateRange ?? defaultRange);
   const [isSearching, setIsSearching] = useState(false);
   const [collectMessage, setCollectMessage] = useState(saved?.collectMessage ?? null);
   const [searchError, setSearchError] = useState(null);
@@ -85,20 +152,46 @@ export function DisclosureSearch() {
   const [sortKey, setSortKey] = useState(saved?.sortKey ?? null);
   const [sortDirection, setSortDirection] = useState(saved?.sortDirection ?? "desc");
   const [lastSearchedTerm, setLastSearchedTerm] = useState(saved?.lastSearchedTerm ?? null);
+  // Filters already default to "last 6 months, all types" and work without being opened —
+  // only expand automatically if the user had customized them in a previous visit.
+  const [filtersOpen, setFiltersOpen] = useState(
+    () => datePreset !== defaultPreset || selectedTypeCodes.length > 0
+  );
+  const reduceMotion = useReducedMotion();
+  const pageStagger = getStaggerVariants(reduceMotion, { stagger: 0.05, delayChildren: 0.04 });
+  const chipStagger = getStaggerVariants(reduceMotion, { stagger: 0.03, delayChildren: 0.05 });
 
-  // 상태가 바뀔 때마다 sessionStorage에 저장
   useEffect(() => {
-    saveState({ searchTerm, selectedTypeCodes, dateRange, collectMessage, results, currentPage, sortKey, sortDirection, lastSearchedTerm });
-  }, [searchTerm, selectedTypeCodes, dateRange, collectMessage, results, currentPage, sortKey, sortDirection, lastSearchedTerm]);
+    saveState({
+      searchTerm,
+      selectedTypeCodes,
+      datePreset,
+      dateRange,
+      collectMessage,
+      results,
+      currentPage,
+      sortKey,
+      sortDirection,
+      lastSearchedTerm,
+    });
+  }, [
+    searchTerm,
+    selectedTypeCodes,
+    datePreset,
+    dateRange,
+    collectMessage,
+    results,
+    currentPage,
+    sortKey,
+    sortDirection,
+    lastSearchedTerm,
+  ]);
 
   const pagedResults = results?.content ?? [];
   const totalElements = results?.totalElements ?? 0;
   const totalPages = results?.totalPages ?? 1;
   const isAllSelected = selectedTypeCodes.length === 0;
 
-  // 공시 검색하기 버튼 하나로 통합된 로직.
-  // 서버(/api/disclosures)가 DB에 데이터가 없으면 DART에서 자동 수집한 뒤 검색 결과를 내려주고,
-  // 이미 수집되어 있으면 DART 호출 없이 DB 조회만 수행한다.
   const performSearch = async ({ companyName, page, key, direction }) => {
     setIsSearching(true);
     setSearchError(null);
@@ -111,8 +204,8 @@ export function DisclosureSearch() {
         typeCodes: selectedTypeCodes,
         sortKey: key,
         sortDirection: direction,
-        page: page - 1, // 백엔드는 0부터 시작하는 페이지 번호를 받음
-        size: PAGE_SIZE
+        page: page - 1,
+        size: PAGE_SIZE,
       });
 
       setResults(data.results);
@@ -121,9 +214,10 @@ export function DisclosureSearch() {
           ? t("disclosure.search.collectDone", {
               stocks: data.savedStockCount ?? 0,
               disclosures: data.savedDisclosureCount ?? 0,
-              skipped: data.skippedCount > 0
-                ? t("disclosure.search.collectSkipped", { count: data.skippedCount })
-                : "",
+              skipped:
+                data.skippedCount > 0
+                  ? t("disclosure.search.collectSkipped", { count: data.skippedCount })
+                  : "",
             })
           : null
       );
@@ -141,10 +235,6 @@ export function DisclosureSearch() {
     await performSearch({ companyName: lastSearchedTerm, page, key, direction });
   };
 
-  // sessionStorage에 캐시된 results는 상세보기에서 AI 요약/분석을 새로 생성하기 전 시점의
-  // 스냅샷일 수 있다(riskLabel 등이 그 사이 바뀌어도 캐시에는 반영 안 됨). 뒤로가기로 이
-  // 화면에 돌아왔을 때 캐시를 먼저 보여주되, 조용히 서버에서 한 번 다시 받아와 최신 상태로
-  // 교체한다.
   useEffect(() => {
     if (saved?.lastSearchedTerm) {
       runSearch();
@@ -178,6 +268,19 @@ export function DisclosureSearch() {
     );
   };
 
+  const handlePresetChange = (preset) => {
+    setDatePreset(preset);
+    if (preset !== "custom") {
+      const nextRange = getDateRangeForPreset(preset);
+      if (nextRange) setDateRange(nextRange);
+    }
+  };
+
+  const handleCustomRangeSelect = (range) => {
+    setDateRange(range);
+    setDatePreset("custom");
+  };
+
   const handleSearch = (event) => {
     event.preventDefault();
     if (!searchTerm.trim()) return;
@@ -192,12 +295,27 @@ export function DisclosureSearch() {
     performSearch({ companyName, page: 1, key: null, direction: "desc" });
   };
 
+  const presetLabels = t("disclosure.search.datePresets");
+  const dateSummary =
+    datePreset === "custom" && dateRange?.from && dateRange?.to
+      ? `${format(dateRange.from, "M/d")} ~ ${format(dateRange.to, "M/d")}`
+      : presetLabels[datePreset];
+  const typeSummary = isAllSelected
+    ? t("disclosure.search.typeAll")
+    : t("disclosure.search.typeSelectedCount", { count: selectedTypeCodes.length });
+
   return (
-    <div className="container">
+    <div className="container max-w-[1180px] pb-16">
+      {/*
+        react-day-picker renders its own class names, so Tailwind utility
+        classes can't reach them — these overrides use the hex values of
+        the equivalent Tailwind tokens (annotated below) with an explicit
+        dark: pair, per DESIGN_SYSTEM.md §1.3.
+      */}
       <style>{`
         .rdp {
-          --rdp-color-selected: #2563eb;
-          --rdp-color-selected-hover: #1d4ed8;
+          --rdp-color-selected: #2563eb; /* blue-600 */
+          --rdp-color-selected-hover: #1d4ed8; /* blue-700 */
           --rdp-cell-size: 36px;
           margin: 0;
         }
@@ -209,9 +327,13 @@ export function DisclosureSearch() {
           background-color: var(--rdp-color-selected);
         }
         .rdp-day_range_middle {
-          background-color: #eff6ff !important;
-          color: #1e3a8a !important;
+          background-color: #eff6ff !important; /* blue-50 */
+          color: #1e3a8a !important; /* blue-900 */
           border-radius: 0 !important;
+        }
+        .dark .rdp-day_range_middle {
+          background-color: rgba(30, 58, 138, 0.35) !important; /* blue-900/35 */
+          color: #93c5fd !important; /* blue-300 */
         }
         .rdp-day_range_start {
           border-top-right-radius: 0 !important;
@@ -223,155 +345,212 @@ export function DisclosureSearch() {
         }
       `}</style>
 
-      <div className="mb-8">
-        <h1 className={`${PAGE_TITLE} mb-2 flex items-center gap-2`}>
-          <FileText className="text-blue-600 dark:text-blue-400" size={32} />
-          {t("disclosure.search.title")}
-        </h1>
-        <p className={PAGE_DESC}>
+      {/* Page header — weight/size matches the company page's index header (text-3xl font-bold), not the lighter shared PAGE_TITLE recipe used on account/community/pricing pages */}
+      <motion.div
+        className="pt-10 pb-6 text-center"
+        variants={pageStagger.container}
+        initial="hidden"
+        animate="show"
+      >
+        <motion.div variants={pageStagger.item}>
+          <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
+            {t("disclosure.search.title")}
+          </h1>
+        </motion.div>
+        <motion.p
+          variants={pageStagger.item}
+          className="mt-2 text-sm text-slate-500 dark:text-slate-400 max-w-[36rem] mx-auto"
+        >
           {t("disclosure.search.description")}
-        </p>
-      </div>
+        </motion.p>
+      </motion.div>
 
-      <div className={`${CARD} shadow-sm p-8 mb-8`}>
-        <form onSubmit={handleSearch} className="space-y-8">
-          <div className="grid grid-cols-[1fr_300px] gap-6">
-            <div className="space-y-3">
-              <label className={`${LABEL} flex items-center gap-2`}>
-                <Building2 size={16} />
-                {t("disclosure.search.companyLabel")}
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                  <Search className="h-5 w-5 text-slate-400 dark:text-slate-500" />
-                </div>
-                <input
-                  type="text"
-                  value={searchTerm}
-                  onChange={(event) => setSearchTerm(event.target.value)}
-                  placeholder={t("disclosure.search.companyPlaceholder")}
-                  className={`${INPUT} pl-12 h-12 text-base`}
-                />
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              <label className={`${LABEL} flex items-center gap-2`}>
-                <CalendarIcon size={16} />
-                {t("disclosure.search.dateRangeLabel")}
-              </label>
-              <Popover.Root>
-                <Popover.Trigger asChild>
-                  <button
-                    type="button"
-                    className={`${INPUT} h-12 text-left flex items-center justify-between`}
-                  >
-                    {dateRange?.from ? (
-                      dateRange.to ? (
-                        <span>
-                          {format(dateRange.from, "yyyy-MM-dd")} ~ {format(dateRange.to, "yyyy-MM-dd")}
-                        </span>
-                      ) : (
-                        format(dateRange.from, "yyyy-MM-dd")
-                      )
-                    ) : (
-                      <span className="text-slate-400 dark:text-slate-500">{t("disclosure.search.dateRangePlaceholder")}</span>
-                    )}
-                    <CalendarIcon size={16} className="text-slate-400 dark:text-slate-500" />
-                  </button>
-                </Popover.Trigger>
-                <Popover.Portal>
-                  <Popover.Content
-                    align="start"
-                    className="z-50 bg-white dark:bg-slate-900 p-3 rounded-xl shadow-xl border border-slate-200 dark:border-slate-800"
-                    sideOffset={8}
-                  >
-                    <DayPicker
-                      mode="range"
-                      defaultMonth={dateRange?.from}
-                      selected={dateRange}
-                      onSelect={setDateRange}
-                      locale={dateFnsLocale}
-                      showOutsideDays
-                      className="text-sm"
-                    />
-                  </Popover.Content>
-                </Popover.Portal>
-              </Popover.Root>
-            </div>
+      <form onSubmit={handleSearch} className="space-y-6">
+        <motion.div variants={pageStagger.container} initial="hidden" animate="show">
+        {/* Primary search — submit sits inside the pill as a round icon button */}
+        <motion.div variants={pageStagger.item} className="relative mx-auto w-full max-w-2xl pb-2">
+          <div className="group relative flex h-14 items-center gap-2 rounded-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 pl-5 pr-1.5 shadow-sm dark:shadow-none transition-all duration-300 focus-within:border-blue-300 dark:focus-within:border-blue-600 focus-within:shadow-lg focus-within:shadow-blue-500/10 dark:focus-within:shadow-blue-500/5 focus-within:ring-4 focus-within:ring-blue-500/10 dark:focus-within:ring-blue-500/20">
+            <Search className="h-5 w-5 shrink-0 text-slate-400 dark:text-slate-500 transition-colors group-focus-within:text-blue-500 dark:group-focus-within:text-blue-400" />
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(event) => setSearchTerm(event.target.value)}
+              placeholder={t("disclosure.search.companyPlaceholder")}
+              aria-label={t("disclosure.search.companyLabel")}
+              className="w-full min-w-0 flex-1 border-none bg-transparent text-base text-slate-900 dark:text-slate-100 outline-none placeholder:text-slate-400 dark:placeholder:text-slate-500"
+            />
+            <button
+              type="submit"
+              disabled={isSearching || !searchTerm.trim() || !dateRange?.from || !dateRange?.to}
+              aria-label={t("disclosure.search.submit")}
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-blue-600 text-white transition-colors hover:bg-blue-700 disabled:bg-slate-300 dark:disabled:bg-slate-700 disabled:cursor-not-allowed"
+            >
+              {isSearching ? (
+                <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+              ) : (
+                <ArrowRight size={18} strokeWidth={2.25} />
+              )}
+            </button>
           </div>
+        </motion.div>
 
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <label className={`${LABEL} flex items-center gap-2`}>
-                <Filter size={16} />
-                {t("disclosure.search.typeLabel")}
-              </label>
-              <button
-                type="button"
-                onClick={() => setSelectedTypeCodes([])}
-                className="text-xs font-semibold text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 transition-colors"
-              >
-                {t("disclosure.search.typeReset")}
-              </button>
-            </div>
-
-            <div className="grid grid-cols-11 gap-2">
-              <DisclosureTypeButton
-                label={t("disclosure.search.typeAll")}
-                selected={isAllSelected}
-                onClick={() => setSelectedTypeCodes([])}
-                icon={isAllSelected ? <CheckCircle2 size={12} /> : <LayoutGrid size={12} />}
-              />
-              {DISCLOSURE_GROUPS.map((group) => (
-                <DisclosureTypeButton
-                  key={group.code}
-                  label={getDisclosureGroupLabel(t, group.code)}
-                  selected={selectedTypeCodes.includes(group.code)}
-                  onClick={() => toggleType(group.code)}
-                  icon={selectedTypeCodes.includes(group.code) ? <CheckCircle2 size={12} /> : null}
-                />
-              ))}
-            </div>
-
-            <p className="text-xs text-slate-400 dark:text-slate-500">
-              {isAllSelected
-                ? t("disclosure.search.typeAllHint")
-                : t("disclosure.search.typeFilterHint", { count: selectedTypeCodes.length })}
-            </p>
-          </div>
-
+        {/* Filters are optional — search already runs on the defaults (last 6 months, all
+            types) shown in this summary, so opening the panel is only needed to narrow things down. */}
+        <motion.div variants={pageStagger.item} className="mx-auto w-full max-w-2xl">
           <button
-            type="submit"
-            disabled={isSearching || !searchTerm.trim() || !dateRange?.from || !dateRange?.to}
-            className={`${BTN_PRIMARY} w-full h-12 text-lg rounded-xl shadow-md`}
+            type="button"
+            onClick={() => setFiltersOpen((open) => !open)}
+            aria-expanded={filtersOpen}
+            className="mx-auto flex items-center gap-1.5 text-sm font-medium text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 transition-colors"
           >
-            {isSearching ? (
-              <>
-                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                {t("disclosure.search.searching")}
-              </>
-            ) : (
-              <>
-                <Search size={20} />
-                {t("disclosure.search.submit")}
-              </>
-            )}
+            <SlidersHorizontal size={14} />
+            <span>{dateSummary} · {typeSummary}</span>
+            <ChevronDown size={14} className={`transition-transform ${filtersOpen ? "rotate-180" : ""}`} />
           </button>
-        </form>
-      </div>
+        </motion.div>
+
+        <AnimatePresence initial={false}>
+          {filtersOpen && (
+            <motion.div
+              key="filters"
+              initial={reduceMotion ? false : { opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={reduceMotion ? undefined : { opacity: 0, height: 0 }}
+              transition={{ duration: 0.2, ease: "easeOut" }}
+              className="mx-auto w-full max-w-2xl overflow-hidden"
+            >
+              <motion.div
+                className="space-y-6 pt-6"
+                variants={chipStagger.container}
+                initial="hidden"
+                animate="show"
+              >
+                {/* Date range — one box always shows the active range, whether it came from a
+                    quick preset or a manual pick; there's no separate "custom" chip because
+                    opening the box *is* the custom action. */}
+                <div className="space-y-3">
+                  <motion.label
+                    variants={chipStagger.item}
+                    className={`${LABEL} flex items-center gap-2`}
+                  >
+                    <CalendarIcon size={16} className="text-slate-400 dark:text-slate-500" />
+                    {t("disclosure.search.dateRangeLabel")}
+                  </motion.label>
+                  <motion.div
+                    variants={chipStagger.container}
+                    initial="hidden"
+                    animate="show"
+                    className="flex flex-wrap items-center gap-2"
+                  >
+                    <motion.div variants={chipStagger.item}>
+                    <Popover.Root>
+                      <Popover.Trigger asChild>
+                        <button
+                          type="button"
+                          className={`h-9 shrink-0 px-3.5 rounded-full border text-sm font-medium flex items-center gap-1.5 transition-colors
+                            ${datePreset === "custom"
+                              ? "bg-blue-50 dark:bg-blue-950/40 border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300"
+                              : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-600"}`}
+                        >
+                          <CalendarIcon size={14} className="shrink-0" />
+                          {dateRange?.from && dateRange?.to ? (
+                            <span className="tabular-nums whitespace-nowrap">
+                              {format(dateRange.from, "yyyy-MM-dd")} ~ {format(dateRange.to, "yyyy-MM-dd")}
+                            </span>
+                          ) : (
+                            <span className="whitespace-nowrap">{t("disclosure.search.dateRangePlaceholder")}</span>
+                          )}
+                        </button>
+                      </Popover.Trigger>
+                      <Popover.Portal>
+                        <Popover.Content
+                          align="start"
+                          className="z-50 bg-white dark:bg-slate-900 p-3 rounded-xl shadow-xl border border-slate-200 dark:border-slate-800"
+                          sideOffset={8}
+                        >
+                          <DayPicker
+                            mode="range"
+                            defaultMonth={dateRange?.from ?? today}
+                            selected={dateRange}
+                            onSelect={handleCustomRangeSelect}
+                            locale={dateFnsLocale}
+                            showOutsideDays
+                            className="text-sm"
+                          />
+                        </Popover.Content>
+                      </Popover.Portal>
+                    </Popover.Root>
+                    </motion.div>
+
+                    {DATE_PRESET_IDS.filter((preset) => preset !== "custom").map((preset) => (
+                      <motion.div key={preset} variants={chipStagger.item}>
+                      <DatePresetButton
+                        label={presetLabels[preset]}
+                        selected={datePreset === preset}
+                        onClick={() => handlePresetChange(preset)}
+                      />
+                      </motion.div>
+                    ))}
+                  </motion.div>
+                </div>
+
+                {/* Disclosure type chips — no "All" chip: zero selected already means all
+                    (see the hint text below), so "select all" needs no button of its own. */}
+                <div className="space-y-3">
+                  <motion.div variants={chipStagger.item} className="flex items-center justify-between gap-4">
+                    <label className={`${LABEL} flex items-center gap-2`}>
+                      <FileText size={16} className="text-slate-400 dark:text-slate-500" />
+                      {t("disclosure.search.typeLabel")}
+                    </label>
+                    {!isAllSelected && (
+                      <button
+                        type="button"
+                        onClick={() => setSelectedTypeCodes([])}
+                        className="text-xs font-medium text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 transition-colors shrink-0"
+                      >
+                        {t("disclosure.search.typeReset")}
+                      </button>
+                    )}
+                  </motion.div>
+
+                  <motion.div
+                    variants={chipStagger.container}
+                    initial="hidden"
+                    animate="show"
+                    className="flex flex-wrap gap-2.5"
+                  >
+                    {DISCLOSURE_GROUPS.map((group) => (
+                      <motion.div key={group.code} variants={chipStagger.item}>
+                      <DisclosureTypeButton
+                        label={getDisclosureGroupLabel(t, group.code)}
+                        selected={selectedTypeCodes.includes(group.code)}
+                        onClick={() => toggleType(group.code)}
+                      />
+                      </motion.div>
+                    ))}
+                  </motion.div>
+
+                  {!isAllSelected && (
+                    <motion.p
+                      variants={chipStagger.item}
+                      className="text-xs text-slate-400 dark:text-slate-500"
+                    >
+                      {t("disclosure.search.typeFilterHint", { count: selectedTypeCodes.length })}
+                    </motion.p>
+                  )}
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+        </motion.div>
+      </form>
 
       {collectMessage && !searchError && (
-        <div className={`${ALERT_INFO} mb-6`}>
-          {collectMessage}
-        </div>
+        <div className={`${ALERT_INFO} mb-6`}>{collectMessage}</div>
       )}
 
-      {searchError && (
-        <div className={ALERT_ERROR}>
-          {searchError}
-        </div>
-      )}
+      {searchError && <div className={ALERT_ERROR}>{searchError}</div>}
 
       {results && !searchError && (
         <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -391,11 +570,32 @@ export function DisclosureSearch() {
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800">
-                  <SortableHeader label={t("disclosure.search.table.filedAt")} sortKeyName="date" className="w-40" {...{ sortKey, sortDirection, onSort: handleSort }} />
-                  <SortableHeader label={t("disclosure.search.table.type")} sortKeyName="type" className="w-36" {...{ sortKey, sortDirection, onSort: handleSort }} />
-                  <SortableHeader label={t("disclosure.search.table.title")} sortKeyName="title" {...{ sortKey, sortDirection, onSort: handleSort }} />
-                  <th className="px-6 py-4 text-xs font-semibold text-slate-500 dark:text-slate-400 w-36">{t("disclosure.search.table.filer")}</th>
-                  <SortableHeader label={t("disclosure.search.table.risk")} sortKeyName="risk" className="w-28" {...{ sortKey, sortDirection, onSort: handleSort }} />
+                  <SortableHeader
+                    label={t("disclosure.search.table.filedAt")}
+                    sortKeyName="date"
+                    className="w-40"
+                    {...{ sortKey, sortDirection, onSort: handleSort }}
+                  />
+                  <SortableHeader
+                    label={t("disclosure.search.table.type")}
+                    sortKeyName="type"
+                    className="w-36"
+                    {...{ sortKey, sortDirection, onSort: handleSort }}
+                  />
+                  <SortableHeader
+                    label={t("disclosure.search.table.title")}
+                    sortKeyName="title"
+                    {...{ sortKey, sortDirection, onSort: handleSort }}
+                  />
+                  <th className="px-6 py-4 text-xs font-semibold text-slate-500 dark:text-slate-400 w-36">
+                    {t("disclosure.search.table.filer")}
+                  </th>
+                  <SortableHeader
+                    label={t("disclosure.search.table.risk")}
+                    sortKeyName="risk"
+                    className="w-28"
+                    {...{ sortKey, sortDirection, onSort: handleSort }}
+                  />
                   <th className="px-6 py-4 w-12" />
                 </tr>
               </thead>
@@ -404,8 +604,21 @@ export function DisclosureSearch() {
                   <tr
                     key={result.rceptNo}
                     onClick={() => {
-                      saveState({ searchTerm, selectedTypeCodes, dateRange, collectMessage, results, currentPage, sortKey, sortDirection, lastSearchedTerm });
-                      navigate(`/disclosure/${result.rceptNo}?company=${encodeURIComponent(result.companyName)}`);
+                      saveState({
+                        searchTerm,
+                        selectedTypeCodes,
+                        datePreset,
+                        dateRange,
+                        collectMessage,
+                        results,
+                        currentPage,
+                        sortKey,
+                        sortDirection,
+                        lastSearchedTerm,
+                      });
+                      navigate(
+                        `/disclosure/${result.rceptNo}?company=${encodeURIComponent(result.companyName)}`
+                      );
                     }}
                     className={ROW_HOVER}
                   >
@@ -424,14 +637,20 @@ export function DisclosureSearch() {
                       <div className="font-semibold text-slate-900 dark:text-slate-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
                         {result.title}
                       </div>
-                      <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">{result.companyName}</div>
+                      <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                        {result.companyName}
+                      </div>
                     </td>
-                    <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-300">{result.filerName}</td>
+                    <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-300">
+                      {result.filerName}
+                    </td>
                     <td className="px-6 py-4">
                       {result.riskLabel ? (
                         <RiskBadge riskLabel={result.riskLabel} riskTier={result.riskTier} compact />
                       ) : (
-                        <span className="text-xs text-slate-400 dark:text-slate-500">{t("disclosure.search.beforeSummary")}</span>
+                        <span className="text-xs text-slate-400 dark:text-slate-500">
+                          {t("disclosure.search.beforeSummary")}
+                        </span>
                       )}
                     </td>
                     <td className="px-6 py-4 text-right">
@@ -447,7 +666,9 @@ export function DisclosureSearch() {
             {totalElements === 0 && (
               <div className="p-12 text-center text-slate-500 dark:text-slate-400">
                 <FileText size={48} className="mx-auto text-slate-300 dark:text-slate-600 mb-4" />
-                <p className="text-lg font-medium text-slate-900 dark:text-slate-100">{t("disclosure.search.noResults.title")}</p>
+                <p className="text-lg font-medium text-slate-900 dark:text-slate-100">
+                  {t("disclosure.search.noResults.title")}
+                </p>
                 <p className="text-sm mt-1">{t("disclosure.search.noResults.hint")}</p>
               </div>
             )}
@@ -477,19 +698,38 @@ export function DisclosureSearch() {
   );
 }
 
-function DisclosureTypeButton({ label, selected, onClick, icon }) {
+function DatePresetButton({ label, selected, onClick }) {
   return (
     <button
       type="button"
       onClick={onClick}
       aria-pressed={selected}
-      className={`h-10 rounded-lg text-[12px] font-semibold transition-all duration-200 flex items-center justify-center gap-1 border whitespace-nowrap
-        ${selected
-          ? "bg-blue-50 dark:bg-blue-950/40 border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 shadow-sm"
-          : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-600"}`}
+      className={`h-9 px-4 rounded-full text-sm font-medium transition-all duration-200 border
+        ${
+          selected
+            ? "bg-blue-50 dark:bg-blue-950/40 border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300"
+            : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-600"
+        }`}
     >
-      {icon && <span className={selected ? "text-blue-600 dark:text-blue-400" : "text-slate-400 dark:text-slate-500"}>{icon}</span>}
-      <span>{label}</span>
+      {label}
+    </button>
+  );
+}
+
+function DisclosureTypeButton({ label, selected, onClick }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={selected}
+      className={`min-h-9 px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 inline-flex items-center justify-center border text-center leading-snug
+        ${
+          selected
+            ? "bg-blue-50 dark:bg-blue-950/40 border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300"
+            : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-600"
+        }`}
+    >
+      {label}
     </button>
   );
 }
@@ -506,7 +746,10 @@ function SortableHeader({ label, sortKeyName, sortKey, sortDirection, onSort, cl
         className={`flex items-center gap-1 hover:text-slate-800 dark:hover:text-slate-200 transition-colors ${isActive ? "text-slate-900 dark:text-slate-100" : ""}`}
       >
         {label}
-        <Icon size={12} className={isActive ? "text-blue-600 dark:text-blue-400" : "text-slate-300 dark:text-slate-600"} />
+        <Icon
+          size={12}
+          className={isActive ? "text-blue-600 dark:text-blue-400" : "text-slate-300 dark:text-slate-600"}
+        />
       </button>
     </th>
   );

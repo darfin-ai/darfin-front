@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
-import { Outlet, Link, useNavigate, useLocation } from "react-router";
-import { motion, AnimatePresence } from "motion/react";
+import { Link, useNavigate, useLocation, useOutlet } from "react-router";
+import { motion, AnimatePresence, useReducedMotion } from "motion/react";
 import { BookOpen, BarChart2, TrendingUp, MessageSquare, UserCircle, LogOut, Menu, X, ChevronDown, CreditCard } from "lucide-react";
 import { Toaster } from "sonner";
 import {
@@ -18,9 +18,15 @@ import { LocaleToggle } from "./LocaleToggle";
 export function Layout() {
   const navigate = useNavigate();
   const location = useLocation();
+  const outlet = useOutlet();
+  const reduceMotion = useReducedMotion();
   const { isLoggedIn, logout } = useAuth();
   const { t } = useLocale();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  // Top-level section only (e.g. "company", "disclosure") — sub-navigation within the same
+  // section (company/:id, disclosure/:id) shouldn't retrigger the transition, only switching
+  // between visually-similar sections should, so users get a clear "you moved" cue.
+  const routeKey = location.pathname.split("/")[1] || "home";
 
   useEffect(() => {
     setIsMobileMenuOpen(false);
@@ -261,14 +267,24 @@ export function Layout() {
         className={
           location.pathname === "/"
             ? "flex-1 w-full overflow-hidden"
-            : location.pathname.startsWith("/trading") || location.pathname.startsWith("/company") || location.pathname.startsWith("/community") || location.pathname === "/pricing" || location.pathname === "/subscription" || location.pathname === "/mypage"
+            : location.pathname.startsWith("/trading") || location.pathname.startsWith("/company") || location.pathname.startsWith("/community") || location.pathname.startsWith("/disclosure") || location.pathname === "/pricing" || location.pathname === "/subscription" || location.pathname === "/mypage"
               ? "flex-1 w-full"
               : isAuthPage
                 ? "flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-col"
                 : "flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8"
         }
       >
-        <Outlet />
+        <AnimatePresence mode="popLayout" initial={false}>
+          <motion.div
+            key={routeKey}
+            initial={reduceMotion ? false : { opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={reduceMotion ? undefined : { opacity: 0 }}
+            transition={{ duration: 0.22, ease: "easeOut" }}
+          >
+            {outlet}
+          </motion.div>
+        </AnimatePresence>
       </main>
 
       <footer className="bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 py-8 mt-auto">

@@ -4,10 +4,10 @@ import { getAnalysisCategoryLabel } from "../constants";
 import { useLocale } from "@/app/shared/i18n";
 import {
   AlertTriangle,
+  ArrowLeft,
   BookA,
   BookOpen,
   ChevronDown,
-  ChevronLeft,
   ChevronRight,
   Download,
   ExternalLink,
@@ -24,11 +24,16 @@ import {
   AI_CALLOUT_BODY,
   AI_CALLOUT_LEAD,
   ALERT_ERROR,
+  BACK_LINK,
+  BADGE_INFO,
   BTN_PRIMARY,
   BTN_SECONDARY,
   CARD,
   LABEL,
-  META
+  META,
+  TAB_ACTIVE,
+  TAB_IDLE,
+  TAB_INDICATOR
 } from "@/app/shared/lib/uiRecipes";
 import * as Tabs from "@radix-ui/react-tabs";
 import * as Switch from "@radix-ui/react-switch";
@@ -338,8 +343,8 @@ export function DisclosureViewer() {
             key={key}
             data-highlight-key={seg.item.targetKey}
             onClick={() => { setActiveTab("analysis"); setActiveHighlightKey(seg.item.targetKey); setTimeout(() => setActiveHighlightKey(null), 2000); }}
-            className={`bg-amber-200 dark:bg-amber-900/50 rounded-sm px-0.5 cursor-pointer transition-all duration-200
-              ${isActive ? "outline outline-2 outline-offset-1 outline-amber-500 dark:outline-amber-400" : ""}`}
+            className={`bg-blue-100 dark:bg-blue-900/40 rounded-sm px-0.5 cursor-pointer transition-all duration-200
+              ${isActive ? "outline outline-2 outline-offset-1 outline-blue-500 dark:outline-blue-400" : ""}`}
             title={`[${getAnalysisCategoryLabel(t, seg.item.analysisCategory)}] ${seg.item.riskLevel}`}
           >{seg.text}</mark>
         );
@@ -355,7 +360,7 @@ export function DisclosureViewer() {
           className={`cursor-pointer border-b-2 border-dotted transition-all duration-200 no-underline
             ${isActive
               ? "border-blue-600 dark:border-blue-500 text-blue-900 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/40"
-              : "border-blue-400 dark:border-blue-500 text-blue-800 dark:text-blue-300 hover:border-blue-600 dark:hover:border-blue-400"}`}
+              : "border-slate-400 dark:border-slate-500 text-slate-600 dark:text-slate-300 hover:border-slate-600 dark:hover:border-slate-400"}`}
           style={{ textDecoration: "none" }}
         >{seg.text}</abbr>
       );
@@ -437,13 +442,14 @@ export function DisclosureViewer() {
           <button
             type="button"
             onClick={() => navigate(-1)}
-            className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full text-slate-500 dark:text-slate-400 transition-colors"
+            className={`${BACK_LINK} shrink-0`}
           >
-            <ChevronLeft size={20} />
+            <ArrowLeft size={16} />
+            <span className="hidden sm:inline">{t("disclosure.viewer.backToSearch")}</span>
           </button>
           <div className="min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-xs font-medium px-2 py-0.5 rounded bg-blue-100 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300">{disclosure.typeLabel}</span>
+              <span className={BADGE_INFO}>{disclosure.typeLabel}</span>
               <span className={`text-sm ${META}`}>{disclosure.filedAt}</span>
               {hasSummary && <RiskBadge riskLabel={disclosure.riskLabel} riskTier={disclosure.riskTier} size="sm" />}
             </div>
@@ -504,11 +510,11 @@ export function DisclosureViewer() {
                   label={t("disclosure.viewer.highlightToggle", {
                     count: highlightCount > 0 ? ` (${highlightCount})` : "",
                   })}
-                  icon={<Highlighter size={14} className={highlightEnabled ? "text-amber-600 dark:text-amber-400" : "text-slate-400 dark:text-slate-500"} />}
+                  icon={<Highlighter size={14} className={highlightEnabled ? "text-blue-600 dark:text-blue-400" : "text-slate-400 dark:text-slate-500"} />}
                   checked={highlightEnabled}
                   onCheckedChange={setHighlightEnabled}
                   disabled={highlightCount === 0}
-                  checkedBg="bg-amber-500"
+                  checkedBg="bg-blue-500"
                 />
                 <div className="w-px h-4 bg-slate-200 dark:bg-slate-700" />
                 <ToggleSwitch
@@ -519,11 +525,11 @@ export function DisclosureViewer() {
                           count: termHighlights.length > 0 ? ` (${uniqueTerms.length})` : "",
                         })
                   }
-                  icon={<BookA size={14} className={termsEnabled ? "text-blue-600 dark:text-blue-400" : "text-slate-400 dark:text-slate-500"} />}
+                  icon={<BookA size={14} className={termsEnabled ? "text-slate-600 dark:text-slate-300" : "text-slate-400 dark:text-slate-500"} />}
                   checked={termsEnabled}
                   onCheckedChange={setTermsEnabled}
                   disabled={!originalText || isLoadingTerms}
-                  checkedBg="bg-blue-500"
+                  checkedBg="bg-slate-500"
                 />
               </div>
             )}
@@ -534,13 +540,13 @@ export function DisclosureViewer() {
             <div className={`flex items-center gap-4 px-4 py-1.5 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800 ${META} shrink-0`}>
               {highlightEnabled && highlightCount > 0 && (
                 <span className="flex items-center gap-1.5">
-                  <span className="inline-block w-4 h-3 rounded-sm bg-amber-200 dark:bg-amber-900/50 border border-amber-400 dark:border-amber-600" />
+                  <span className="inline-block w-4 h-3 rounded-sm bg-blue-100 dark:bg-blue-900/40 border border-blue-300 dark:border-blue-700" />
                   {t("disclosure.viewer.legendHighlight")}
                 </span>
               )}
               {termsEnabled && termHighlights.length > 0 && (
                 <span className="flex items-center gap-1.5">
-                  <span className="inline-block text-blue-800 dark:text-blue-300 border-b-2 border-dotted border-blue-500 dark:border-blue-500">用語</span>
+                  <span className="inline-block text-slate-600 dark:text-slate-300 border-b-2 border-dotted border-slate-400 dark:border-slate-500">用語</span>
                   {t("disclosure.viewer.legendTerms")}
                 </span>
               )}
@@ -580,8 +586,8 @@ export function DisclosureViewer() {
           className={`w-[420px] flex flex-col ${CARD} shadow-sm overflow-hidden shrink-0 ${cardBorderClass}`}
         >
           <Tabs.List className="flex border-b border-slate-200 dark:border-slate-800">
-            <ViewerTab value="summary" activeTab={activeTab} activeClass="border-blue-600 text-blue-600 dark:text-blue-400">{t("disclosure.viewer.tabSummary")}</ViewerTab>
-            <ViewerTab value="analysis" activeTab={activeTab} activeClass="border-blue-600 text-blue-600 dark:text-blue-400">
+            <ViewerTab value="summary" activeTab={activeTab}>{t("disclosure.viewer.tabSummary")}</ViewerTab>
+            <ViewerTab value="analysis" activeTab={activeTab}>
               {t("disclosure.viewer.tabAnalysis")}
               {analysisItems.length > 0 && (
                 <span className="ml-1.5 text-[10px] bg-blue-100 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 px-1.5 py-0.5 rounded-full font-medium">
@@ -589,7 +595,7 @@ export function DisclosureViewer() {
                 </span>
               )}
             </ViewerTab>
-            <ViewerTab value="glossary" activeTab={activeTab} activeClass="border-blue-600 text-blue-600 dark:text-blue-400">
+            <ViewerTab value="glossary" activeTab={activeTab}>
               {t("disclosure.viewer.tabGlossary")}
               {uniqueTerms.length > 0 && (
                 <span className="ml-1.5 text-[10px] bg-blue-100 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 px-1.5 py-0.5 rounded-full font-medium">
@@ -716,7 +722,7 @@ export function DisclosureViewer() {
                         >
                           <div className="flex items-center justify-between gap-2 mb-1">
                             <p className={`text-sm font-semibold border-b-2 border-dotted inline pb-px
-                              ${isActive ? "border-blue-600 dark:border-blue-500 text-blue-900 dark:text-blue-300" : "border-blue-400 dark:border-blue-500 text-blue-800 dark:text-blue-300"}`}>
+                              ${isActive ? "border-blue-600 dark:border-blue-500 text-blue-900 dark:text-blue-300" : "border-slate-400 dark:border-slate-500 text-slate-600 dark:text-slate-300"}`}>
                               {th.term}
                             </p>
                             <div className="flex items-center gap-1.5 shrink-0">
@@ -750,12 +756,15 @@ export function DisclosureViewer() {
 
 // ── 서브 컴포넌트 ──────────────────────────────────────────────
 
-function ViewerTab({ value, activeTab, activeClass, children }) {
+function ViewerTab({ value, activeTab, children }) {
+  const isActive = activeTab === value;
   return (
-    <Tabs.Trigger value={value}
-      className={`flex-1 py-3 text-sm font-medium text-center border-b-2 transition-colors flex items-center justify-center gap-1
-        ${activeTab === value ? activeClass : "border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"}`}>
+    <Tabs.Trigger
+      value={value}
+      className={`flex-1 flex items-center justify-center gap-1 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors ${isActive ? TAB_ACTIVE : TAB_IDLE}`}
+    >
       {children}
+      {isActive && <span className={TAB_INDICATOR} />}
     </Tabs.Trigger>
   );
 }

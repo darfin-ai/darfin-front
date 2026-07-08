@@ -66,11 +66,11 @@ export const AI_CALLOUT_BODY = "text-sm leading-relaxed text-slate-700 dark:text
 
 // ── Segmented control ───────────────────────────────────────────
 export const SEGMENT_TRACK =
-  "flex gap-1 bg-slate-100/80 dark:bg-slate-800/80 rounded-lg p-1 text-xs font-medium";
+  "inline-flex gap-1.5 bg-slate-100/80 dark:bg-slate-800/80 rounded-lg p-1.5 text-xs font-medium";
 export const SEGMENT_ACTIVE =
-  "flex-1 text-center py-1.5 bg-white dark:bg-slate-900 rounded-md text-slate-900 dark:text-slate-100 shadow-sm";
+  "px-4 py-2 rounded-md bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-sm whitespace-nowrap transition-colors";
 export const SEGMENT_IDLE =
-  "flex-1 text-center py-1.5 text-slate-400 dark:text-slate-500";
+  "px-4 py-2 rounded-md text-slate-500 dark:text-slate-400 whitespace-nowrap hover:text-slate-700 dark:hover:text-slate-300 transition-colors";
 
 // ── Tabs (underline style) ─────────────────────────────────────
 export const TAB_ACTIVE =
