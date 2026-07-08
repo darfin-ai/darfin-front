@@ -16,7 +16,6 @@ export const disclosure = {
     typeLabel: "Filing type",
     typeReset: "Clear selection",
     typeAll: "All",
-    typeFilterHint: "Filtering by {count} type(s).",
     typeSelectedCount: "{count} type(s)",
     searching: "Searching...",
     submit: "Search filings",

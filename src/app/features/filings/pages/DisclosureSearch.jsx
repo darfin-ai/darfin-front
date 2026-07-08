@@ -158,8 +158,20 @@ export function DisclosureSearch() {
     () => datePreset !== defaultPreset || selectedTypeCodes.length > 0
   );
   const reduceMotion = useReducedMotion();
+  const [introDone, setIntroDone] = useState(!!reduceMotion);
   const pageStagger = getStaggerVariants(reduceMotion, { stagger: 0.05, delayChildren: 0.04 });
-  const chipStagger = getStaggerVariants(reduceMotion, { stagger: 0.03, delayChildren: 0.05 });
+  // Chips wait for title → description → search → filter summary before cascading in.
+  const filterChipStagger = getStaggerVariants(reduceMotion, {
+    stagger: 0.05,
+    delayChildren: introDone ? 0.1 : 0.38,
+  });
+  const chipRowStagger = getStaggerVariants(reduceMotion, { stagger: 0.03, delayChildren: 0 });
+
+  useEffect(() => {
+    if (reduceMotion) return undefined;
+    const id = setTimeout(() => setIntroDone(true), 520);
+    return () => clearTimeout(id);
+  }, [reduceMotion]);
 
   useEffect(() => {
     saveState({
@@ -345,30 +357,30 @@ export function DisclosureSearch() {
         }
       `}</style>
 
-      {/* Page header — weight/size matches the company page's index header (text-3xl font-bold), not the lighter shared PAGE_TITLE recipe used on account/community/pricing pages */}
       <motion.div
-        className="pt-10 pb-6 text-center"
         variants={pageStagger.container}
         initial="hidden"
         animate="show"
       >
-        <motion.div variants={pageStagger.item}>
-          <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
-            {t("disclosure.search.title")}
-          </h1>
-        </motion.div>
-        <motion.p
-          variants={pageStagger.item}
-          className="mt-2 text-sm text-slate-500 dark:text-slate-400 max-w-[36rem] mx-auto"
-        >
-          {t("disclosure.search.description")}
-        </motion.p>
-      </motion.div>
+      {/* Page header — spacing matches CompaniesGrid (pt-10 pb-2, mb-6 before search) */}
+      <div className="pt-10 pb-2">
+        <div className="mb-6 text-center">
+          <motion.div variants={pageStagger.item}>
+            <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
+              {t("disclosure.search.title")}
+            </h1>
+          </motion.div>
+          <motion.p
+            variants={pageStagger.item}
+            className="mt-2 text-sm text-slate-500 dark:text-slate-400 max-w-[36rem] mx-auto"
+          >
+            {t("disclosure.search.description")}
+          </motion.p>
+        </div>
 
       <form onSubmit={handleSearch} className="space-y-6">
-        <motion.div variants={pageStagger.container} initial="hidden" animate="show">
         {/* Primary search — submit sits inside the pill as a round icon button */}
-        <motion.div variants={pageStagger.item} className="relative mx-auto w-full max-w-2xl pb-2">
+        <motion.div variants={pageStagger.item} className="relative mx-auto w-full max-w-2xl">
           <div className="group relative flex h-14 items-center gap-2 rounded-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 pl-5 pr-1.5 shadow-sm dark:shadow-none transition-all duration-300 focus-within:border-blue-300 dark:focus-within:border-blue-600 focus-within:shadow-lg focus-within:shadow-blue-500/10 dark:focus-within:shadow-blue-500/5 focus-within:ring-4 focus-within:ring-blue-500/10 dark:focus-within:ring-blue-500/20">
             <Search className="h-5 w-5 shrink-0 text-slate-400 dark:text-slate-500 transition-colors group-focus-within:text-blue-500 dark:group-focus-within:text-blue-400" />
             <input
@@ -421,7 +433,7 @@ export function DisclosureSearch() {
             >
               <motion.div
                 className="space-y-6 pt-6"
-                variants={chipStagger.container}
+                variants={filterChipStagger.container}
                 initial="hidden"
                 animate="show"
               >
@@ -430,19 +442,20 @@ export function DisclosureSearch() {
                     opening the box *is* the custom action. */}
                 <div className="space-y-3">
                   <motion.label
-                    variants={chipStagger.item}
+                    variants={filterChipStagger.item}
                     className={`${LABEL} flex items-center gap-2`}
                   >
                     <CalendarIcon size={16} className="text-slate-400 dark:text-slate-500" />
                     {t("disclosure.search.dateRangeLabel")}
                   </motion.label>
-                  <motion.div
-                    variants={chipStagger.container}
-                    initial="hidden"
-                    animate="show"
-                    className="flex flex-wrap items-center gap-2"
-                  >
-                    <motion.div variants={chipStagger.item}>
+                  <motion.div variants={filterChipStagger.item}>
+                    <motion.div
+                      variants={chipRowStagger.container}
+                      initial="hidden"
+                      animate="show"
+                      className="flex flex-wrap items-center gap-2"
+                    >
+                      <motion.div variants={chipRowStagger.item}>
                     <Popover.Root>
                       <Popover.Trigger asChild>
                         <button
@@ -483,7 +496,7 @@ export function DisclosureSearch() {
                     </motion.div>
 
                     {DATE_PRESET_IDS.filter((preset) => preset !== "custom").map((preset) => (
-                      <motion.div key={preset} variants={chipStagger.item}>
+                      <motion.div key={preset} variants={chipRowStagger.item}>
                       <DatePresetButton
                         label={presetLabels[preset]}
                         selected={datePreset === preset}
@@ -491,13 +504,14 @@ export function DisclosureSearch() {
                       />
                       </motion.div>
                     ))}
+                    </motion.div>
                   </motion.div>
                 </div>
 
                 {/* Disclosure type chips — no "All" chip: zero selected already means all
                     (see the hint text below), so "select all" needs no button of its own. */}
                 <div className="space-y-3">
-                  <motion.div variants={chipStagger.item} className="flex items-center justify-between gap-4">
+                  <motion.div variants={filterChipStagger.item} className="flex items-center justify-between gap-4">
                     <label className={`${LABEL} flex items-center gap-2`}>
                       <FileText size={16} className="text-slate-400 dark:text-slate-500" />
                       {t("disclosure.search.typeLabel")}
@@ -513,14 +527,15 @@ export function DisclosureSearch() {
                     )}
                   </motion.div>
 
-                  <motion.div
-                    variants={chipStagger.container}
-                    initial="hidden"
-                    animate="show"
-                    className="flex flex-wrap gap-2.5"
-                  >
+                  <motion.div variants={filterChipStagger.item}>
+                    <motion.div
+                      variants={chipRowStagger.container}
+                      initial="hidden"
+                      animate="show"
+                      className="flex flex-wrap gap-2.5"
+                    >
                     {DISCLOSURE_GROUPS.map((group) => (
-                      <motion.div key={group.code} variants={chipStagger.item}>
+                      <motion.div key={group.code} variants={chipRowStagger.item}>
                       <DisclosureTypeButton
                         label={getDisclosureGroupLabel(t, group.code)}
                         selected={selectedTypeCodes.includes(group.code)}
@@ -528,23 +543,16 @@ export function DisclosureSearch() {
                       />
                       </motion.div>
                     ))}
+                    </motion.div>
                   </motion.div>
-
-                  {!isAllSelected && (
-                    <motion.p
-                      variants={chipStagger.item}
-                      className="text-xs text-slate-400 dark:text-slate-500"
-                    >
-                      {t("disclosure.search.typeFilterHint", { count: selectedTypeCodes.length })}
-                    </motion.p>
-                  )}
                 </div>
               </motion.div>
             </motion.div>
           )}
         </AnimatePresence>
-        </motion.div>
       </form>
+      </div>
+      </motion.div>
 
       {collectMessage && !searchError && (
         <div className={`${ALERT_INFO} mb-6`}>{collectMessage}</div>

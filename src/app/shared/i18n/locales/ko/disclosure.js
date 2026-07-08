@@ -16,7 +16,6 @@ export const disclosure = {
     typeLabel: "공시 유형",
     typeReset: "선택 초기화",
     typeAll: "전체",
-    typeFilterHint: "{count}개 유형으로 필터링합니다.",
     typeSelectedCount: "{count}개 유형",
     searching: "검색 중...",
     submit: "공시 검색하기",
