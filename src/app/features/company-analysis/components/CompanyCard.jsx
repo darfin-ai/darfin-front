@@ -1,14 +1,18 @@
 import { Link } from 'react-router';
 import { motion } from 'motion/react';
 import { Star } from 'lucide-react';
+import { useLocale } from '../../../shared/i18n';
 import { Badge } from '../../../shared/components/ui/badge';
 import { formatFilingDate } from '../lib/format';
-import { dominantScoreChange, changeLevel, CHANGE_LEVEL_STYLES, SCORE_COMPONENT_LABELS } from '../lib/scoring';
+import { avatarLabel, avatarGradientForCompany } from '../lib/avatar';
+import { scoreComponentLabel } from '../lib/i18n';
+import { dominantScoreChange, changeLevel, CHANGE_LEVEL_STYLES } from '../lib/scoring';
 
 /**
  * @param {{ company: import('../../../../mocks/companyAnalysis/types').Company, scores: import('../../../../mocks/companyAnalysis/types').ScoreComponent[], index?: number, isWatched?: boolean, onToggleWatch?: (id: string) => void }} props
  */
 export function CompanyCard({ company, scores, index = 0, isWatched = false, onToggleWatch }) {
+  const { t } = useLocale();
   const dominant = dominantScoreChange(scores);
   const level = changeLevel(dominant.normalized);
   const style = CHANGE_LEVEL_STYLES[level];
@@ -34,7 +38,7 @@ export function CompanyCard({ company, scores, index = 0, isWatched = false, onT
               onToggleWatch(company.id);
             }}
             aria-pressed={isWatched}
-            aria-label={isWatched ? `${company.name} 관심기업에서 삭제` : `${company.name} 관심기업에 추가`}
+            aria-label={isWatched ? t('company.grid.removeWatchlist', { name: company.name }) : t('company.grid.addWatchlist', { name: company.name })}
             className="absolute right-4 top-4 rounded-full p-1 text-slate-300 dark:text-slate-600 transition-colors hover:text-amber-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
           >
             <Star className={`h-5 w-5 ${isWatched ? 'fill-amber-400 text-amber-400' : ''}`} />
@@ -42,20 +46,28 @@ export function CompanyCard({ company, scores, index = 0, isWatched = false, onT
         )}
 
         <div className="flex items-start justify-between gap-3 pr-6">
-          <div className="min-w-0">
-            <h3 className="truncate text-base font-semibold text-slate-900 dark:text-slate-100 group-hover:text-blue-600 dark:group-hover:text-blue-400">
-              {company.name}
-            </h3>
-            <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">
-              {[company.ticker, company.sector].filter(Boolean).join(' · ')}
-            </p>
+          <div className="flex min-w-0 items-start gap-3">
+            <span
+              className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br text-xs font-semibold text-white ${avatarGradientForCompany(company)}`}
+              aria-hidden="true"
+            >
+              {avatarLabel(company)}
+            </span>
+            <div className="min-w-0">
+              <h3 className="truncate text-base font-semibold text-slate-900 dark:text-slate-100 group-hover:text-blue-600 dark:group-hover:text-blue-400">
+                {company.name}
+              </h3>
+              <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">
+                {[company.ticker, company.sector].filter(Boolean).join(' · ')}
+              </p>
+            </div>
           </div>
           <Badge variant="outline" className="shrink-0 text-slate-600 dark:text-slate-400 dark:border-slate-700">
             {company.latestFilingType}
           </Badge>
         </div>
 
-        <p className="mt-3 text-xs text-slate-400 dark:text-slate-500">{formatFilingDate(company.latestFilingDate)} 제출</p>
+        <p className="mt-3 text-xs text-slate-400 dark:text-slate-500">{formatFilingDate(company.latestFilingDate)} {t('company.labels.filed')}</p>
 
         <div className="mt-4 flex items-start gap-2 border-t border-slate-100 dark:border-slate-800 pt-3">
           <span
@@ -64,11 +76,11 @@ export function CompanyCard({ company, scores, index = 0, isWatched = false, onT
           />
           <div className="min-w-0">
             <p className="line-clamp-2 text-sm text-slate-700 dark:text-slate-300">
-              {company.changeSummary || <span className="text-slate-400 dark:text-slate-500">최근 공시의 변동 요약을 준비 중이에요.</span>}
+              {company.changeSummary || <span className="text-slate-400 dark:text-slate-500">{t('company.grid.summaryPending')}</span>}
             </p>
             {level !== 'flat' && dominant.key && (
               <p className={`mt-1 text-xs font-medium ${style.text}`}>
-                {SCORE_COMPONENT_LABELS[dominant.key]} 신호 감지
+                {scoreComponentLabel(t, dominant.key)} {t('company.labels.signalDetected')}
               </p>
             )}
           </div>

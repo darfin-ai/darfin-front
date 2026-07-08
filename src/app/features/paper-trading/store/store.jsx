@@ -66,14 +66,14 @@ export function genSpark(seed, n, up) {
 }
 
 const MARKET = {
-  status: { label: '국내 정규장', hours: '09:00 ~ 15:30', open: true },
+  status: { labelKey: 'regularSession', hours: '09:00 ~ 15:30', open: true },
   kospi: null,
   kosdaq: null,
   usd: null,
   invSentiment: [
-    { who: '개인',   val: 19395,  buy: true },
-    { who: '외국인', val: -30305, buy: false },
-    { who: '기관',   val: 9470,   buy: true },
+    { invType: '01', val: 19395, buy: true },
+    { invType: '02', val: -30305, buy: false },
+    { invType: '03', val: 9470, buy: true },
   ],
 };
 
@@ -223,9 +223,9 @@ export function StoreProvider({ children, initialLoggedIn, onLogout }) {
   const applyMarketIndices = useCallback((data) => {
     setMarket(prev => ({
       ...prev,
-      kospi: toMarketItem(data?.kospi, '코스피'),
-      kosdaq: toMarketItem(data?.kosdaq, '코스닥'),
-      usd: toMarketItem(data?.usd, '달러 환율'),
+      kospi: toMarketItem(data?.kospi, 'kospi'),
+      kosdaq: toMarketItem(data?.kosdaq, 'kosdaq'),
+      usd: toMarketItem(data?.usd, 'usd'),
     }));
     setMarketError(false);
   }, []);
@@ -686,7 +686,7 @@ export function StoreProvider({ children, initialLoggedIn, onLogout }) {
 
 export function useStore() { return useContext(StoreContext); }
 
-function toMarketItem(raw, fallbackName) {
+function toMarketItem(raw, nameId) {
   if (!raw || raw.price == null) return null;
 
   const pct = Number(raw.pct ?? 0);
@@ -697,7 +697,8 @@ function toMarketItem(raw, fallbackName) {
 
   return {
     code: raw.code,
-    name: raw.name || fallbackName,
+    name: raw.name || null,
+    nameId: raw.name ? null : nameId,
     value: Number(raw.price),
     pct,
     amt,
@@ -708,14 +709,14 @@ function toMarketItem(raw, fallbackName) {
 
 // 백엔드 투자자 동향 응답 → { who, val, buy }[] 변환
 // 백엔드가 이미 정규화한 형태(who 필드 존재) 또는 KIS invType 코드(01/02/03) 형태 모두 처리
-const INV_LABEL = { '01': '개인', '02': '외국인', '03': '기관', '04': '기타' };
+const WHO_TO_TYPE = { '개인': '01', '외국인': '02', '기관': '03', '기타': '04', Retail: '01', Foreign: '02', Institutional: '03', Other: '04' };
 function toSentimentList(raw) {
   if (!Array.isArray(raw) || raw.length === 0) return null;
   const list = raw.map(s => {
-    const who = s.who ?? INV_LABEL[s.invType] ?? s.invType ?? '';
+    const invType = s.invType ?? WHO_TO_TYPE[s.who] ?? s.who;
     const val = Number(s.val ?? s.netBuy ?? s.buyAmt ?? 0);
-    return { who, val, buy: val >= 0 };
-  }).filter(s => s.who);
+    return { invType, val, buy: val >= 0 };
+  }).filter(s => s.invType);
   return list.length > 0 ? list : null;
 }
 

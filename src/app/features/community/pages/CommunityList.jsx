@@ -2,9 +2,10 @@ import { useState, useEffect, useCallback } from "react";
 import { Link } from "react-router";
 import { Search, PenSquare, MessageCircle, CheckCircle2 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
-import { ko } from "date-fns/locale";
 import { getQuestions } from "../api/communityApi";
 import { CARD, PAGE_TITLE, PAGE_DESC, BTN_PRIMARY } from "../communityUi";
+import { useLocale } from "../../../shared/i18n";
+import { getDateFnsLocale } from "../../../shared/i18n/localeFormat";
 
 function Avatar({ src, alt, size = "sm" }) {
   const cls = size === "sm" ? "w-6 h-6" : "w-8 h-8";
@@ -18,6 +19,7 @@ function Avatar({ src, alt, size = "sm" }) {
 }
 
 export function CommunityList() {
+  const { t, locale } = useLocale();
   const [searchTerm, setSearchTerm] = useState("");
   const [inputValue, setInputValue] = useState("");
   const [questions, setQuestions] = useState([]);
@@ -31,11 +33,11 @@ export function CommunityList() {
       const data = await getQuestions(search);
       setQuestions(data ?? []);
     } catch (err) {
-      setError(err.message || "목록을 불러오지 못했습니다.");
+      setError(err.message || t("community.list.loadFail"));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -52,12 +54,12 @@ export function CommunityList() {
     <div className="container py-10 sm:py-12 flex flex-col gap-6">
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <div>
-          <h1 className={PAGE_TITLE}>종목 토론 커뮤니티</h1>
-          <p className={`${PAGE_DESC} mt-2`}>궁금한 종목에 대해 질문하고 답변을 받아보세요.</p>
+          <h1 className={PAGE_TITLE}>{t("community.list.title")}</h1>
+          <p className={`${PAGE_DESC} mt-2`}>{t("community.list.subtitle")}</p>
         </div>
         <Link to="/community/write" className={BTN_PRIMARY}>
           <PenSquare size={16} />
-          질문하기
+          {t("community.list.askQuestion")}
         </Link>
       </div>
 
@@ -65,7 +67,7 @@ export function CommunityList() {
         <Search className="text-slate-400 dark:text-slate-500 ml-2.5 flex-shrink-0" size={18} />
         <input
           type="text"
-          placeholder="게시글 제목, 내용, 종목명 검색..."
+          placeholder={t("community.list.searchPlaceholder")}
           className="flex-1 bg-transparent border-none outline-none py-2 text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
           value={inputValue}
           onChange={(e) => setInputValue(e.target.value)}
@@ -74,7 +76,7 @@ export function CommunityList() {
 
       <div className={`${CARD} overflow-hidden`}>
         {loading ? (
-          <div className="py-20 text-center text-slate-400 dark:text-slate-500">불러오는 중...</div>
+          <div className="py-20 text-center text-slate-400 dark:text-slate-500">{t("common.loading")}</div>
         ) : error ? (
           <div className="py-20 text-center text-red-500 dark:text-red-400">{error}</div>
         ) : questions.length > 0 ? (
@@ -94,11 +96,11 @@ export function CommunityList() {
                   {q.isResolved ? (
                     <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 text-xs font-medium bg-emerald-50 dark:bg-emerald-950/30 px-2 py-0.5 rounded-md">
                       <CheckCircle2 size={12} />
-                      해결됨
+                      {t("community.list.resolved")}
                     </span>
                   ) : (
                     <span className="text-slate-500 dark:text-slate-400 text-xs font-medium bg-slate-50 dark:bg-slate-800/50 px-2 py-0.5 rounded-md border border-slate-200 dark:border-slate-700">
-                      답변 대기중
+                      {t("community.list.awaiting")}
                     </span>
                   )}
                 </div>
@@ -108,8 +110,8 @@ export function CommunityList() {
                     <Avatar src={q.authorProfileImage} alt={q.authorNickname} />
                     {q.authorNickname}
                   </span>
-                  <span>{formatDistanceToNow(new Date(q.createdAt), { addSuffix: true, locale: ko })}</span>
-                  <span>조회 {q.views}</span>
+                  <span>{formatDistanceToNow(new Date(q.createdAt), { addSuffix: true, locale: getDateFnsLocale(locale) })}</span>
+                  <span>{t("common.views")} {q.views}</span>
                   <span className="flex items-center gap-1 text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/30 px-1.5 py-0.5 rounded-full ml-auto">
                     <MessageCircle size={14} />
                     {q.answerCount}
@@ -120,7 +122,7 @@ export function CommunityList() {
           </div>
         ) : (
           <div className="py-20 text-center text-slate-500 dark:text-slate-400">
-            {searchTerm ? "검색 결과가 없습니다." : "등록된 질문이 없습니다."}
+            {searchTerm ? t("community.list.noSearchResults") : t("community.list.empty")}
           </div>
         )}
       </div>

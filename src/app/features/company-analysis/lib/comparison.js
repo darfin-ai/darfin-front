@@ -15,16 +15,6 @@
  * DIFF_SECTION_CONFIG below says which baselines make sense per section.
  */
 
-export const DIFF_ANALYSIS_LABELS = {
-  structural: '구조 변경',
-  text: '서술형 변경',
-  numeric: '수치 변경',
-  text_numeric: '서술·수치 변경',
-  headcount: '인력 변경',
-  ownership: '지분 변경',
-  event: '이벤트',
-};
-
 /**
  * One row per (section, comparisonType) pair this feature analyzes.
  * Order here is the display order in the 공시 변경 tab.

@@ -3,8 +3,9 @@ import { useParams, Link, useNavigate } from "react-router";
 import { ArrowLeft, CheckCircle2, MessageCircle, Edit2, Trash2, X, Save, CornerDownRight } from "lucide-react";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
-import { ko } from "date-fns/locale";
 import { useAuth } from "../../auth/context/AuthContext";
+import { useLocale } from "../../../shared/i18n";
+import { getDateFnsLocale } from "../../../shared/i18n/localeFormat";
 import {
   getQuestion,
   updateQuestion,
@@ -43,6 +44,7 @@ export function CommunityDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { t, locale } = useLocale();
 
   const [question, setQuestion] = useState(null);
   const [answers, setAnswers] = useState([]);
@@ -75,7 +77,7 @@ export function CommunityDetail() {
         setEditTitle(q.title);
         setEditContent(q.content);
       } catch (err) {
-        setError(err.message || "게시글을 불러오지 못했습니다.");
+        setError(err.message || t("community.detail.loadFail"));
       } finally {
         setLoading(false);
       }
@@ -85,7 +87,7 @@ export function CommunityDetail() {
 
   const handleSubmitAnswer = async () => {
     if (!newAnswer.trim()) {
-      toast.error("답변 내용을 입력해주세요.");
+      toast.error(t("community.detail.answerRequired"));
       return;
     }
     setAnswerSubmitting(true);
@@ -93,9 +95,9 @@ export function CommunityDetail() {
       const answer = await createAnswer(id, newAnswer);
       setAnswers((prev) => [...prev, answer]);
       setNewAnswer("");
-      toast.success("답변이 등록되었습니다.");
+      toast.success(t("community.detail.answerSuccess"));
     } catch (err) {
-      toast.error(err.message || "답변 등록에 실패했습니다.");
+      toast.error(err.message || t("community.detail.answerFail"));
     } finally {
       setAnswerSubmitting(false);
     }
@@ -107,26 +109,26 @@ export function CommunityDetail() {
       await acceptAnswer(answerId);
       setAnswers((prev) => prev.map((a) => (a.id === answerId ? { ...a, isAdopted: true } : a)));
       setQuestion((prev) => ({ ...prev, isResolved: true }));
-      toast.success("답변을 채택했습니다.");
+      toast.success(t("community.detail.adoptSuccess"));
     } catch (err) {
-      toast.error(err.message || "채택에 실패했습니다.");
+      toast.error(err.message || t("community.detail.adoptFail"));
     }
   };
 
   const handleDelete = async () => {
-    if (!window.confirm("정말로 이 게시글을 삭제하시겠습니까?")) return;
+    if (!window.confirm(t("community.detail.confirmDelete"))) return;
     try {
       await deleteQuestion(id);
-      toast.success("게시글이 삭제되었습니다.");
+      toast.success(t("community.detail.deleteSuccess"));
       navigate("/community");
     } catch (err) {
-      toast.error(err.message || "삭제에 실패했습니다.");
+      toast.error(err.message || t("community.detail.deleteFail"));
     }
   };
 
   const handleEditSave = async () => {
     if (!editTitle.trim() || !editContent.trim()) {
-      toast.error("제목과 내용을 모두 입력해주세요.");
+      toast.error(t("community.detail.titleBodyRequired"));
       return;
     }
     setEditSubmitting(true);
@@ -138,9 +140,9 @@ export function CommunityDetail() {
       });
       setQuestion(updated);
       setIsEditing(false);
-      toast.success("게시글이 수정되었습니다.");
+      toast.success(t("community.detail.editSuccess"));
     } catch (err) {
-      toast.error(err.message || "수정에 실패했습니다.");
+      toast.error(err.message || t("community.detail.editFail"));
     } finally {
       setEditSubmitting(false);
     }
@@ -157,14 +159,14 @@ export function CommunityDetail() {
       setRepliesLoaded((prev) => ({ ...prev, [answerId]: true }));
       setReplyingTo(answerId);
     } catch (err) {
-      toast.error(err.message || "대댓글을 불러오지 못했습니다.");
+      toast.error(err.message || t("community.detail.replyLoadFail"));
     }
   };
 
   const handleSubmitReply = async (answerId) => {
     const text = (replyInputs[answerId] || "").trim();
     if (!text) {
-      toast.error("대댓글 내용을 입력해주세요.");
+      toast.error(t("community.detail.replyRequired"));
       return;
     }
     try {
@@ -172,9 +174,9 @@ export function CommunityDetail() {
       setReplies((prev) => ({ ...prev, [answerId]: [...(prev[answerId] ?? []), reply] }));
       setReplyInputs((prev) => ({ ...prev, [answerId]: "" }));
       setReplyingTo(null);
-      toast.success("대댓글이 등록되었습니다.");
+      toast.success(t("community.detail.replySuccess"));
     } catch (err) {
-      toast.error(err.message || "대댓글 등록에 실패했습니다.");
+      toast.error(err.message || t("community.detail.replyFail"));
     }
   };
 
@@ -185,25 +187,25 @@ export function CommunityDetail() {
         ...prev,
         [answerId]: (prev[answerId] ?? []).filter((r) => r.id !== replyId),
       }));
-      toast.success("대댓글이 삭제되었습니다.");
+      toast.success(t("community.detail.replyDeleteSuccess"));
     } catch (err) {
-      toast.error(err.message || "대댓글 삭제에 실패했습니다.");
+      toast.error(err.message || t("community.detail.replyDeleteFail"));
     }
   };
 
   if (loading) {
     return (
-      <div className="container-sm py-20 text-center text-slate-400 dark:text-slate-500">불러오는 중...</div>
+      <div className="container-sm py-20 text-center text-slate-400 dark:text-slate-500">{t("common.loading")}</div>
     );
   }
 
   if (error || !question) {
     return (
       <div className="container-sm py-20 text-center text-slate-500 dark:text-slate-400">
-        {error || "존재하지 않는 게시글입니다."}
+        {error || t("common.notFound")}
         <br />
         <Link to="/community" className="text-blue-600 dark:text-blue-400 mt-4 inline-block hover:underline">
-          목록으로 돌아가기
+          {t("common.backToList")}
         </Link>
       </div>
     );
@@ -213,7 +215,7 @@ export function CommunityDetail() {
     <div className="container-sm py-10 sm:py-12 flex flex-col gap-6">
       <Link to="/community" className={BACK_LINK}>
         <ArrowLeft size={16} />
-        목록으로
+        {t("common.backToList")}
       </Link>
 
       <div className={`${CARD} p-6 sm:p-8`}>
@@ -227,11 +229,11 @@ export function CommunityDetail() {
             {question.isResolved ? (
               <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 text-xs font-medium bg-emerald-50 dark:bg-emerald-950/30 px-2 py-0.5 rounded-md">
                 <CheckCircle2 size={12} />
-                해결됨
+                {t("community.detail.resolved")}
               </span>
             ) : (
               <span className="text-slate-500 dark:text-slate-400 text-xs font-medium bg-slate-50 dark:bg-slate-800/50 px-2 py-0.5 rounded-md border border-slate-200 dark:border-slate-700">
-                답변 대기중
+                {t("community.detail.awaiting")}
               </span>
             )}
           </div>
@@ -246,22 +248,22 @@ export function CommunityDetail() {
                     className={BTN_GHOST}
                   >
                     <Edit2 size={15} />
-                    수정
+                    {t("common.edit")}
                   </button>
                   <button type="button" onClick={handleDelete} className={BTN_DANGER_GHOST}>
                     <Trash2 size={15} />
-                    삭제
+                    {t("common.delete")}
                   </button>
                 </>
               ) : (
                 <>
                   <button type="button" onClick={() => setIsEditing(false)} className={BTN_GHOST}>
                     <X size={15} />
-                    취소
+                    {t("common.cancel")}
                   </button>
                   <button type="button" onClick={handleEditSave} disabled={editSubmitting} className={BTN_PRIMARY}>
                     <Save size={15} />
-                    {editSubmitting ? "저장 중..." : "저장"}
+                    {editSubmitting ? t("common.saving") : t("common.save")}
                   </button>
                 </>
               )}
@@ -285,7 +287,7 @@ export function CommunityDetail() {
           <div>
             <div className="font-medium text-sm text-slate-900 dark:text-slate-100">{question.authorNickname}</div>
             <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              {formatDistanceToNow(new Date(question.createdAt), { addSuffix: true, locale: ko })} · 조회 {question.views}
+              {formatDistanceToNow(new Date(question.createdAt), { addSuffix: true, locale: getDateFnsLocale(locale) })} · {t("common.views")} {question.views}
             </div>
           </div>
         </div>
@@ -307,7 +309,7 @@ export function CommunityDetail() {
       <div>
         <h3 className={`${SECTION_TITLE} mb-4 flex items-center gap-2`}>
           <MessageCircle className="text-blue-600 dark:text-blue-400" size={20} />
-          답변 <span className="text-blue-600 dark:text-blue-400">{answers.length}</span>
+          {t("community.detail.answers")} <span className="text-blue-600 dark:text-blue-400">{answers.length}</span>
         </h3>
 
         <div className="space-y-3">
@@ -330,12 +332,12 @@ export function CommunityDetail() {
                       {answer.authorNickname}
                       {answer.isAdopted && (
                         <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded flex items-center gap-1">
-                          <CheckCircle2 size={12} /> 채택된 답변
+                          <CheckCircle2 size={12} /> {t("community.detail.adopted")}
                         </span>
                       )}
                     </div>
                     <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                      {formatDistanceToNow(new Date(answer.createdAt), { addSuffix: true, locale: ko })}
+                      {formatDistanceToNow(new Date(answer.createdAt), { addSuffix: true, locale: getDateFnsLocale(locale) })}
                     </div>
                   </div>
                 </div>
@@ -345,7 +347,7 @@ export function CommunityDetail() {
                     onClick={() => handleAccept(answer.id)}
                     className="text-xs font-medium px-3 py-1.5 rounded-md border border-emerald-200 dark:border-emerald-900/50 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 transition-colors flex-shrink-0"
                   >
-                    채택하기
+                    {t("community.detail.adopt")}
                   </button>
                 )}
               </div>
@@ -365,7 +367,7 @@ export function CommunityDetail() {
                             <Avatar src={reply.authorProfileImage} alt={reply.authorNickname} size="sm" />
                             <span className="text-xs font-medium text-slate-800 dark:text-slate-200">{reply.authorNickname}</span>
                             <span className="text-xs text-slate-400 dark:text-slate-500">
-                              {formatDistanceToNow(new Date(reply.createdAt), { addSuffix: true, locale: ko })}
+                              {formatDistanceToNow(new Date(reply.createdAt), { addSuffix: true, locale: getDateFnsLocale(locale) })}
                             </span>
                           </div>
                           {user && user.userId === reply.authorId && (
@@ -400,7 +402,7 @@ export function CommunityDetail() {
                             handleSubmitReply(answer.id);
                           }
                         }}
-                        placeholder="대댓글을 입력하세요. (Enter로 등록)"
+                        placeholder={t("community.detail.replyPlaceholder")}
                         rows={2}
                         className={`${TEXTAREA} resize-none`}
                       />
@@ -410,10 +412,10 @@ export function CommunityDetail() {
                           onClick={() => { setReplyingTo(null); setReplyInputs((prev) => ({ ...prev, [answer.id]: "" })); }}
                           className={BTN_GHOST}
                         >
-                          취소
+                          {t("common.cancel")}
                         </button>
                         <button type="button" onClick={() => handleSubmitReply(answer.id)} className={BTN_PRIMARY}>
-                          등록
+                          {t("common.submit")}
                         </button>
                       </div>
                     </div>
@@ -425,7 +427,10 @@ export function CommunityDetail() {
                     className="flex items-center gap-1 text-xs font-medium text-slate-400 dark:text-slate-500 hover:text-blue-600 dark:hover:text-blue-400 transition-colors py-1"
                   >
                     <CornerDownRight size={13} />
-                    대댓글 {answer.replyCount > 0 ? `${answer.replyCount}개` : "달기"}
+                    {t("community.detail.reply")}{" "}
+                    {answer.replyCount > 0
+                      ? `${answer.replyCount}${t("community.detail.replyCount")}`
+                      : t("community.detail.addReply")}
                   </button>
                 )}
               </div>
@@ -434,18 +439,18 @@ export function CommunityDetail() {
 
           {answers.length === 0 && (
             <div className={`${CARD} text-center py-10 text-slate-500 dark:text-slate-400 border-dashed`}>
-              아직 작성된 답변이 없습니다. 첫 번째 답변을 남겨보세요!
+              {t("community.detail.noAnswers")}
             </div>
           )}
         </div>
       </div>
 
       <div className={`${CARD} p-5 sm:p-6`}>
-        <h4 className={`${SECTION_TITLE} mb-4`}>답변 작성하기</h4>
+        <h4 className={`${SECTION_TITLE} mb-4`}>{t("community.detail.writeAnswer")}</h4>
         <textarea
           value={newAnswer}
           onChange={(e) => setNewAnswer(e.target.value)}
-          placeholder="질문에 대한 답변을 남겨주세요. 타인을 비방하는 글은 제재될 수 있습니다."
+          placeholder={t("community.detail.answerPlaceholder")}
           rows={5}
           className={`${TEXTAREA} mb-4 bg-slate-50 dark:bg-slate-800/40`}
         />
@@ -456,7 +461,7 @@ export function CommunityDetail() {
             disabled={answerSubmitting}
             className={BTN_PRIMARY}
           >
-            {answerSubmitting ? "등록 중..." : "답변 등록"}
+            {answerSubmitting ? t("common.submitting") : t("community.detail.submitAnswer")}
           </button>
         </div>
       </div>

@@ -31,6 +31,7 @@
  * @property {string} latestFilingType   e.g. "분기보고서"
  * @property {string} latestFilingDate   ISO date string
  * @property {string} changeSummary      one-line, e.g. "영업이익 급감, 위험 요인 추가"
+ * @property {'KOSPI'|'KOSDAQ'} [market] listing market from stock.market_type
  * @property {number} [marketCapRank]    illustrative KOSPI market-cap rank, used for the search hero's quicklinks
  * @property {number} [kosdaqRank]       illustrative KOSDAQ market-cap rank, used for the search hero's quicklinks
  * @property {string} [marketCap]        display label, e.g. "약 450조원"

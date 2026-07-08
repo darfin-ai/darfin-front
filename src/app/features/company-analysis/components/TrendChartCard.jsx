@@ -1,25 +1,26 @@
 import { LineChart, Line, Tooltip, ResponsiveContainer, XAxis, YAxis } from 'recharts';
 import { motion } from 'motion/react';
 import { useTheme } from 'next-themes';
+import { useLocale } from '../../../shared/i18n';
 import { formatPercent, formatQuarterAxis, formatQuarterFull, formatFinancialMetricValue } from '../lib/format';
 import { chartAxisColors } from '../lib/chartTheme';
 
-function TrendTooltip({ active, payload, metric }) {
+function TrendTooltip({ active, payload, metric, locale }) {
   if (!active || !payload?.length) return null;
   const point = payload[0].payload;
   return (
     <div className="rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-2.5 py-1.5 text-xs shadow-md">
-      <div className="font-medium text-slate-500 dark:text-slate-400">{formatQuarterFull(point.quarter)}</div>
-      <div className="font-semibold text-slate-900 dark:text-slate-100">{formatFinancialMetricValue(metric, point.value)}</div>
+      <div className="font-medium text-slate-500 dark:text-slate-400">{formatQuarterFull(point.quarter, locale)}</div>
+      <div className="font-semibold text-slate-900 dark:text-slate-100">{formatFinancialMetricValue(metric, point.value, locale)}</div>
     </div>
   );
 }
 
 /**
- * One "small multiple" line chart for a single financial concept.
  * @param {{ metric: import('../../../../mocks/companyAnalysis/types').FinancialMetric, index?: number }} props
  */
 export function TrendChartCard({ metric, index = 0 }) {
+  const { t, locale } = useLocale();
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === 'dark';
   const colors = chartAxisColors(isDark);
@@ -40,12 +41,12 @@ export function TrendChartCard({ metric, index = 0 }) {
         <span className="text-sm font-medium text-slate-600 dark:text-slate-400">{metric.label}</span>
         {pctChange != null && (
           <span className="shrink-0 text-xs font-medium text-slate-500 dark:text-slate-400">
-            전분기 대비 {formatPercent(pctChange)}
+            {t('company.panels.qoqChange')} {formatPercent(pctChange)}
           </span>
         )}
       </div>
       <div className="mt-1 text-xl font-semibold tabular-nums text-slate-900 dark:text-slate-100">
-        {formatFinancialMetricValue(metric, latest.value)}
+        {formatFinancialMetricValue(metric, latest.value, locale)}
       </div>
 
       <div className="mt-2 h-32 w-full">
@@ -59,7 +60,7 @@ export function TrendChartCard({ metric, index = 0 }) {
               tickLine={false}
             />
             <YAxis hide domain={['dataMin', 'dataMax']} />
-            <Tooltip content={<TrendTooltip metric={metric} />} cursor={{ stroke: colors.cursor }} />
+            <Tooltip content={<TrendTooltip metric={metric} locale={locale} />} cursor={{ stroke: colors.cursor }} />
             <Line
               type="monotone"
               dataKey="value"

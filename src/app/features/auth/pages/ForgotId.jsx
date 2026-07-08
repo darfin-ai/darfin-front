@@ -3,10 +3,12 @@ import { Link } from "react-router";
 import { toast } from "sonner";
 import { User, Phone, ArrowLeft, Mail } from "lucide-react";
 import { findId } from "../../../shared/api/authApi";
+import { useLocale } from "../../../shared/i18n";
 
 export function ForgotId() {
-  const [name, setName] = useState('');
-  const [phone, setPhone] = useState('');
+  const { t } = useLocale();
+  const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState(null);
 
@@ -17,14 +19,15 @@ export function ForgotId() {
       const data = await findId({ name, phone });
       setResults(data);
     } catch (err) {
-      const msg = err?.status === 404 ? '입력하신 정보로 가입된 계정을 찾을 수 없습니다.' : (err?.message || '아이디 찾기에 실패했습니다.');
+      const msg =
+        err?.status === 404
+          ? t("authRecovery.forgotId.notFound")
+          : err?.message || t("authRecovery.forgotId.fail");
       toast.error(msg);
     } finally {
       setLoading(false);
     }
   };
-
-  const PROVIDER_LABEL = { LOCAL: '이메일', KAKAO: '카카오', GOOGLE: '구글' };
 
   return (
     <div className="flex flex-col items-center justify-center py-12 animate-in fade-in duration-500">
@@ -34,14 +37,14 @@ export function ForgotId() {
         </Link>
 
         <div className="text-center mb-8 mt-2">
-          <h1 className="text-2xl font-bold text-slate-900 mb-2">아이디 찾기</h1>
-          <p className="text-sm text-slate-500">가입 시 등록한 정보를 입력해주세요.</p>
+          <h1 className="text-2xl font-bold text-slate-900 mb-2">{t("authRecovery.forgotId.title")}</h1>
+          <p className="text-sm text-slate-500">{t("authRecovery.forgotId.subtitle")}</p>
         </div>
 
         {!results ? (
           <form onSubmit={handleFindId} className="space-y-4">
             <div className="space-y-1">
-              <label className="text-sm font-medium text-slate-700 block">이름</label>
+              <label className="text-sm font-medium text-slate-700 block">{t("authRecovery.forgotId.name")}</label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <User className="h-5 w-5 text-slate-400" />
@@ -52,12 +55,12 @@ export function ForgotId() {
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   className="block w-full pl-10 pr-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 bg-slate-50"
-                  placeholder="홍길동"
+                  placeholder={t("auth.signup.namePlaceholder")}
                 />
               </div>
             </div>
             <div className="space-y-1">
-              <label className="text-sm font-medium text-slate-700 block">휴대폰 번호</label>
+              <label className="text-sm font-medium text-slate-700 block">{t("authRecovery.forgotId.phone")}</label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <Phone className="h-5 w-5 text-slate-400" />
@@ -68,7 +71,7 @@ export function ForgotId() {
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   className="block w-full pl-10 pr-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 bg-slate-50"
-                  placeholder="010-0000-0000"
+                  placeholder={t("auth.signup.phonePlaceholder")}
                 />
               </div>
             </div>
@@ -78,13 +81,13 @@ export function ForgotId() {
               disabled={loading}
               className="w-full py-2.5 px-4 mt-6 border border-transparent rounded-xl shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              {loading ? '조회 중...' : '아이디 찾기'}
+              {loading ? t("authRecovery.forgotId.submitting") : t("authRecovery.forgotId.submit")}
             </button>
           </form>
         ) : (
           <div className="space-y-4 animate-in fade-in duration-300">
             <p className="text-sm text-slate-600 text-center mb-4">
-              <span className="font-semibold">{name}</span>님의 가입 정보를 찾았습니다.
+              {t("authRecovery.forgotId.resultFound", { name })}
             </p>
             <div className="space-y-3">
               {results.map((item, idx) => (
@@ -94,7 +97,11 @@ export function ForgotId() {
                   </div>
                   <div>
                     <p className="text-sm font-semibold text-slate-900">{item.email}</p>
-                    <p className="text-xs text-slate-500">{PROVIDER_LABEL[item.provider] || item.provider} 계정</p>
+                    <p className="text-xs text-slate-500">
+                      {t("authRecovery.forgotId.accountType", {
+                        provider: t(`common.provider.${item.provider}`) || item.provider,
+                      })}
+                    </p>
                   </div>
                 </div>
               ))}
@@ -104,13 +111,13 @@ export function ForgotId() {
                 onClick={() => setResults(null)}
                 className="flex-1 py-2.5 border border-slate-200 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors"
               >
-                다시 찾기
+                {t("authRecovery.forgotId.tryAgain")}
               </button>
               <Link
                 to="/login"
                 className="flex-1 py-2.5 text-center bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700 transition-colors"
               >
-                로그인하기
+                {t("authRecovery.forgotId.login")}
               </Link>
             </div>
           </div>

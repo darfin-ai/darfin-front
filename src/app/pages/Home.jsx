@@ -443,10 +443,10 @@ function CompanyMarquee() {
   );
 }
 
-function BrowserChrome({ label, children, active = false }) {
+function BrowserChrome({ label, children, active = false, className = "", contentClassName = "" }) {
   return (
     <motion.div
-      className={`${CARD} overflow-hidden flex flex-col min-h-[360px] sm:min-h-[400px]`}
+      className={`${CARD} overflow-hidden flex flex-col min-h-[360px] sm:min-h-[400px] ${className}`}
       animate={{
         boxShadow: active
           ? "0 20px 40px -12px rgba(15, 23, 42, 0.12), 0 0 0 1px rgba(148, 163, 184, 0.15)"
@@ -460,7 +460,7 @@ function BrowserChrome({ label, children, active = false }) {
         <span className="h-2.5 w-2.5 rounded-full bg-emerald-300" />
         <span className="ml-2 text-xs font-medium text-slate-400 truncate">{label}</span>
       </div>
-      <div className="p-5 flex flex-col flex-1 justify-between">{children}</div>
+      <div className={`p-5 flex flex-col flex-1 justify-between min-h-0 ${contentClassName}`}>{children}</div>
     </motion.div>
   );
 }
@@ -473,7 +473,7 @@ function CompanyMockup({ active = false }) {
       <div className="flex items-center justify-between mb-4">
         <div>
           <div className="flex items-center gap-2">
-            <span className="font-medium text-slate-900 dark:text-slate-100">삼성전자</span>
+            <span className="font-medium text-slate-900 dark:text-slate-100">{t("landing.mockups.demoCompanyName")}</span>
             <span className="text-xs text-slate-400 dark:text-slate-500 tabular-nums">005930</span>
             <span className="rounded-full bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 text-[10px] font-medium px-1.5 py-0.5">KOSPI</span>
           </div>
@@ -654,14 +654,14 @@ function TradingMockup({ active = false }) {
     <BrowserChrome label={t("landing.mockups.tradingChrome")} active={active}>
       <div className="flex items-center justify-between mb-3">
         <div>
-          <div className="font-medium text-slate-900 dark:text-slate-100">삼성전자</div>
+          <div className="font-medium text-slate-900 dark:text-slate-100">{t("landing.mockups.demoCompanyName")}</div>
           <div className="flex items-baseline gap-2">
             <motion.div
               className="text-sm font-medium text-slate-900 dark:text-slate-100 tabular-nums"
               animate={active && !reduceMotion ? { y: [0, -2, 0] } : { y: 0 }}
               transition={{ duration: 0.4, ease: "easeOut" }}
             >
-              73,400<span className="text-xs font-normal text-slate-400 dark:text-slate-500 ml-1">원</span>
+              73,400<span className="text-xs font-normal text-slate-400 dark:text-slate-500 ml-1">{t("landing.mockups.currencyUnit")}</span>
             </motion.div>
             <span className="text-[10px] font-medium text-red-500 dark:text-red-400 tabular-nums">+1.24%</span>
           </div>
@@ -670,7 +670,7 @@ function TradingMockup({ active = false }) {
       </div>
 
       <div className="flex gap-1 mb-3 bg-slate-100/80 dark:bg-slate-800/80 rounded-lg p-0.5 text-[10px] font-medium w-fit">
-        {["일", "주", "월", "년"].map((label, i) => (
+        {(t("landing.mockups.chartPeriods") || []).map((label, i) => (
           <span
             key={label}
             className={`px-2 py-1 rounded-md ${i === 0 ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-sm" : "text-slate-400 dark:text-slate-500"}`}
@@ -739,7 +739,7 @@ function CommunityMockup({ active = false }) {
 
   const [visibleCount, setVisibleCount] = useState(messages.length);
   const [showTyping, setShowTyping] = useState(false);
-  const [showComposer, setShowComposer] = useState(true);
+  const [threadFaded, setThreadFaded] = useState(false);
   const timersRef = useRef([]);
   const sequenceIdRef = useRef(0);
 
@@ -758,19 +758,19 @@ function CommunityMockup({ active = false }) {
     const isCurrent = () => sequenceId === sequenceIdRef.current;
 
     clearTimers();
+    setThreadFaded(false);
     setVisibleCount(0);
     setShowTyping(false);
-    setShowComposer(false);
 
     if (reduceMotion) {
       setVisibleCount(messages.length);
-      setShowComposer(true);
       return;
     }
 
     const TYPING_MS = 850;
     const MESSAGE_GAP_MS = 500;
     const LOOP_PAUSE_MS = 3200;
+    const LOOP_FADE_MS = 280;
     let delay = 400;
 
     schedule(() => {
@@ -784,6 +784,11 @@ function CommunityMockup({ active = false }) {
       schedule(() => {
         if (!isCurrent()) return;
         setShowTyping(false);
+      }, delay);
+      delay += 160;
+
+      schedule(() => {
+        if (!isCurrent()) return;
         setVisibleCount(nextCount);
       }, delay);
       delay += 380;
@@ -799,12 +804,15 @@ function CommunityMockup({ active = false }) {
     });
 
     schedule(() => {
-      if (!isCurrent()) return;
-      setShowComposer(true);
-    }, delay + 250);
+      if (!isCurrent() || !activeRef.current) return;
+      setThreadFaded(true);
+    }, delay + LOOP_PAUSE_MS - LOOP_FADE_MS);
 
     schedule(() => {
       if (!isCurrent() || !activeRef.current) return;
+      setVisibleCount(0);
+      setShowTyping(false);
+      setThreadFaded(false);
       runChatSequence();
     }, delay + LOOP_PAUSE_MS);
   }, [clearTimers, messages, reduceMotion, schedule]);
@@ -815,9 +823,9 @@ function CommunityMockup({ active = false }) {
     } else {
       sequenceIdRef.current += 1;
       clearTimers();
+      setThreadFaded(false);
       setVisibleCount(messages.length);
       setShowTyping(false);
-      setShowComposer(true);
     }
     return clearTimers;
   }, [active, runChatSequence, clearTimers, messages.length]);
@@ -825,7 +833,12 @@ function CommunityMockup({ active = false }) {
   const replyCount = Math.max(0, visibleCount - 1);
 
   return (
-    <BrowserChrome label={t("landing.mockups.communityChrome")} active={active}>
+    <BrowserChrome
+      label={t("landing.mockups.communityChrome")}
+      active={active}
+      className="h-[480px]"
+      contentClassName="!justify-start h-full"
+    >
         <div className="mb-3 pb-3 border-b border-slate-100 dark:border-slate-800 shrink-0">
           <div className="flex items-center gap-1.5 mb-1.5">
             <span className="px-1.5 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-[10px] font-medium rounded">
@@ -833,9 +846,9 @@ function CommunityMockup({ active = false }) {
             </span>
             <motion.span
               key={active ? replyCount : "final"}
-              initial={active && !reduceMotion ? { scale: 0.85, opacity: 0.5 } : false}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ type: "spring", stiffness: 500, damping: 24 }}
+              initial={active && !reduceMotion ? { opacity: 0 } : false}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.2, ease: "easeOut" }}
               className="text-[10px] font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 px-1.5 py-0.5 rounded-full border border-blue-200 dark:border-blue-800 tabular-nums"
             >
               {replyCount > 0
@@ -846,20 +859,21 @@ function CommunityMockup({ active = false }) {
           <p className="text-xs font-medium text-slate-900 dark:text-slate-100 leading-snug">{thread.title}</p>
         </div>
 
-        <div className="flex-1 space-y-2 overflow-hidden min-h-[9.5rem]">
-          <AnimatePresence initial={false} mode="popLayout">
+        <motion.div
+          className="flex-1 min-h-0 overflow-hidden space-y-2"
+          animate={{ opacity: threadFaded ? 0 : 1 }}
+          transition={{ duration: 0.28, ease: "easeInOut" }}
+        >
+          <AnimatePresence initial={false}>
             {messages.slice(0, visibleCount).map((msg, i) => (
               <motion.div
                 key={`${msg.author}-${i}`}
-                layout={active}
-                initial={active && !reduceMotion ? { opacity: 0, y: 14, scale: 0.96 } : false}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: -10, scale: 0.96 }}
-                transition={{ type: "spring", stiffness: 420, damping: 26 }}
+                initial={active && !reduceMotion && i === visibleCount - 1 ? { opacity: 0 } : false}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.2, ease: "easeOut" }}
                 className={msg.isReply ? "ml-4" : undefined}
               >
-                <motion.div
-                  layout
+                <div
                   className={`flex gap-2 rounded-lg p-2 ${
                     msg.adopted
                       ? "border border-emerald-200 dark:border-emerald-900/50 bg-emerald-50/60 dark:bg-emerald-950/20"
@@ -879,9 +893,9 @@ function CommunityMockup({ active = false }) {
                       <span className="text-[9px] text-slate-400 dark:text-slate-500">{msg.time}</span>
                       {msg.adopted && visibleCount === messages.length && (
                         <motion.span
-                          initial={active && !reduceMotion ? { opacity: 0, scale: 0.8 } : false}
-                          animate={{ opacity: 1, scale: 1 }}
-                          transition={{ delay: 0.2, type: "spring", stiffness: 500, damping: 22 }}
+                          initial={active && !reduceMotion ? { opacity: 0 } : false}
+                          animate={{ opacity: 1 }}
+                          transition={{ delay: 0.2, duration: 0.2, ease: "easeOut" }}
                           className="text-[9px] font-medium text-emerald-600 dark:text-emerald-400"
                         >
                           {thread.adopted}
@@ -890,49 +904,38 @@ function CommunityMockup({ active = false }) {
                     </div>
                     <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed">{msg.body}</p>
                   </div>
-                </motion.div>
+                </div>
               </motion.div>
             ))}
 
             {showTyping && (
               <motion.div
                 key="typing"
-                layout
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -6, scale: 0.95 }}
-                transition={{ duration: 0.2, ease: "easeOut" }}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.15, ease: "easeOut" }}
               >
                 <CommunityTypingIndicator paletteIndex={visibleCount} />
               </motion.div>
             )}
           </AnimatePresence>
-        </div>
+        </motion.div>
 
-        <AnimatePresence>
-          {showComposer && (
-            <motion.div
-              initial={active && !reduceMotion ? { opacity: 0, y: 8 } : false}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 6 }}
-              transition={{ type: "spring", stiffness: 400, damping: 28 }}
-              className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center gap-2 shrink-0"
+        <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center gap-2 shrink-0">
+          <div className="flex-1 h-7 rounded-md border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 px-2.5 flex items-center overflow-hidden">
+            <motion.span
+              className="text-[10px] text-slate-400 dark:text-slate-500 truncate"
+              animate={active && !reduceMotion ? { opacity: [0.5, 1, 0.5] } : { opacity: 1 }}
+              transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut" }}
             >
-              <div className="flex-1 h-7 rounded-md border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 px-2.5 flex items-center overflow-hidden">
-                <motion.span
-                  className="text-[10px] text-slate-400 dark:text-slate-500 truncate"
-                  animate={active && !reduceMotion ? { opacity: [0.5, 1, 0.5] } : { opacity: 1 }}
-                  transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut" }}
-                >
-                  {thread.placeholder}
-                </motion.span>
-              </div>
-              <span className="text-[10px] font-medium text-blue-600 dark:text-blue-400 px-2 py-1 rounded-md bg-blue-50 dark:bg-blue-950/40 shrink-0">
-                {thread.submit}
-              </span>
-            </motion.div>
-          )}
-        </AnimatePresence>
+              {thread.placeholder}
+            </motion.span>
+          </div>
+          <span className="text-[10px] font-medium text-blue-600 dark:text-blue-400 px-2 py-1 rounded-md bg-blue-50 dark:bg-blue-950/40 shrink-0">
+            {thread.submit}
+          </span>
+        </div>
       </BrowserChrome>
   );
 }
@@ -1071,7 +1074,9 @@ function WalkthroughRow({ item, index, Mockup, link }) {
         className={textOnRight ? "lg:order-1" : ""}
         animate={
           hovered && !reduceMotion
-            ? { y: -6, rotate: WALKTHROUGH_MOCKUP_TILTS[index] ?? 0, scale: 1.015 }
+            ? index === 2
+              ? { y: -6, rotate: WALKTHROUGH_MOCKUP_TILTS[index] ?? 0 }
+              : { y: -6, rotate: WALKTHROUGH_MOCKUP_TILTS[index] ?? 0, scale: 1.015 }
             : { y: 0, rotate: 0, scale: 1 }
         }
         transition={{ type: "spring", stiffness: 260, damping: 22 }}

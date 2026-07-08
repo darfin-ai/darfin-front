@@ -1,5 +1,6 @@
 import { Calculator, FileText, MessageSquareQuote } from 'lucide-react';
-import { HOP_TYPE_LABELS } from '../lib/scoring';
+import { useLocale } from '../../../shared/i18n';
+import { hopTypeLabel } from '../lib/i18n';
 import { SourceExcerptDialog } from './SourceExcerptDialog';
 
 const HOP_ICONS = {
@@ -17,6 +18,7 @@ const HOP_ICONS = {
  * }} props
  */
 export function ReasoningHopStep({ hop, isLast, isSelected, onSelect }) {
+  const { t } = useLocale();
   const Icon = HOP_ICONS[hop.type];
 
   return (
@@ -33,8 +35,6 @@ export function ReasoningHopStep({ hop, isLast, isSelected, onSelect }) {
         <Icon size={11} />
       </span>
 
-      {/* Not a <button>: it needs to contain the "원문 보기" trigger, which is
-          itself a real button, and buttons cannot nest inside buttons. */}
       <div
         role="button"
         tabIndex={0}
@@ -52,7 +52,7 @@ export function ReasoningHopStep({ hop, isLast, isSelected, onSelect }) {
       >
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
-            {HOP_TYPE_LABELS[hop.type]}
+            {hopTypeLabel(t, hop.type)}
           </span>
           <span className="text-xs text-slate-500 dark:text-slate-400">{hop.sectionLabel}</span>
         </div>

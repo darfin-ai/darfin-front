@@ -1,27 +1,26 @@
 import { Check } from 'lucide-react';
+import { useLocale } from '../../../shared/i18n';
 import { baselineLabel } from '../lib/comparison';
 
 const MODES = [
-  { key: 'all', filingKey: 'current', label: '전체 비교', hint: '기준 공시' },
-  { key: 'QoQ', filingKey: 'qoqBaseline', label: 'QoQ만 보기', hint: '직전 공시 대비' },
-  { key: 'YoY', filingKey: 'yoyBaseline', label: 'YoY만 보기', hint: '전년 동기 대비' },
+  { key: 'all', filingKey: 'current', labelKey: 'compareAll', hintKey: 'compareAllHint' },
+  { key: 'QoQ', filingKey: 'qoqBaseline', labelKey: 'compareQoq', hintKey: 'compareQoqHint' },
+  { key: 'YoY', filingKey: 'yoyBaseline', labelKey: 'compareYoy', hintKey: 'compareYoyHint' },
 ];
 
 /**
- * Filters the sections/comparisons shown below to just one baseline —
- * clicking "QoQ만 보기" hides every section that has no QoQ row at all
- * (계열회사 현황, 중요한 계약, 지배구조, ...), not just the YoY half of
- * sections that have both.
  * @param {{
  *   filingContext: { current?: import('../../../../mocks/companyAnalysis/types').RecentFiling, qoqBaseline?: import('../../../../mocks/companyAnalysis/types').RecentFiling, yoyBaseline?: import('../../../../mocks/companyAnalysis/types').RecentFiling },
  *   mode: 'all'|'QoQ'|'YoY', onChange: (mode: 'all'|'QoQ'|'YoY') => void, className?: string,
  * }} props
  */
 export function ComparisonModeSelector({ filingContext, mode, onChange, className = '' }) {
+  const { t } = useLocale();
+
   return (
     <div className={className}>
-      <p className="mb-2 text-xs font-medium text-slate-500 dark:text-slate-400">비교 기준을 선택하면 해당 항목만 볼 수 있어요.</p>
-      <div role="tablist" aria-label="공시 비교 기준" className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+      <p className="mb-2 text-xs font-medium text-slate-500 dark:text-slate-400">{t('company.panels.comparisonHint')}</p>
+      <div role="tablist" aria-label={t('company.panels.comparisonAria')} className="grid grid-cols-1 gap-2 sm:grid-cols-3">
         {MODES.map((m) => {
           const filing = filingContext[m.filingKey];
           const active = mode === m.key;
@@ -41,13 +40,13 @@ export function ComparisonModeSelector({ filingContext, mode, onChange, classNam
               <span className="flex items-center gap-1.5">
                 {active && <Check size={13} className="shrink-0 text-blue-600 dark:text-blue-400" />}
                 <span className={`text-xs font-semibold ${active ? 'text-blue-700 dark:text-blue-300' : 'text-slate-500 dark:text-slate-400'}`}>
-                  {m.label}
+                  {t(`company.panels.${m.labelKey}`)}
                 </span>
               </span>
               <p className={`mt-0.5 text-sm font-medium ${active ? 'text-blue-900 dark:text-blue-200' : 'text-slate-800 dark:text-slate-200'}`}>
                 {filing ? baselineLabel(filing) : '-'}
               </p>
-              <p className={`text-xs ${active ? 'text-blue-600/70 dark:text-blue-400/70' : 'text-slate-400 dark:text-slate-500'}`}>{m.hint}</p>
+              <p className={`text-xs ${active ? 'text-blue-600/70 dark:text-blue-400/70' : 'text-slate-400 dark:text-slate-500'}`}>{t(`company.panels.${m.hintKey}`)}</p>
             </button>
           );
         })}

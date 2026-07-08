@@ -3,6 +3,7 @@ import { useNavigate, Link } from "react-router";
 import { ArrowLeft, Search } from "lucide-react";
 import { toast } from "sonner";
 import { searchStocks, createQuestion } from "../api/communityApi";
+import { useLocale } from "../../../shared/i18n";
 import {
   CARD,
   PAGE_TITLE,
@@ -14,6 +15,7 @@ import {
 } from "../communityUi";
 
 export function CommunityWrite() {
+  const { t } = useLocale();
   const navigate = useNavigate();
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
@@ -72,11 +74,11 @@ export function CommunityWrite() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!title.trim()) {
-      toast.error("제목을 입력해주세요.");
+      toast.error(t("community.write.titleRequired"));
       return;
     }
     if (!content.trim()) {
-      toast.error("내용을 입력해주세요.");
+      toast.error(t("community.write.bodyRequired"));
       return;
     }
     setSubmitting(true);
@@ -86,10 +88,10 @@ export function CommunityWrite() {
         content,
         dartCorpCode: selectedStock?.dartCorpCode ?? undefined,
       });
-      toast.success("질문이 등록되었습니다.");
+      toast.success(t("community.write.success"));
       navigate("/community");
     } catch (err) {
-      toast.error(err.message || "질문 등록에 실패했습니다.");
+      toast.error(err.message || t("community.write.fail"));
     } finally {
       setSubmitting(false);
     }
@@ -99,15 +101,15 @@ export function CommunityWrite() {
     <div className="container-sm py-10 sm:py-12 flex flex-col gap-6">
       <Link to="/community" className={BACK_LINK}>
         <ArrowLeft size={16} />
-        목록으로
+        {t("common.backToList")}
       </Link>
 
       <div className={`${CARD} p-6 sm:p-8`}>
-        <h1 className={`${PAGE_TITLE} mb-6`}>새 질문 작성</h1>
+        <h1 className={`${PAGE_TITLE} mb-6`}>{t("community.write.title")}</h1>
 
         <form onSubmit={handleSubmit} className="space-y-5">
           <div className="space-y-2">
-            <label className={LABEL}>관련 종목</label>
+            <label className={LABEL}>{t("community.write.stock")}</label>
             <div className="relative" ref={dropdownRef}>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" size={16} />
@@ -115,11 +117,11 @@ export function CommunityWrite() {
                   type="text"
                   value={stockKeyword}
                   onChange={handleStockKeywordChange}
-                  placeholder="종목명 검색 (예: 삼성전자)"
+                  placeholder={t("community.write.stockPlaceholder")}
                   className={`${INPUT} pl-9`}
                 />
                 {stockLoading && (
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 dark:text-slate-500">검색 중...</span>
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 dark:text-slate-500">{t("common.searching")}</span>
                 )}
               </div>
 
@@ -142,35 +144,35 @@ export function CommunityWrite() {
 
               {showDropdown && !stockLoading && stockResults.length === 0 && (
                 <div className={`absolute z-10 mt-1 w-full ${CARD} shadow-lg px-4 py-3 text-sm text-slate-500 dark:text-slate-400`}>
-                  검색 결과가 없습니다.
+                  {t("common.noResults")}
                 </div>
               )}
             </div>
 
             {selectedStock && (
               <p className="text-xs text-blue-600 dark:text-blue-400 font-medium">
-                선택됨: {selectedStock.companyName} ({selectedStock.stockCode})
+                {t("community.write.stockSelected")}: {selectedStock.companyName} ({selectedStock.stockCode})
               </p>
             )}
           </div>
 
           <div className="space-y-2">
-            <label className={LABEL}>제목</label>
+            <label className={LABEL}>{t("community.write.titleLabel")}</label>
             <input
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="질문 제목을 간결하게 작성해주세요."
+              placeholder={t("community.write.titlePlaceholder")}
               className={INPUT}
             />
           </div>
 
           <div className="space-y-2">
-            <label className={LABEL}>내용</label>
+            <label className={LABEL}>{t("community.write.bodyLabel")}</label>
             <textarea
               value={content}
               onChange={(e) => setContent(e.target.value)}
-              placeholder="궁금한 내용을 자세히 작성해주세요."
+              placeholder={t("community.write.bodyPlaceholder")}
               rows={12}
               className={TEXTAREA}
             />
@@ -178,7 +180,7 @@ export function CommunityWrite() {
 
           <div className="flex justify-end pt-4 border-t border-slate-200 dark:border-slate-800">
             <button type="submit" disabled={submitting} className={BTN_PRIMARY}>
-              {submitting ? "등록 중..." : "질문 등록하기"}
+              {submitting ? t("common.submitting") : t("community.write.submit")}
             </button>
           </div>
         </form>

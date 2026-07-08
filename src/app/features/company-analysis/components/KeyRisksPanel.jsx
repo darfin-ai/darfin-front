@@ -1,18 +1,31 @@
 import { motion } from 'motion/react';
+import { useLocale } from '../../../shared/i18n';
 import { SourceExcerptDialog } from './SourceExcerptDialog';
 import { SoWhatCallout } from './SoWhatCallout';
 import { Skeleton } from '../../../shared/components/ui/skeleton';
 import { isAiReady } from '../lib/aiStatus';
 
-const SEVERITY_STYLES = {
-  high:   { border: 'border-l-red-400',   dot: 'bg-red-400',   label: '영향 높음', text: 'text-red-600 dark:text-red-400' },
-  medium: { border: 'border-l-amber-400', dot: 'bg-amber-400', label: '영향 보통', text: 'text-amber-600 dark:text-amber-400' },
-  low:    { border: 'border-l-slate-300 dark:border-l-slate-600', dot: 'bg-slate-300 dark:bg-slate-600', label: '영향 낮음', text: 'text-slate-500 dark:text-slate-400' },
+const SEVERITY_BORDER = {
+  high: 'border-l-red-400',
+  medium: 'border-l-amber-400',
+  low: 'border-l-slate-300 dark:border-l-slate-600',
 };
 
-const STATUS_BADGE = {
-  new:     { label: '신규',   className: 'bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800' },
-  removed: { label: '제거됨', className: 'bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-900' },
+const SEVERITY_DOT = {
+  high: 'bg-red-400',
+  medium: 'bg-amber-400',
+  low: 'bg-slate-300 dark:bg-slate-600',
+};
+
+const SEVERITY_TEXT = {
+  high: 'text-red-600 dark:text-red-400',
+  medium: 'text-amber-600 dark:text-amber-400',
+  low: 'text-slate-500 dark:text-slate-400',
+};
+
+const STATUS_BADGE_CLASS = {
+  new: 'bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800',
+  removed: 'bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-900',
 };
 
 function RiskSkeletonCard() {
@@ -35,6 +48,7 @@ function RiskSkeletonCard() {
  * @param {{ overview: import('../../../../mocks/companyAnalysis/types').CompanyOverview }} props
  */
 export function KeyRisksPanel({ overview }) {
+  const { t } = useLocale();
   const risks = overview.risks ?? [];
   const ready = isAiReady(overview);
 
@@ -42,15 +56,15 @@ export function KeyRisksPanel({ overview }) {
     <section aria-labelledby="risk-heading">
       <div className="mb-4 flex items-baseline gap-3">
         <h2 id="risk-heading" className="text-lg font-semibold tracking-tight text-slate-900 dark:text-slate-100">
-          핵심 리스크
+          {t('company.panels.risks')}
         </h2>
         {ready && risks.some((r) => r.status === 'new') && (
           <span className="rounded-full bg-blue-50 dark:bg-blue-950/40 px-2 py-0.5 text-xs font-medium text-blue-600 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
-            {risks.filter((r) => r.status === 'new').length}건 신규
+            {t('company.panels.newRisks', { n: risks.filter((r) => r.status === 'new').length })}
           </span>
         )}
         {!ready && (
-          <span className="text-xs font-normal text-slate-400 dark:text-slate-500">분석 중...</span>
+          <span className="text-xs font-normal text-slate-400 dark:text-slate-500">{t('company.panels.analyzing')}</span>
         )}
       </div>
 
@@ -62,25 +76,23 @@ export function KeyRisksPanel({ overview }) {
         </div>
       ) : risks.filter((r) => r.status !== 'removed').length === 0 ? (
         <p className="rounded-xl border border-dashed border-slate-200 dark:border-slate-700 p-6 text-center text-sm text-slate-400 dark:text-slate-500">
-          이번 공시에서 별도 보고된 핵심 리스크가 없어요.
+          {t('company.panels.noRisks')}
         </p>
       ) : (
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {risks.filter((r) => r.status !== 'removed').map((risk, i) => {
-          const sev = SEVERITY_STYLES[risk.severity];
-          return (
+        {risks.filter((r) => r.status !== 'removed').map((risk, i) => (
             <motion.div
               key={risk.id}
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.25, delay: i * 0.06, ease: 'easeOut' }}
-              className={`flex flex-col rounded-xl border border-slate-200 dark:border-slate-800 border-l-4 bg-white dark:bg-slate-900 p-4 ${sev.border}`}
+              className={`flex flex-col rounded-xl border border-slate-200 dark:border-slate-800 border-l-4 bg-white dark:bg-slate-900 p-4 ${SEVERITY_BORDER[risk.severity]}`}
             >
               <div className="flex items-start justify-between gap-2">
                 <span className="text-sm font-semibold text-slate-800 dark:text-slate-200">{risk.title}</span>
                 {risk.status !== 'existing' && (
-                  <span className={`shrink-0 rounded-full px-1.5 py-0.5 text-xs font-medium ${STATUS_BADGE[risk.status].className}`}>
-                    {STATUS_BADGE[risk.status].label}
+                  <span className={`shrink-0 rounded-full px-1.5 py-0.5 text-xs font-medium ${STATUS_BADGE_CLASS[risk.status]}`}>
+                    {t(`company.labels.status.${risk.status}`)}
                   </span>
                 )}
               </div>
@@ -91,28 +103,27 @@ export function KeyRisksPanel({ overview }) {
 
               <div className="mt-3 flex items-center justify-between gap-2">
                 <div className="flex items-center gap-1.5">
-                  <span className={`h-2 w-2 rounded-full ${sev.dot}`} />
-                  <span className={`text-xs font-medium ${sev.text}`}>{sev.label}</span>
+                  <span className={`h-2 w-2 rounded-full ${SEVERITY_DOT[risk.severity]}`} />
+                  <span className={`text-xs font-medium ${SEVERITY_TEXT[risk.severity]}`}>{t(`company.labels.impact.${risk.severity}`)}</span>
                 </div>
                 {risk.sourceRef && (
                   <SourceExcerptDialog
                     sectionLabel={risk.sourceRef.sectionLabel}
                     excerpt={risk.sourceRef.excerpt}
                     sourceRef={risk.sourceRef.sourceRef}
-                    label="공시 원문"
+                    label={t('company.panels.viewSource')}
                     className="rounded-full border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-2 py-0.5 text-xs font-medium text-slate-600 dark:text-slate-400 hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700 dark:hover:border-blue-800 dark:hover:bg-blue-950/40 dark:hover:text-blue-300"
                   />
                 )}
               </div>
             </motion.div>
-          );
-        })}
+          ))}
       </div>
       )}
 
       {ready && risks.some((r) => r.status === 'removed') && (
         <div className="mt-3">
-          <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-2">이번 분기 제거된 리스크</p>
+          <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-2">{t('company.panels.removedRisks')}</p>
           <div className="flex flex-wrap gap-2">
             {risks.filter((r) => r.status === 'removed').map((r) => (
               <span key={r.id} className="rounded-full bg-slate-100 dark:bg-slate-800 px-3 py-1 text-xs text-slate-400 dark:text-slate-500 line-through">

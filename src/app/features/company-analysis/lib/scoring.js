@@ -1,17 +1,3 @@
-export { SCORE_COMPONENT_LABELS } from '../../../../mocks/companyAnalysis/types';
-
-export const HOP_TYPE_LABELS = {
-  financial_anomaly: '재무제표',
-  note: '주석',
-  mdna: 'MD&A',
-};
-
-export const SEVERITY_LABELS = {
-  high: '높음',
-  medium: '보통',
-  low: '낮음',
-};
-
 /**
  * Deliberately conservative: red is reserved for genuinely high-severity
  * findings (real risk signals), never used decoratively elsewhere in this

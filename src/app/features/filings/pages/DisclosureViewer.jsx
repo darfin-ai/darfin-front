@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router";
-import { ANALYSIS_CATEGORY_LABELS } from "../constants";
+import { getAnalysisCategoryLabel } from "../constants";
+import { useLocale } from "@/app/shared/i18n";
 import {
   AlertTriangle,
   BookA,
@@ -13,10 +14,22 @@ import {
   FileArchive,
   Highlighter,
   Info,
+  Lightbulb,
   Loader2,
   Sparkles,
   Wand2
 } from "lucide-react";
+import {
+  AI_CALLOUT,
+  AI_CALLOUT_BODY,
+  AI_CALLOUT_LEAD,
+  ALERT_ERROR,
+  BTN_PRIMARY,
+  BTN_SECONDARY,
+  CARD,
+  LABEL,
+  META
+} from "@/app/shared/lib/uiRecipes";
 import * as Tabs from "@radix-ui/react-tabs";
 import * as Switch from "@radix-ui/react-switch";
 import {
@@ -112,11 +125,11 @@ function ToggleSwitch({ label, icon, checked, onCheckedChange, disabled, checked
         onCheckedChange={onCheckedChange}
         disabled={disabled}
         className={`relative w-9 h-5 rounded-full transition-colors outline-none cursor-pointer
-          disabled:cursor-not-allowed ${checked ? checkedBg : "bg-slate-300"}`}
+          disabled:cursor-not-allowed ${checked ? checkedBg : "bg-slate-300 dark:bg-slate-600"}`}
       >
-        <Switch.Thumb className="block w-4 h-4 bg-white rounded-full shadow transition-transform translate-x-0.5 data-[state=checked]:translate-x-4.5" />
+        <Switch.Thumb className="block w-4 h-4 bg-white dark:bg-slate-200 rounded-full shadow transition-transform translate-x-0.5 data-[state=checked]:translate-x-4.5" />
       </Switch.Root>
-      <span className="text-xs text-slate-500 select-none whitespace-nowrap">{label}</span>
+      <span className={`${META} select-none whitespace-nowrap`}>{label}</span>
     </div>
   );
 }
@@ -126,6 +139,7 @@ export function DisclosureViewer() {
   const { id: rceptNo } = useParams();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const { t } = useLocale();
 
   const [disclosure, setDisclosure] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -167,7 +181,7 @@ export function DisclosureViewer() {
     setIsLoading(true);
     getDisclosureDetail(rceptNo)
       .then((d) => { if (mounted) setDisclosure(d); })
-      .catch((e) => { if (mounted) setLoadError(e.message ?? "공시 정보를 불러오지 못했습니다."); })
+      .catch((e) => { if (mounted) setLoadError(e.message ?? t("disclosure.viewer.loadError")); })
       .finally(() => { if (mounted) setIsLoading(false); });
     return () => { mounted = false; };
   }, [rceptNo]);
@@ -178,7 +192,7 @@ export function DisclosureViewer() {
     setOriginalTextError(null);
     getDisclosureOriginalText(rceptNo)
       .then((d) => { if (mounted) { setOriginalText(d.text); setOriginalBlocks(d.blocks ?? null); } })
-      .catch((e) => { if (mounted) setOriginalTextError(e.message ?? "공시 원문을 불러오지 못했습니다."); })
+      .catch((e) => { if (mounted) setOriginalTextError(e.message ?? t("disclosure.viewer.originalError")); })
       .finally(() => { if (mounted) setIsLoadingOriginal(false); });
     return () => { mounted = false; };
   }, [rceptNo]);
@@ -196,10 +210,12 @@ export function DisclosureViewer() {
   const companyName = searchParams.get("company") || disclosure?.companyName;
   const hasSummary = Boolean(disclosure?.summaryText);
   const analysisItems = disclosure?.analysisItems ?? [];
-  const criticalAlert = getCriticalAlert(disclosure?.extra);
-  const cardBorderClass = criticalAlert ? "border-red-300 ring-1 ring-red-100" : "border-slate-200";
+  const criticalAlert = getCriticalAlert(disclosure?.extra, t);
+  const cardBorderClass = criticalAlert
+    ? "border-red-300 dark:border-red-800 ring-1 ring-red-100 dark:ring-red-900/50"
+    : "dark:border-slate-800";
   const summaryBadges = hasSummary
-    ? [{ axisLabel: "위험도", riskLabel: disclosure.riskLabel, riskTier: disclosure.riskTier }]
+    ? [{ riskLabel: disclosure.riskLabel, riskTier: disclosure.riskTier }]
     : [];
 
   const highlightCount = analysisItems.filter(
@@ -262,7 +278,7 @@ export function DisclosureViewer() {
     if (isSummarizing || !originalText) return;
     setIsSummarizing(true); setSummarizeError(null);
     try { await generateSummary({ rceptNo, corpName: companyName, dartContext: originalText }); await refreshDetail(); }
-    catch (e) { setSummarizeError(e.message ?? "AI 요약 생성에 실패했습니다."); }
+    catch (e) { setSummarizeError(e.message ?? t("disclosure.viewer.summarizeError")); }
     finally { setIsSummarizing(false); }
   };
 
@@ -270,7 +286,7 @@ export function DisclosureViewer() {
     if (isAnalyzing || !originalText) return;
     setIsAnalyzing(true); setAnalyzeError(null);
     try { await generateAnalysis({ rceptNo, corpName: companyName, dartFullText: originalText }); await refreshDetail(); }
-    catch (e) { setAnalyzeError(e.message ?? "AI 핵심 분석 생성에 실패했습니다."); }
+    catch (e) { setAnalyzeError(e.message ?? t("disclosure.viewer.analyzeError")); }
     finally { setIsAnalyzing(false); }
   };
 
@@ -278,7 +294,7 @@ export function DisclosureViewer() {
     if (isDownloading || !rceptNo) return;
     setIsDownloading(true); setShowDownloadMenu(false);
     try { await downloadDisclosureZip(rceptNo); }
-    catch (e) { window.alert(e.message ?? "원문 ZIP 다운로드에 실패했습니다."); }
+    catch (e) { window.alert(e.message ?? t("disclosure.download.zipError")); }
     finally { setIsDownloading(false); }
   };
 
@@ -286,19 +302,19 @@ export function DisclosureViewer() {
 
   if (isLoading) {
     return (
-      <div className="h-[calc(100vh-11rem)] min-h-[720px] flex items-center justify-center text-slate-400">
+      <div className="h-[calc(100vh-11rem)] min-h-[720px] flex items-center justify-center text-slate-400 dark:text-slate-500">
         <Loader2 size={28} className="animate-spin mr-3" />
-        공시 정보를 불러오는 중입니다...
+        {t("disclosure.viewer.loading")}
       </div>
     );
   }
 
   if (loadError || !disclosure) {
     return (
-      <div className="h-[calc(100vh-11rem)] min-h-[720px] flex flex-col items-center justify-center text-slate-500 gap-3">
-        <AlertTriangle size={32} className="text-red-400" />
-        <p>{loadError ?? "공시 정보를 찾을 수 없습니다."}</p>
-        <Link to="/disclosure" className="text-blue-600 text-sm font-medium hover:underline">공시 통합검색으로 돌아가기</Link>
+      <div className="h-[calc(100vh-11rem)] min-h-[720px] flex flex-col items-center justify-center text-slate-500 dark:text-slate-400 gap-3">
+        <AlertTriangle size={32} className="text-red-400 dark:text-red-500" />
+        <p>{loadError ?? t("disclosure.viewer.notFound")}</p>
+        <Link to="/disclosure" className="text-blue-600 dark:text-blue-400 text-sm font-medium hover:underline">{t("disclosure.viewer.backToSearch")}</Link>
       </div>
     );
   }
@@ -322,9 +338,9 @@ export function DisclosureViewer() {
             key={key}
             data-highlight-key={seg.item.targetKey}
             onClick={() => { setActiveTab("analysis"); setActiveHighlightKey(seg.item.targetKey); setTimeout(() => setActiveHighlightKey(null), 2000); }}
-            className={`bg-yellow-200 rounded-sm px-0.5 cursor-pointer transition-all duration-200
-              ${isActive ? "outline outline-2 outline-offset-1 outline-yellow-500" : ""}`}
-            title={`[${ANALYSIS_CATEGORY_LABELS[seg.item.analysisCategory] ?? seg.item.analysisCategory}] ${seg.item.riskLevel}`}
+            className={`bg-amber-200 dark:bg-amber-900/50 rounded-sm px-0.5 cursor-pointer transition-all duration-200
+              ${isActive ? "outline outline-2 outline-offset-1 outline-amber-500 dark:outline-amber-400" : ""}`}
+            title={`[${getAnalysisCategoryLabel(t, seg.item.analysisCategory)}] ${seg.item.riskLevel}`}
           >{seg.text}</mark>
         );
       }
@@ -338,8 +354,8 @@ export function DisclosureViewer() {
           title={seg.th.definition?.slice(0, 120) + "…"}
           className={`cursor-pointer border-b-2 border-dotted transition-all duration-200 no-underline
             ${isActive
-              ? "border-blue-600 text-blue-900 bg-blue-50"
-              : "border-blue-400 text-blue-800 hover:border-blue-600"}`}
+              ? "border-blue-600 dark:border-blue-500 text-blue-900 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/40"
+              : "border-blue-400 dark:border-blue-500 text-blue-800 dark:text-blue-300 hover:border-blue-600 dark:hover:border-blue-400"}`}
           style={{ textDecoration: "none" }}
         >{seg.text}</abbr>
       );
@@ -362,7 +378,7 @@ export function DisclosureViewer() {
                       key={ci}
                       rowSpan={cell.rowSpan > 1 ? cell.rowSpan : undefined}
                       colSpan={cell.colSpan > 1 ? cell.colSpan : undefined}
-                      className="border border-slate-200 px-2 py-1 align-top text-slate-700 leading-relaxed whitespace-pre-wrap"
+                      className="border border-slate-200 dark:border-slate-700 px-2 py-1 align-top text-slate-700 dark:text-slate-300 leading-relaxed whitespace-pre-wrap"
                     >
                       {renderCellContent(cell.blocks, `${key}-${ri}-${ci}`)}
                     </td>
@@ -379,7 +395,7 @@ export function DisclosureViewer() {
       ? sliceToSegments(originalText, highlightMask, block.charStart, block.charEnd)
       : null;
     return (
-      <p key={key} className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap font-sans mb-3 last:mb-0">
+      <p key={key} className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed whitespace-pre-wrap font-sans mb-3 last:mb-0">
         {segments ? renderSegments(segments, key) : block.text}
       </p>
     );
@@ -397,7 +413,7 @@ export function DisclosureViewer() {
       return cellBlocks.map((cb, cbi) => renderBlock(cb, `${key}-${cbi}`));
     }
     return (
-      <div className="divide-y divide-slate-200 -my-1">
+      <div className="divide-y divide-slate-200 dark:divide-slate-700 -my-1">
         {cellBlocks.map((cb, cbi) => {
           const segments = cb.charStart != null && highlightMask
             ? sliceToSegments(originalText, highlightMask, cb.charStart, cb.charEnd)
@@ -416,54 +432,53 @@ export function DisclosureViewer() {
     <div className="h-[calc(100vh-11rem)] min-h-[720px] flex flex-col -mt-4 animate-in fade-in duration-300">
 
       {/* ── 헤더 ──────────────────────────────────────────────── */}
-      <div className="flex items-center justify-between pb-4 border-b border-slate-200 mb-4">
+      <div className="flex items-center justify-between pb-4 border-b border-slate-200 dark:border-slate-800 mb-4">
         <div className="flex items-center gap-4 min-w-0">
           <button
             type="button"
             onClick={() => navigate(-1)}
-            className="p-2 hover:bg-slate-100 rounded-full text-slate-500 transition-colors"
+            className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full text-slate-500 dark:text-slate-400 transition-colors"
           >
             <ChevronLeft size={20} />
           </button>
           <div className="min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-xs font-semibold px-2 py-0.5 rounded bg-blue-100 text-blue-700">{disclosure.typeLabel}</span>
-              <span className="text-sm text-slate-500">{disclosure.filedAt}</span>
+              <span className="text-xs font-medium px-2 py-0.5 rounded bg-blue-100 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300">{disclosure.typeLabel}</span>
+              <span className={`text-sm ${META}`}>{disclosure.filedAt}</span>
               {hasSummary && <RiskBadge riskLabel={disclosure.riskLabel} riskTier={disclosure.riskTier} size="sm" />}
             </div>
-            <h1 className="text-xl font-bold text-slate-900 mt-1 truncate">{disclosure.title} - {companyName}</h1>
+            <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-100 mt-1 truncate">{disclosure.title} - {companyName}</h1>
           </div>
         </div>
 
         {/* 다운로드 드롭다운 */}
         <div className="relative shrink-0">
           <button onClick={() => setShowDownloadMenu((v) => !v)} disabled={isDownloading}
-            className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-slate-600
-              hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors border border-slate-200 bg-white shadow-sm">
+            className={`flex items-center gap-1.5 ${BTN_SECONDARY} shadow-sm`}>
             {isDownloading ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
-            원문
+            {t("disclosure.viewer.originalShort")}
             <ChevronDown size={14} className={`transition-transform ${showDownloadMenu ? "rotate-180" : ""}`} />
           </button>
           {showDownloadMenu && (
             <>
               <div className="fixed inset-0 z-10" onClick={() => setShowDownloadMenu(false)} />
-              <div className="absolute right-0 top-full mt-1.5 z-20 w-64 bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden">
-                <button onClick={handleOpenDartViewer} className="w-full flex items-start gap-3 px-4 py-3 hover:bg-slate-50 transition-colors text-left">
-                  <ExternalLink size={18} className="text-blue-600 shrink-0 mt-0.5" />
+              <div className="absolute right-0 top-full mt-1.5 z-20 w-64 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-lg overflow-hidden">
+                <button onClick={handleOpenDartViewer} className="w-full flex items-start gap-3 px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors text-left">
+                  <ExternalLink size={18} className="text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
                   <div>
-                    <p className="text-sm font-semibold text-slate-800">DART 공식 뷰어로 열기</p>
-                    <p className="text-xs text-slate-500 mt-0.5 leading-snug">DART 사이트에서 HWP·PDF 형태로 원문을 열람합니다</p>
+                    <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">{t("disclosure.download.openDart")}</p>
+                    <p className={`${META} mt-0.5 leading-snug`}>{t("disclosure.download.openDartDesc")}</p>
                   </div>
                 </button>
-                <div className="border-t border-slate-100" />
+                <div className="border-t border-slate-100 dark:border-slate-800" />
                 <button onClick={handleDownloadZip} disabled={isDownloading}
-                  className="w-full flex items-start gap-3 px-4 py-3 hover:bg-slate-50 transition-colors text-left disabled:opacity-50">
-                  <FileArchive size={18} className="text-slate-500 shrink-0 mt-0.5" />
+                  className="w-full flex items-start gap-3 px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors text-left disabled:opacity-50">
+                  <FileArchive size={18} className="text-slate-500 dark:text-slate-400 shrink-0 mt-0.5" />
                   <div>
-                    <p className="text-sm font-semibold text-slate-800">원문 ZIP 다운로드
+                    <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">{t("disclosure.download.downloadZip")}
                       {isDownloading && <Loader2 size={12} className="inline-block ml-1.5 animate-spin" />}
                     </p>
-                    <p className="text-xs text-slate-500 mt-0.5">DART Open API 원본 파일(.zip) 저장</p>
+                    <p className={`${META} mt-0.5`}>{t("disclosure.download.downloadZipDesc")}</p>
                   </div>
                 </button>
               </div>
@@ -475,28 +490,36 @@ export function DisclosureViewer() {
       <div className="flex-1 flex gap-6 overflow-hidden">
 
         {/* ── 좌측: 공시 원문 패널 ──────────────────────────── */}
-        <section className="flex-1 bg-white border border-slate-200 rounded-2xl shadow-sm flex flex-col overflow-hidden">
+        <section className={`flex-1 ${CARD} shadow-sm flex flex-col overflow-hidden`}>
 
           {/* 패널 헤더 — 두 개 독립 토글 */}
-          <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 bg-slate-50/50 shrink-0 gap-4">
-            <div className="flex items-center gap-2 text-sm font-medium text-slate-700 shrink-0">
-              <BookOpen size={16} className="text-blue-600" />
-              공시 원문
+          <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50 shrink-0 gap-4">
+            <div className={`flex items-center gap-2 ${LABEL} shrink-0`}>
+              <BookOpen size={16} className="text-blue-600 dark:text-blue-400" />
+              {t("disclosure.viewer.original")}
             </div>
             {!isLoadingOriginal && !originalTextError && (
               <div className="flex items-center gap-4">
                 <ToggleSwitch
-                  label={`핵심 문장 하이라이트${highlightCount > 0 ? ` (${highlightCount})` : ""}`}
-                  icon={<Highlighter size={14} className={highlightEnabled ? "text-yellow-600" : "text-slate-400"} />}
+                  label={t("disclosure.viewer.highlightToggle", {
+                    count: highlightCount > 0 ? ` (${highlightCount})` : "",
+                  })}
+                  icon={<Highlighter size={14} className={highlightEnabled ? "text-amber-600 dark:text-amber-400" : "text-slate-400 dark:text-slate-500"} />}
                   checked={highlightEnabled}
                   onCheckedChange={setHighlightEnabled}
                   disabled={highlightCount === 0}
-                  checkedBg="bg-yellow-500"
+                  checkedBg="bg-amber-500"
                 />
-                <div className="w-px h-4 bg-slate-200" />
+                <div className="w-px h-4 bg-slate-200 dark:bg-slate-700" />
                 <ToggleSwitch
-                  label={isLoadingTerms ? "로딩 중..." : `전문용어${termHighlights.length > 0 ? ` (${uniqueTerms.length})` : ""}`}
-                  icon={<BookA size={14} className={termsEnabled ? "text-blue-600" : "text-slate-400"} />}
+                  label={
+                    isLoadingTerms
+                      ? t("disclosure.viewer.termsLoading")
+                      : t("disclosure.viewer.termsToggle", {
+                          count: termHighlights.length > 0 ? ` (${uniqueTerms.length})` : "",
+                        })
+                  }
+                  icon={<BookA size={14} className={termsEnabled ? "text-blue-600 dark:text-blue-400" : "text-slate-400 dark:text-slate-500"} />}
                   checked={termsEnabled}
                   onCheckedChange={setTermsEnabled}
                   disabled={!originalText || isLoadingTerms}
@@ -508,17 +531,17 @@ export function DisclosureViewer() {
 
           {/* 범례 */}
           {((highlightEnabled && highlightCount > 0) || (termsEnabled && termHighlights.length > 0)) && (
-            <div className="flex items-center gap-4 px-4 py-1.5 bg-slate-50 border-b border-slate-100 text-xs text-slate-500 shrink-0">
+            <div className={`flex items-center gap-4 px-4 py-1.5 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800 ${META} shrink-0`}>
               {highlightEnabled && highlightCount > 0 && (
                 <span className="flex items-center gap-1.5">
-                  <span className="inline-block w-4 h-3 rounded-sm bg-yellow-200 border border-yellow-400" />
-                  AI 분석 핵심 문장 (클릭 → 분석 탭)
+                  <span className="inline-block w-4 h-3 rounded-sm bg-amber-200 dark:bg-amber-900/50 border border-amber-400 dark:border-amber-600" />
+                  {t("disclosure.viewer.legendHighlight")}
                 </span>
               )}
               {termsEnabled && termHighlights.length > 0 && (
                 <span className="flex items-center gap-1.5">
-                  <span className="inline-block text-blue-800 border-b-2 border-dotted border-blue-500">用語</span>
-                  전문용어 (클릭 → 용어 사전 탭)
+                  <span className="inline-block text-blue-800 dark:text-blue-300 border-b-2 border-dotted border-blue-500 dark:border-blue-500">用語</span>
+                  {t("disclosure.viewer.legendTerms")}
                 </span>
               )}
             </div>
@@ -526,21 +549,21 @@ export function DisclosureViewer() {
 
           {/* 원문 본문 */}
           {isLoadingOriginal ? (
-            <div className="flex-1 flex flex-col items-center justify-center gap-3 p-8 text-slate-400">
+            <div className="flex-1 flex flex-col items-center justify-center gap-3 p-8 text-slate-400 dark:text-slate-500">
               <Loader2 size={28} className="animate-spin" />
-              <p className="text-sm">DART에서 공시 원문을 불러오는 중입니다...</p>
+              <p className="text-sm">{t("disclosure.viewer.loadingOriginal")}</p>
             </div>
           ) : originalTextError ? (
-            <div className="flex-1 flex flex-col items-center justify-center gap-3 p-8 text-center text-slate-400">
-              <AlertTriangle size={32} className="text-red-400" />
-              <p className="text-sm text-red-600">{originalTextError}</p>
+            <div className="flex-1 flex flex-col items-center justify-center gap-3 p-8 text-center text-slate-400 dark:text-slate-500">
+              <AlertTriangle size={32} className="text-red-400 dark:text-red-500" />
+              <p className="text-sm text-red-600 dark:text-red-400">{originalTextError}</p>
             </div>
           ) : (
             <div className="flex-1 overflow-y-auto p-6" ref={originalPanelRef}>
               {originalBlocks && originalBlocks.length > 0 ? (
                 originalBlocks.map((block, bi) => renderBlock(block, `b${bi}`))
               ) : (
-                <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap font-sans">
+                <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed whitespace-pre-wrap font-sans">
                   {highlightMask
                     ? renderSegments(sliceToSegments(originalText, highlightMask, 0, originalText.length), "fallback")
                     : originalText}
@@ -554,22 +577,22 @@ export function DisclosureViewer() {
         <Tabs.Root
           value={activeTab}
           onValueChange={setActiveTab}
-          className={`w-[420px] flex flex-col bg-white border rounded-2xl shadow-sm overflow-hidden shrink-0 ${cardBorderClass}`}
+          className={`w-[420px] flex flex-col ${CARD} shadow-sm overflow-hidden shrink-0 ${cardBorderClass}`}
         >
-          <Tabs.List className="flex border-b border-slate-200">
-            <ViewerTab value="summary" activeTab={activeTab} activeClass="border-blue-600 text-blue-600">AI 요약</ViewerTab>
-            <ViewerTab value="analysis" activeTab={activeTab} activeClass="border-emerald-500 text-emerald-600">
-              핵심 분석
+          <Tabs.List className="flex border-b border-slate-200 dark:border-slate-800">
+            <ViewerTab value="summary" activeTab={activeTab} activeClass="border-blue-600 text-blue-600 dark:text-blue-400">{t("disclosure.viewer.tabSummary")}</ViewerTab>
+            <ViewerTab value="analysis" activeTab={activeTab} activeClass="border-blue-600 text-blue-600 dark:text-blue-400">
+              {t("disclosure.viewer.tabAnalysis")}
               {analysisItems.length > 0 && (
-                <span className="ml-1.5 text-[10px] bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded-full font-bold">
+                <span className="ml-1.5 text-[10px] bg-blue-100 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 px-1.5 py-0.5 rounded-full font-medium">
                   {analysisItems.length}
                 </span>
               )}
             </ViewerTab>
-            <ViewerTab value="glossary" activeTab={activeTab} activeClass="border-indigo-500 text-indigo-600">
-              용어 사전
+            <ViewerTab value="glossary" activeTab={activeTab} activeClass="border-blue-600 text-blue-600 dark:text-blue-400">
+              {t("disclosure.viewer.tabGlossary")}
               {uniqueTerms.length > 0 && (
-                <span className="ml-1.5 text-[10px] bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded-full font-bold">
+                <span className="ml-1.5 text-[10px] bg-blue-100 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 px-1.5 py-0.5 rounded-full font-medium">
                   {uniqueTerms.length}
                 </span>
               )}
@@ -584,24 +607,30 @@ export function DisclosureViewer() {
               {hasSummary ? (
                 <>
                   <div className="flex items-center justify-between gap-2 mb-2 flex-wrap">
-                    <div className="flex items-center gap-2 text-blue-600 font-bold"><Sparkles size={18} /><span>핵심 내용 정리</span></div>
+                    <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400 font-semibold"><Sparkles size={18} /><span>{t("disclosure.viewer.summaryTitle")}</span></div>
                     <RiskBadgeGroup badges={summaryBadges} size="md" />
                   </div>
-                  <p className="text-base font-semibold text-slate-800 leading-relaxed">{disclosure.summaryText}</p>
-                  <p className="text-base text-slate-600 leading-relaxed bg-blue-50 p-4 rounded-lg">{disclosure.investorComment}</p>
+                  <p className="text-base font-semibold text-slate-800 dark:text-slate-100 leading-relaxed">{disclosure.summaryText}</p>
+                  <div className={`${AI_CALLOUT} gap-3`}>
+                    <Lightbulb size={15} className="mt-0.5 shrink-0 text-blue-500 dark:text-blue-400" />
+                    <p className={AI_CALLOUT_BODY}>
+                      <span className={AI_CALLOUT_LEAD}>{t("disclosure.viewer.investorPerspective")} </span>
+                      {disclosure.investorComment}
+                    </p>
+                  </div>
                 </>
               ) : (
                 <>
-                  <EmptyState icon={<Sparkles size={28} className="text-slate-300" />} message="아직 생성된 AI 요약이 없습니다." />
-                  <GenerateButton label="압축 후 요약하기" loadingLabel="요약 생성 중..." isLoading={isSummarizing} disabled={!originalText} onClick={handleSummarize} colorClass="bg-blue-600 hover:bg-blue-700" />
-                  {summarizeError && <p className="text-xs text-red-600 text-center">{summarizeError}</p>}
+                  <EmptyState icon={<Sparkles size={28} className="text-slate-300 dark:text-slate-600" />} message={t("disclosure.viewer.emptySummary")} />
+                  <GenerateButton label={t("disclosure.viewer.generateSummary")} loadingLabel={t("disclosure.viewer.generatingSummary")} isLoading={isSummarizing} disabled={!originalText} onClick={handleSummarize} />
+                  {summarizeError && <p className="text-xs text-red-600 dark:text-red-400 text-center">{summarizeError}</p>}
                 </>
               )}
             </Tabs.Content>
 
             {/* 핵심 분석 탭 */}
             <Tabs.Content value="analysis" className="space-y-3 animate-in fade-in outline-none">
-              <div className="flex items-center gap-2 text-emerald-600 font-bold mb-4"><Highlighter size={18} /><span>AI 근거 분석</span></div>
+              <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400 font-semibold mb-4"><Highlighter size={18} /><span>{t("disclosure.viewer.analysisTitle")}</span></div>
               {analysisItems.length > 0 ? (
                 <div className="space-y-3">
                   {analysisItems.map((item, index) => {
@@ -614,62 +643,61 @@ export function DisclosureViewer() {
                       <div
                         key={`${item.analysisCategory}-${index}`}
                         onClick={() => hasCoords && handleAnalysisItemClick(item)}
-                        className={`border border-slate-200 rounded-xl transition-all duration-200 bg-white
+                        className={`border border-slate-200 dark:border-slate-800 rounded-xl transition-all duration-200 bg-white dark:bg-slate-900
                           ${isSingle ? "p-5" : "p-4"}
-                          ${isActive ? "ring-2 ring-yellow-400 ring-offset-1 border-yellow-300" : ""}
-                          ${hasCoords ? "cursor-pointer hover:shadow-sm hover:border-slate-300" : ""}`}
+                          ${isActive ? "ring-2 ring-amber-400 dark:ring-amber-500 ring-offset-1 dark:ring-offset-slate-900 border-amber-300 dark:border-amber-700" : ""}
+                          ${hasCoords ? "cursor-pointer hover:shadow-sm hover:border-slate-300 dark:hover:border-slate-700" : ""}`}
                       >
                         <div className="flex items-start justify-between gap-2 mb-2">
                           <div className="flex items-center gap-1.5 flex-wrap">
-                            <h4 className={`font-bold text-slate-800 ${isSingle ? "text-base" : "text-sm"}`}>{ANALYSIS_CATEGORY_LABELS[item.analysisCategory] ?? item.analysisCategory}</h4>
-                            {hasCoords && <span className="flex items-center gap-0.5 text-[10px] text-slate-400"><ChevronRight size={10} />원문으로</span>}
+                            <h4 className={`font-semibold text-slate-800 dark:text-slate-100 ${isSingle ? "text-base" : "text-sm"}`}>{getAnalysisCategoryLabel(t, item.analysisCategory)}</h4>
+                            {hasCoords && <span className={`flex items-center gap-0.5 text-[10px] ${META}`}><ChevronRight size={10} />{t("disclosure.viewer.goToOriginal")}</span>}
                           </div>
-                          <RiskBadge axisLabel="위험도" riskLabel={item.riskLevel} riskTier={item.riskTier} size="sm" />
+                          <RiskBadge riskLabel={item.riskLevel} riskTier={item.riskTier} size="sm" />
                         </div>
-                        <p className={`text-slate-500 mb-2 bg-yellow-50 border border-yellow-100 px-2 py-1 rounded italic leading-relaxed ${isSingle ? "text-sm" : "text-xs"}`}>"{item.targetKey}"</p>
-                        <p className={`text-slate-600 leading-relaxed ${isSingle ? "text-base" : "text-sm"}`}>{item.materialImpact}</p>
+                        <p className={`text-slate-500 dark:text-slate-400 mb-2 bg-amber-50 dark:bg-amber-950/30 border border-amber-100 dark:border-amber-900/50 px-2 py-1 rounded italic leading-relaxed ${isSingle ? "text-sm" : "text-xs"}`}>"{item.targetKey}"</p>
+                        <p className={`text-slate-600 dark:text-slate-300 leading-relaxed ${isSingle ? "text-base" : "text-sm"}`}>{item.materialImpact}</p>
                       </div>
                     );
                   })}
                 </div>
               ) : (
                 <>
-                  <EmptyState icon={<Highlighter size={28} className="text-slate-300" />} message="아직 생성된 AI 분석이 없습니다." />
-                  <GenerateButton label="압축 후 분석하기" loadingLabel="분석 생성 중..." isLoading={isAnalyzing} disabled={!originalText} onClick={handleAnalyze} colorClass="bg-emerald-600 hover:bg-emerald-700" />
-                  {analyzeError && <p className="text-xs text-red-600 text-center">{analyzeError}</p>}
+                  <EmptyState icon={<Highlighter size={28} className="text-slate-300 dark:text-slate-600" />} message={t("disclosure.viewer.emptyAnalysis")} />
+                  <GenerateButton label={t("disclosure.viewer.generateAnalysis")} loadingLabel={t("disclosure.viewer.generatingAnalysis")} isLoading={isAnalyzing} disabled={!originalText} onClick={handleAnalyze} />
+                  {analyzeError && <p className="text-xs text-red-600 dark:text-red-400 text-center">{analyzeError}</p>}
                 </>
               )}
             </Tabs.Content>
 
             {/* 용어 사전 탭 */}
             <Tabs.Content value="glossary" className="animate-in fade-in outline-none">
-              <div className="flex items-center gap-2 text-indigo-600 font-bold mb-3">
+              <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400 font-semibold mb-3">
                 <Info size={18} />
-                <span>금융·공시 전문용어 사전</span>
+                <span>{t("disclosure.viewer.glossaryTitle")}</span>
               </div>
 
               {!termsEnabled ? (
                 <div className="text-center py-8">
-                  <p className="text-sm text-slate-500 mb-3">전문용어 표시를 켜면 이 문서에서 발견된 용어 목록이 표시됩니다.</p>
+                  <p className={`text-sm ${META} mb-3`}>{t("disclosure.viewer.glossaryHint")}</p>
                   <button
                     onClick={() => setTermsEnabled(true)}
-                    className="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors"
+                    className={BTN_PRIMARY}
                   >
-                    전문용어 표시 켜기
+                    {t("disclosure.viewer.glossaryEnable")}
                   </button>
                 </div>
               ) : isLoadingTerms ? (
-                <div className="flex items-center justify-center gap-2 py-8 text-slate-400">
+                <div className="flex items-center justify-center gap-2 py-8 text-slate-400 dark:text-slate-500">
                   <Loader2 size={20} className="animate-spin" />
-                  <span className="text-sm">원문에서 전문용어를 찾는 중...</span>
+                  <span className="text-sm">{t("disclosure.viewer.glossaryLoading")}</span>
                 </div>
               ) : uniqueTerms.length === 0 ? (
-                <EmptyState icon={<Info size={28} className="text-slate-300" />} message="이 원문에서 사전에 등록된 전문용어를 찾지 못했습니다." />
+                <EmptyState icon={<Info size={28} className="text-slate-300 dark:text-slate-600" />} message={t("disclosure.viewer.glossaryEmpty")} />
               ) : (
                 <>
-                  <p className="text-xs text-slate-500 mb-3">
-                    이 원문에서 <strong>{uniqueTerms.length}</strong>개의 전문용어를 찾았습니다.
-                    용어를 클릭하면 원문에서 해당 위치로 이동합니다.
+                  <p className={`${META} mb-3`}>
+                    {t("disclosure.viewer.glossaryFound", { count: uniqueTerms.length })}
                   </p>
                   <div className="space-y-2" ref={glossaryListRef}>
                     {uniqueTerms.map((th) => {
@@ -683,27 +711,27 @@ export function DisclosureViewer() {
                           onClick={() => handleTermClick(th.termId)}
                           className={`border rounded-xl px-3 py-2.5 cursor-pointer transition-all duration-200
                             ${isActive
-                              ? "border-blue-400 bg-blue-50 ring-2 ring-blue-200"
-                              : "border-slate-100 hover:border-blue-200 hover:bg-slate-50"}`}
+                              ? "border-blue-400 dark:border-blue-600 bg-blue-50 dark:bg-blue-950/40 ring-2 ring-blue-200 dark:ring-blue-800"
+                              : "border-slate-100 dark:border-slate-800 hover:border-blue-200 dark:hover:border-blue-700 hover:bg-slate-50 dark:hover:bg-slate-800/50"}`}
                         >
                           <div className="flex items-center justify-between gap-2 mb-1">
                             <p className={`text-sm font-semibold border-b-2 border-dotted inline pb-px
-                              ${isActive ? "border-blue-600 text-blue-900" : "border-blue-400 text-blue-800"}`}>
+                              ${isActive ? "border-blue-600 dark:border-blue-500 text-blue-900 dark:text-blue-300" : "border-blue-400 dark:border-blue-500 text-blue-800 dark:text-blue-300"}`}>
                               {th.term}
                             </p>
                             <div className="flex items-center gap-1.5 shrink-0">
-                              <span className="text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded font-mono">
+                              <span className="text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 px-1.5 py-0.5 rounded font-mono">
                                 {th.category}
                               </span>
                               {count > 1 && (
-                                <span className="text-[10px] bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded">
-                                  {count}회
+                                <span className="text-[10px] bg-blue-100 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 px-1.5 py-0.5 rounded">
+                                  {count}{t("disclosure.risk.countSuffix")}
                                 </span>
                               )}
-                              <ChevronRight size={12} className="text-slate-400" />
+                              <ChevronRight size={12} className="text-slate-400 dark:text-slate-500" />
                             </div>
                           </div>
-                          <p className="text-xs text-slate-500 leading-relaxed line-clamp-2">
+                          <p className={`text-xs ${META} leading-relaxed line-clamp-2`}>
                             {th.definition}
                           </p>
                         </div>
@@ -726,17 +754,16 @@ function ViewerTab({ value, activeTab, activeClass, children }) {
   return (
     <Tabs.Trigger value={value}
       className={`flex-1 py-3 text-sm font-medium text-center border-b-2 transition-colors flex items-center justify-center gap-1
-        ${activeTab === value ? activeClass : "border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50"}`}>
+        ${activeTab === value ? activeClass : "border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"}`}>
       {children}
     </Tabs.Trigger>
   );
 }
 
-function GenerateButton({ label, loadingLabel, isLoading, disabled, onClick, colorClass }) {
+function GenerateButton({ label, loadingLabel, isLoading, disabled, onClick }) {
   return (
     <button type="button" onClick={onClick} disabled={isLoading || disabled}
-      className={`w-full py-3 text-white rounded-xl font-bold text-sm transition-colors shadow-sm
-        flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed ${colorClass}`}>
+      className={`w-full py-3 ${BTN_PRIMARY} !h-auto rounded-xl shadow-sm`}>
       {isLoading ? <><Loader2 size={16} className="animate-spin" />{loadingLabel}</> : <><Wand2 size={16} />{label}</>}
     </button>
   );
@@ -744,7 +771,7 @@ function GenerateButton({ label, loadingLabel, isLoading, disabled, onClick, col
 
 function EmptyState({ icon, message }) {
   return (
-    <div className="flex flex-col items-center justify-center gap-3 py-12 text-center text-slate-400">
+    <div className="flex flex-col items-center justify-center gap-3 py-12 text-center text-slate-400 dark:text-slate-500">
       {icon}<p className="text-sm">{message}</p>
     </div>
   );
@@ -753,27 +780,39 @@ function EmptyState({ icon, message }) {
 function CriticalAlertBanner({ message, detail }) {
   if (!message) return null;
   return (
-    <div className="flex items-start gap-3 bg-red-50 border border-red-200 rounded-xl px-4 py-3 mb-4">
-      <AlertTriangle size={20} className="text-red-600 shrink-0 mt-0.5" />
+    <div className={`flex items-start gap-3 ${ALERT_ERROR} mb-4`}>
+      <AlertTriangle size={20} className="text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
       <div>
-        <p className="text-sm font-bold text-red-800">{message}</p>
-        {detail && <p className="text-xs text-red-700 mt-0.5">{detail}</p>}
+        <p className="text-sm font-semibold text-red-800 dark:text-red-300">{message}</p>
+        {detail && <p className="text-xs text-red-700 dark:text-red-400 mt-0.5">{detail}</p>}
       </div>
     </div>
   );
 }
 
-function getCriticalAlert(extraJson) {
+function getCriticalAlert(extraJson, t) {
   if (!extraJson) return null;
   let extra;
   try { extra = typeof extraJson === "string" ? JSON.parse(extraJson) : extraJson; } catch { return null; }
   if (extra?.auditOpinion && extra.auditOpinion !== "적정")
-    return { message: `감사의견 ${extra.auditOpinion}: 상장유지 및 거래정지 가능성 확인 필요`, detail: "감사의견은 다른 지표보다 우선해서 검토해야 하는 위험 신호입니다." };
+    return {
+      message: t("disclosure.criticalAlerts.auditOpinion.message", { opinion: extra.auditOpinion }),
+      detail: t("disclosure.criticalAlerts.auditOpinion.detail"),
+    };
   if (extra?.isTrueSaleConfirmed === false)
-    return { message: "진정한 양도 여부가 불확실한 자산유동화 위험", detail: "자산 보호 범위와 투자자 상환 가능성을 추가로 확인해야 합니다." };
+    return {
+      message: t("disclosure.criticalAlerts.trueSaleRisk.message"),
+      detail: t("disclosure.criticalAlerts.trueSaleRisk.detail"),
+    };
   if (extra?.willDelist === true)
-    return { message: "상장폐지 추진 가능성 확인 필요", detail: "공개매수 이후 상장폐지 절차가 진행될 수 있습니다." };
+    return {
+      message: t("disclosure.criticalAlerts.willDelist.message"),
+      detail: t("disclosure.criticalAlerts.willDelist.detail"),
+    };
   if (extra?.hasInjunctionRequest === true)
-    return { message: "가처분 신청 포함으로 의사결정 효력 정지 가능성", detail: "경영 의사결정이 지연되거나 무효화될 위험이 있습니다." };
+    return {
+      message: t("disclosure.criticalAlerts.injunction.message"),
+      detail: t("disclosure.criticalAlerts.injunction.detail"),
+    };
   return null;
 }

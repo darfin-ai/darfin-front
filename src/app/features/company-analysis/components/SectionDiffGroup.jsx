@@ -1,5 +1,6 @@
 import { motion } from 'motion/react';
-import { DIFF_ANALYSIS_LABELS } from '../lib/comparison';
+import { useLocale } from '../../../shared/i18n';
+import { diffAnalysisLabel } from '../lib/i18n';
 import { DiffEntryCard } from './DiffEntryCard';
 
 /**
@@ -9,6 +10,8 @@ import { DiffEntryCard } from './DiffEntryCard';
  * }} props
  */
 export function SectionDiffGroup({ group, currentLabel, qoqLabel, yoyLabel, index = 0 }) {
+  const { t } = useLocale();
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }}
@@ -19,7 +22,7 @@ export function SectionDiffGroup({ group, currentLabel, qoqLabel, yoyLabel, inde
       <div className="mb-3 flex items-center gap-2">
         <h3 className="text-base font-semibold text-slate-800 dark:text-slate-200">{group.sectionLabel}</h3>
         <span className="rounded-full border border-violet-200 dark:border-violet-800 bg-violet-50 dark:bg-violet-950/40 px-2 py-0.5 text-xs font-medium text-violet-700 dark:text-violet-300">
-          {DIFF_ANALYSIS_LABELS[group.analysisType]}
+          {diffAnalysisLabel(t, group.analysisType)}
         </span>
       </div>
 
@@ -30,13 +33,13 @@ export function SectionDiffGroup({ group, currentLabel, qoqLabel, yoyLabel, inde
             <div key={block.comparisonType} className="border-t border-slate-100 dark:border-slate-800 pt-3 first:border-t-0 first:pt-0">
               <div className="mb-2">
                 <span className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                  {block.comparisonType} · {baseline} 대비
+                  {t('company.panels.vsBaseline', { type: block.comparisonType, baseline })}
                 </span>
                 <p className="mt-0.5 text-xs text-slate-400 dark:text-slate-500">{block.goal}</p>
               </div>
 
               {block.entries.length === 0 ? (
-                <p className="text-sm text-slate-400 dark:text-slate-500">변경 사항이 감지되지 않았어요.</p>
+                <p className="text-sm text-slate-400 dark:text-slate-500">{t('company.panels.noDiff')}</p>
               ) : (
                 <div className="space-y-2">
                   {block.entries.map((entry, i) => (

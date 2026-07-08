@@ -1,24 +1,23 @@
 import { useState } from 'react';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
 import { motion } from 'motion/react';
+import { useLocale } from '../../../shared/i18n';
 import { SourceExcerptDialog } from './SourceExcerptDialog';
 import { SoWhatCallout } from './SoWhatCallout';
 import { isAiReady } from '../lib/aiStatus';
 
-// 지분율 내림차순(백엔드 정렬)에 맞춰 진한 색부터 배정한다 — API의 주주
-// 항목엔 유형 구분 필드가 없어 인덱스 기반으로만 칠할 수 있다.
 const SLICE_COLORS = ['#1e40af', '#3b82f6', '#6366f1', '#8b5cf6', '#0ea5e9', '#14b8a6', '#64748b', '#94a3b8'];
 
 const sliceColor = (index) => SLICE_COLORS[index % SLICE_COLORS.length];
 
-function CustomTooltip({ active, payload }) {
+function CustomTooltip({ active, payload, t }) {
   if (!active || !payload?.length) return null;
   const { name, detail, share } = payload[0].payload;
   return (
     <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm shadow-md">
       <p className="font-semibold text-slate-800 dark:text-slate-100">{name}</p>
       <p className="text-xs text-slate-500 dark:text-slate-400">{detail}</p>
-      <p className="mt-1 text-slate-500 dark:text-slate-400">지분율 <span className="font-semibold text-slate-800 dark:text-slate-100">{share}%</span></p>
+      <p className="mt-1 text-slate-500 dark:text-slate-400">{t('company.panels.shareRatio')} <span className="font-semibold text-slate-800 dark:text-slate-100">{share}%</span></p>
     </div>
   );
 }
@@ -41,6 +40,7 @@ function DonutCenter({ shareholders, activeIdx }) {
  * @param {{ overview: import('../../../../mocks/companyAnalysis/types').CompanyOverview }} props
  */
 export function ShareholderPanel({ overview }) {
+  const { t } = useLocale();
   const shareholders = overview.shareholders ?? [];
   const [activeIdx, setActiveIdx] = useState(null);
 
@@ -53,14 +53,14 @@ export function ShareholderPanel({ overview }) {
     <section aria-labelledby="shareholder-heading">
       <div className="mb-4 flex items-center justify-between gap-3">
         <h2 id="shareholder-heading" className="text-lg font-semibold tracking-tight text-slate-900 dark:text-slate-100">
-          주주 구성
+          {t('company.panels.shareholders')}
         </h2>
         {overview.shareholderSourceRef && (
           <SourceExcerptDialog
             sectionLabel={overview.shareholderSourceRef.sectionLabel}
             excerpt={overview.shareholderSourceRef.excerpt}
             sourceRef={overview.shareholderSourceRef.sourceRef}
-            label="공시 원문 보기"
+            label={t('company.panels.viewSourceFull')}
             className="rounded-full border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-2.5 py-1 text-xs font-medium text-slate-600 dark:text-slate-400 hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700 dark:hover:border-blue-800 dark:hover:bg-blue-950/40 dark:hover:text-blue-300"
           />
         )}
@@ -69,12 +69,11 @@ export function ShareholderPanel({ overview }) {
       <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4">
         {shareholders.length === 0 && (
           <p className="rounded-md border border-dashed border-slate-200 dark:border-slate-700 px-4 py-6 text-center text-sm text-slate-400 dark:text-slate-500">
-            최근 공시에서 주주 구성 내역을 찾지 못했어요.
+            {t('company.panels.noShareholderData')}
           </p>
         )}
         {shareholders.length > 0 && (
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-          {/* Donut */}
           <div className="relative mx-auto h-40 w-40 shrink-0 sm:mx-0">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
@@ -99,13 +98,12 @@ export function ShareholderPanel({ overview }) {
                     />
                   ))}
                 </Pie>
-                <Tooltip content={<CustomTooltip />} />
+                <Tooltip content={<CustomTooltip t={t} />} />
               </PieChart>
             </ResponsiveContainer>
             <DonutCenter shareholders={shareholders} activeIdx={activeIdx} />
           </div>
 
-          {/* Legend */}
           <div className="flex-1 space-y-2">
             {shareholders.map((h, i) => (
               <motion.div

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
+import { useLocale } from '../../../shared/i18n';
 import { groupDiffsBySection, getFilingContext, baselineLabel } from '../lib/comparison';
 import { SectionDiffGroup } from './SectionDiffGroup';
 import { ComparisonModeSelector } from './ComparisonModeSelector';
@@ -8,6 +9,7 @@ import { ComparisonModeSelector } from './ComparisonModeSelector';
  * @param {{ diffs: import('../../../../mocks/companyAnalysis/types').SectionDiffEntry[], recentFilings: import('../../../../mocks/companyAnalysis/types').RecentFiling[] }} props
  */
 export function SectionDiffList({ diffs, recentFilings }) {
+  const { t } = useLocale();
   const [mode, setMode] = useState('all');
   const filingContext = getFilingContext(recentFilings ?? []);
 
@@ -21,14 +23,11 @@ export function SectionDiffList({ diffs, recentFilings }) {
   return (
     <section aria-labelledby="section-diffs-heading">
       <h2 id="section-diffs-heading" className="mb-4 text-lg font-semibold tracking-tight text-slate-900 dark:text-slate-100">
-        공시 변경
+        {t('company.detail.tabDiffs')}
       </h2>
 
       <ComparisonModeSelector filingContext={filingContext} mode={mode} onChange={setMode} className="mb-6" />
 
-      {/* Keyed by `mode` so switching QoQ/YoY/전체 crossfades the whole list —
-          a visible signal that the content below just changed, not just an
-          instant swap. */}
       <AnimatePresence mode="wait">
         {groups.length === 0 ? (
           <motion.p
@@ -39,7 +38,7 @@ export function SectionDiffList({ diffs, recentFilings }) {
             transition={{ duration: 0.2, ease: 'easeOut' }}
             className="rounded-xl border border-dashed border-slate-200 dark:border-slate-700 p-6 text-center text-sm text-slate-400 dark:text-slate-500"
           >
-            선택한 기준에 해당하는 항목이 없어요.
+            {t('company.panels.noItemsForMode')}
           </motion.p>
         ) : (
           <motion.div

@@ -1,4 +1,5 @@
 import { motion } from 'motion/react';
+import { useLocale } from '../../../shared/i18n';
 import { SourceExcerptDialog } from './SourceExcerptDialog';
 import { SoWhatCallout } from './SoWhatCallout';
 import { isAiReady } from '../lib/aiStatus';
@@ -17,6 +18,7 @@ const BAR_COLORS = [
  * @param {{ overview: import('../../../../mocks/companyAnalysis/types').CompanyOverview }} props
  */
 export function ProductRevenuePanel({ overview }) {
+  const { t } = useLocale();
   const products = overview.products ?? [];
   const maxShare = Math.max(...products.map((p) => p.share), 1);
 
@@ -24,14 +26,14 @@ export function ProductRevenuePanel({ overview }) {
     <section aria-labelledby="product-heading">
       <div className="mb-4 flex items-center justify-between gap-3">
         <h2 id="product-heading" className="text-lg font-semibold tracking-tight text-slate-900 dark:text-slate-100">
-          주요 제품·서비스
+          {t('company.panels.products')}
         </h2>
         {overview.productSourceRef && (
           <SourceExcerptDialog
             sectionLabel={overview.productSourceRef.sectionLabel}
             excerpt={overview.productSourceRef.excerpt}
             sourceRef={overview.productSourceRef.sourceRef}
-            label="공시 원문 보기"
+            label={t('company.panels.viewSourceFull')}
             className="rounded-full border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-2.5 py-1 text-xs font-medium text-slate-600 dark:text-slate-400 hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700 dark:hover:border-blue-800 dark:hover:bg-blue-950/40 dark:hover:text-blue-300"
           />
         )}
@@ -59,7 +61,7 @@ export function ProductRevenuePanel({ overview }) {
           ))}
         </div>
 
-        <p className="mt-4 text-xs text-slate-400 dark:text-slate-500">매출액 기준 비중 (2026Q1)</p>
+        <p className="mt-4 text-xs text-slate-400 dark:text-slate-500">{t('company.panels.revenueShareNote')}</p>
 
         <SoWhatCallout ready={isAiReady(overview)} insight={overview.productInsight} />
       </div>

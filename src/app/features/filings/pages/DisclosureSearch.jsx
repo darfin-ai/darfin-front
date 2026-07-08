@@ -42,17 +42,33 @@ import {
 } from "lucide-react";
 import { DayPicker } from "react-day-picker";
 import { format } from "date-fns";
-import { ko } from "date-fns/locale";
 import * as Popover from "@radix-ui/react-popover";
-import { DISCLOSURE_GROUPS } from "../constants";
+import { DISCLOSURE_GROUPS, getDisclosureGroupLabel } from "../constants";
+import { useLocale } from "@/app/shared/i18n";
+import { getDateFnsLocale } from "@/app/shared/i18n/localeFormat";
 import { searchDisclosures } from "../api/disclosureApi";
 import { RiskBadge } from "../components/RiskBadge";
+import {
+  CARD,
+  PAGE_TITLE,
+  PAGE_DESC,
+  LABEL,
+  INPUT,
+  BTN_PRIMARY,
+  ALERT_INFO,
+  ALERT_ERROR,
+  BADGE_NEUTRAL,
+  ROW_HOVER,
+  ROW_DIVIDER,
+} from "@/app/shared/lib/uiRecipes";
 import "react-day-picker/dist/style.css";
 
 const PAGE_SIZE = 5;
 
 export function DisclosureSearch() {
   const navigate = useNavigate();
+  const { t, locale } = useLocale();
+  const dateFnsLocale = getDateFnsLocale(locale);
   const today = new Date();
   const firstDayOfYear = new Date(today.getFullYear(), 0, 1);
 
@@ -102,12 +118,17 @@ export function DisclosureSearch() {
       setResults(data.results);
       setCollectMessage(
         data.collected
-          ? `DART 수집 완료: 종목 ${data.savedStockCount ?? 0}건, 공시 ${data.savedDisclosureCount ?? 0}건 저장` +
-              (data.skippedCount > 0 ? ` (미등록 유형으로 ${data.skippedCount}건 제외됨)` : "")
+          ? t("disclosure.search.collectDone", {
+              stocks: data.savedStockCount ?? 0,
+              disclosures: data.savedDisclosureCount ?? 0,
+              skipped: data.skippedCount > 0
+                ? t("disclosure.search.collectSkipped", { count: data.skippedCount })
+                : "",
+            })
           : null
       );
     } catch (error) {
-      setSearchError(error.message ?? "검색 중 오류가 발생했습니다.");
+      setSearchError(error.message ?? t("disclosure.search.errorDefault"));
       setResults(null);
       setCollectMessage(null);
     } finally {
@@ -172,7 +193,7 @@ export function DisclosureSearch() {
   };
 
   return (
-    <div className="max-w-6xl mx-auto">
+    <div className="container">
       <style>{`
         .rdp {
           --rdp-color-selected: #2563eb;
@@ -203,47 +224,47 @@ export function DisclosureSearch() {
       `}</style>
 
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-slate-900 mb-2 flex items-center gap-2">
-          <FileText className="text-blue-600" size={32} />
-          공시 통합 검색
+        <h1 className={`${PAGE_TITLE} mb-2 flex items-center gap-2`}>
+          <FileText className="text-blue-600 dark:text-blue-400" size={32} />
+          {t("disclosure.search.title")}
         </h1>
-        <p className="text-slate-500 text-lg">
-          기업명과 공시 유형, 기간을 선택해 DART 공시를 빠르게 확인하세요.
+        <p className={PAGE_DESC}>
+          {t("disclosure.search.description")}
         </p>
       </div>
 
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8 mb-8">
+      <div className={`${CARD} shadow-sm p-8 mb-8`}>
         <form onSubmit={handleSearch} className="space-y-8">
           <div className="grid grid-cols-[1fr_300px] gap-6">
             <div className="space-y-3">
-              <label className="text-sm font-bold text-slate-700 flex items-center gap-2">
+              <label className={`${LABEL} flex items-center gap-2`}>
                 <Building2 size={16} />
-                기업명 또는 종목코드
+                {t("disclosure.search.companyLabel")}
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                  <Search className="h-5 w-5 text-slate-400" />
+                  <Search className="h-5 w-5 text-slate-400 dark:text-slate-500" />
                 </div>
                 <input
                   type="text"
                   value={searchTerm}
                   onChange={(event) => setSearchTerm(event.target.value)}
-                  placeholder="예: 삼성전자, 005930"
-                  className="w-full pl-12 pr-4 py-3.5 bg-slate-50 border border-slate-200 rounded-xl text-base focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                  placeholder={t("disclosure.search.companyPlaceholder")}
+                  className={`${INPUT} pl-12 h-12 text-base`}
                 />
               </div>
             </div>
 
             <div className="space-y-3">
-              <label className="text-sm font-bold text-slate-700 flex items-center gap-2">
+              <label className={`${LABEL} flex items-center gap-2`}>
                 <CalendarIcon size={16} />
-                공시 기간
+                {t("disclosure.search.dateRangeLabel")}
               </label>
               <Popover.Root>
                 <Popover.Trigger asChild>
                   <button
                     type="button"
-                    className="w-full px-4 py-3.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-left flex items-center justify-between"
+                    className={`${INPUT} h-12 text-left flex items-center justify-between`}
                   >
                     {dateRange?.from ? (
                       dateRange.to ? (
@@ -254,15 +275,15 @@ export function DisclosureSearch() {
                         format(dateRange.from, "yyyy-MM-dd")
                       )
                     ) : (
-                      <span className="text-slate-400">기간을 선택하세요</span>
+                      <span className="text-slate-400 dark:text-slate-500">{t("disclosure.search.dateRangePlaceholder")}</span>
                     )}
-                    <CalendarIcon size={16} className="text-slate-400" />
+                    <CalendarIcon size={16} className="text-slate-400 dark:text-slate-500" />
                   </button>
                 </Popover.Trigger>
                 <Popover.Portal>
                   <Popover.Content
                     align="start"
-                    className="z-50 bg-white p-3 rounded-2xl shadow-xl border border-slate-200"
+                    className="z-50 bg-white dark:bg-slate-900 p-3 rounded-xl shadow-xl border border-slate-200 dark:border-slate-800"
                     sideOffset={8}
                   >
                     <DayPicker
@@ -270,7 +291,7 @@ export function DisclosureSearch() {
                       defaultMonth={dateRange?.from}
                       selected={dateRange}
                       onSelect={setDateRange}
-                      locale={ko}
+                      locale={dateFnsLocale}
                       showOutsideDays
                       className="text-sm"
                     />
@@ -282,22 +303,22 @@ export function DisclosureSearch() {
 
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <label className="text-sm font-bold text-slate-700 flex items-center gap-2">
+              <label className={`${LABEL} flex items-center gap-2`}>
                 <Filter size={16} />
-                공시 유형
+                {t("disclosure.search.typeLabel")}
               </label>
               <button
                 type="button"
                 onClick={() => setSelectedTypeCodes([])}
-                className="text-xs font-semibold text-slate-400 hover:text-slate-700 transition-colors"
+                className="text-xs font-semibold text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 transition-colors"
               >
-                선택 초기화
+                {t("disclosure.search.typeReset")}
               </button>
             </div>
 
             <div className="grid grid-cols-11 gap-2">
               <DisclosureTypeButton
-                label="전체"
+                label={t("disclosure.search.typeAll")}
                 selected={isAllSelected}
                 onClick={() => setSelectedTypeCodes([])}
                 icon={isAllSelected ? <CheckCircle2 size={12} /> : <LayoutGrid size={12} />}
@@ -305,7 +326,7 @@ export function DisclosureSearch() {
               {DISCLOSURE_GROUPS.map((group) => (
                 <DisclosureTypeButton
                   key={group.code}
-                  label={group.label}
+                  label={getDisclosureGroupLabel(t, group.code)}
                   selected={selectedTypeCodes.includes(group.code)}
                   onClick={() => toggleType(group.code)}
                   icon={selectedTypeCodes.includes(group.code) ? <CheckCircle2 size={12} /> : null}
@@ -313,27 +334,27 @@ export function DisclosureSearch() {
               ))}
             </div>
 
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-slate-400 dark:text-slate-500">
               {isAllSelected
-                ? "전체 공시 유형을 대상으로 검색합니다."
-                : `${selectedTypeCodes.length}개 유형으로 필터링합니다.`}
+                ? t("disclosure.search.typeAllHint")
+                : t("disclosure.search.typeFilterHint", { count: selectedTypeCodes.length })}
             </p>
           </div>
 
           <button
             type="submit"
             disabled={isSearching || !searchTerm.trim() || !dateRange?.from || !dateRange?.to}
-            className="w-full py-4 bg-slate-900 text-white rounded-2xl font-bold text-lg hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-md flex items-center justify-center gap-2"
+            className={`${BTN_PRIMARY} w-full h-12 text-lg rounded-xl shadow-md`}
           >
             {isSearching ? (
               <>
                 <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                검색 중...
+                {t("disclosure.search.searching")}
               </>
             ) : (
               <>
                 <Search size={20} />
-                공시 검색하기
+                {t("disclosure.search.submit")}
               </>
             )}
           </button>
@@ -341,13 +362,13 @@ export function DisclosureSearch() {
       </div>
 
       {collectMessage && !searchError && (
-        <div className="bg-blue-50 border border-blue-200 rounded-2xl p-5 text-blue-700 text-sm mb-6">
+        <div className={`${ALERT_INFO} mb-6`}>
           {collectMessage}
         </div>
       )}
 
       {searchError && (
-        <div className="bg-red-50 border border-red-200 rounded-2xl p-6 text-red-700 text-sm">
+        <div className={ALERT_ERROR}>
           {searchError}
         </div>
       )}
@@ -355,27 +376,30 @@ export function DisclosureSearch() {
       {results && !searchError && (
         <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
           <div className="flex items-end justify-between">
-            <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
-              검색 결과 <span className="text-blue-600">{totalElements}</span>건
+            <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+              {t("disclosure.search.resultsTitle")}{" "}
+              <span className="text-blue-600 dark:text-blue-400">{totalElements}</span>
             </h2>
-            <p className="text-sm text-slate-500">
-              {selectedTypeCodes.length > 0 ? `필터 ${selectedTypeCodes.length}개 적용` : "전체 유형"}
+            <p className="text-sm text-slate-500 dark:text-slate-400">
+              {selectedTypeCodes.length > 0
+                ? t("disclosure.search.resultsFilter", { count: selectedTypeCodes.length })
+                : t("disclosure.search.resultsAllTypes")}
             </p>
           </div>
 
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-x-auto">
+          <div className={`${CARD} shadow-sm overflow-x-auto`}>
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="bg-slate-50 border-b border-slate-200">
-                  <SortableHeader label="공시일자" sortKeyName="date" className="w-40" {...{ sortKey, sortDirection, onSort: handleSort }} />
-                  <SortableHeader label="공시유형" sortKeyName="type" className="w-36" {...{ sortKey, sortDirection, onSort: handleSort }} />
-                  <SortableHeader label="공시제목" sortKeyName="title" {...{ sortKey, sortDirection, onSort: handleSort }} />
-                  <th className="px-6 py-4 text-xs font-semibold text-slate-500 w-36">제출인</th>
-                  <SortableHeader label="위험도" sortKeyName="risk" className="w-28" {...{ sortKey, sortDirection, onSort: handleSort }} />
+                <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800">
+                  <SortableHeader label={t("disclosure.search.table.filedAt")} sortKeyName="date" className="w-40" {...{ sortKey, sortDirection, onSort: handleSort }} />
+                  <SortableHeader label={t("disclosure.search.table.type")} sortKeyName="type" className="w-36" {...{ sortKey, sortDirection, onSort: handleSort }} />
+                  <SortableHeader label={t("disclosure.search.table.title")} sortKeyName="title" {...{ sortKey, sortDirection, onSort: handleSort }} />
+                  <th className="px-6 py-4 text-xs font-semibold text-slate-500 dark:text-slate-400 w-36">{t("disclosure.search.table.filer")}</th>
+                  <SortableHeader label={t("disclosure.search.table.risk")} sortKeyName="risk" className="w-28" {...{ sortKey, sortDirection, onSort: handleSort }} />
                   <th className="px-6 py-4 w-12" />
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className={ROW_DIVIDER}>
                 {pagedResults.map((result) => (
                   <tr
                     key={result.rceptNo}
@@ -383,35 +407,35 @@ export function DisclosureSearch() {
                       saveState({ searchTerm, selectedTypeCodes, dateRange, collectMessage, results, currentPage, sortKey, sortDirection, lastSearchedTerm });
                       navigate(`/disclosure/${result.rceptNo}?company=${encodeURIComponent(result.companyName)}`);
                     }}
-                    className="hover:bg-slate-50 transition-colors cursor-pointer group"
+                    className={ROW_HOVER}
                   >
                     <td className="px-6 py-4">
-                      <div className="flex items-center gap-1.5 text-sm font-medium text-slate-500">
+                      <div className="flex items-center gap-1.5 text-sm font-medium text-slate-500 dark:text-slate-400">
                         <CalendarIcon size={14} />
                         {result.filedAt}
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-slate-100 text-xs font-semibold text-slate-600 border border-slate-200 whitespace-nowrap">
+                      <span className={`${BADGE_NEUTRAL} whitespace-nowrap`}>
                         {result.typeName}
                       </span>
                     </td>
                     <td className="px-6 py-4">
-                      <div className="font-bold text-slate-900 group-hover:text-blue-600 transition-colors">
+                      <div className="font-semibold text-slate-900 dark:text-slate-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
                         {result.title}
                       </div>
-                      <div className="text-xs text-slate-500 mt-1">{result.companyName}</div>
+                      <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">{result.companyName}</div>
                     </td>
-                    <td className="px-6 py-4 text-sm text-slate-600">{result.filerName}</td>
+                    <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-300">{result.filerName}</td>
                     <td className="px-6 py-4">
                       {result.riskLabel ? (
                         <RiskBadge riskLabel={result.riskLabel} riskTier={result.riskTier} compact />
                       ) : (
-                        <span className="text-xs text-slate-400">요약 전</span>
+                        <span className="text-xs text-slate-400 dark:text-slate-500">{t("disclosure.search.beforeSummary")}</span>
                       )}
                     </td>
                     <td className="px-6 py-4 text-right">
-                      <div className="w-8 h-8 rounded-full bg-white border border-slate-200 flex items-center justify-center text-slate-400 group-hover:border-blue-200 group-hover:bg-blue-50 group-hover:text-blue-600 transition-all shadow-sm">
+                      <div className="w-8 h-8 rounded-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-400 dark:text-slate-500 group-hover:border-blue-200 dark:group-hover:border-blue-800 group-hover:bg-blue-50 dark:group-hover:bg-blue-950/40 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-all shadow-sm">
                         <ChevronRight size={16} />
                       </div>
                     </td>
@@ -421,19 +445,29 @@ export function DisclosureSearch() {
             </table>
 
             {totalElements === 0 && (
-              <div className="p-12 text-center text-slate-500">
-                <FileText size={48} className="mx-auto text-slate-300 mb-4" />
-                <p className="text-lg font-medium text-slate-900">검색 결과가 없습니다.</p>
-                <p className="text-sm mt-1">다른 기업명이나 기간, 공시 유형으로 다시 검색해 보세요.</p>
+              <div className="p-12 text-center text-slate-500 dark:text-slate-400">
+                <FileText size={48} className="mx-auto text-slate-300 dark:text-slate-600 mb-4" />
+                <p className="text-lg font-medium text-slate-900 dark:text-slate-100">{t("disclosure.search.noResults.title")}</p>
+                <p className="text-sm mt-1">{t("disclosure.search.noResults.hint")}</p>
               </div>
             )}
 
             {totalElements > PAGE_SIZE && (
-              <div className="flex items-center justify-between px-6 py-4 border-t border-slate-100">
-                <p className="text-xs text-slate-400">
-                  {(currentPage - 1) * PAGE_SIZE + 1}-{Math.min(currentPage * PAGE_SIZE, totalElements)} / {totalElements}건
+              <div className="flex items-center justify-between px-6 py-4 border-t border-slate-100 dark:border-slate-800">
+                <p className="text-xs text-slate-400 dark:text-slate-500">
+                  {t("disclosure.search.pagination", {
+                    start: (currentPage - 1) * PAGE_SIZE + 1,
+                    end: Math.min(currentPage * PAGE_SIZE, totalElements),
+                    total: totalElements,
+                  })}
                 </p>
-                <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={handlePageChange} />
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  onPageChange={handlePageChange}
+                  prevLabel={t("disclosure.search.prevPage")}
+                  nextLabel={t("disclosure.search.nextPage")}
+                />
               </div>
             )}
           </div>
@@ -451,10 +485,10 @@ function DisclosureTypeButton({ label, selected, onClick, icon }) {
       aria-pressed={selected}
       className={`h-10 rounded-lg text-[12px] font-semibold transition-all duration-200 flex items-center justify-center gap-1 border whitespace-nowrap
         ${selected
-          ? "bg-blue-50 border-blue-200 text-blue-700 shadow-sm"
-          : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-slate-300"}`}
+          ? "bg-blue-50 dark:bg-blue-950/40 border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 shadow-sm"
+          : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-600"}`}
     >
-      {icon && <span className={selected ? "text-blue-600" : "text-slate-400"}>{icon}</span>}
+      {icon && <span className={selected ? "text-blue-600 dark:text-blue-400" : "text-slate-400 dark:text-slate-500"}>{icon}</span>}
       <span>{label}</span>
     </button>
   );
@@ -465,20 +499,20 @@ function SortableHeader({ label, sortKeyName, sortKey, sortDirection, onSort, cl
   const Icon = isActive ? (sortDirection === "asc" ? ArrowUp : ArrowDown) : ArrowUpDown;
 
   return (
-    <th className={`px-6 py-4 text-xs font-semibold text-slate-500 ${className}`}>
+    <th className={`px-6 py-4 text-xs font-semibold text-slate-500 dark:text-slate-400 ${className}`}>
       <button
         type="button"
         onClick={() => onSort(sortKeyName)}
-        className={`flex items-center gap-1 hover:text-slate-800 transition-colors ${isActive ? "text-slate-900" : ""}`}
+        className={`flex items-center gap-1 hover:text-slate-800 dark:hover:text-slate-200 transition-colors ${isActive ? "text-slate-900 dark:text-slate-100" : ""}`}
       >
         {label}
-        <Icon size={12} className={isActive ? "text-blue-600" : "text-slate-300"} />
+        <Icon size={12} className={isActive ? "text-blue-600 dark:text-blue-400" : "text-slate-300 dark:text-slate-600"} />
       </button>
     </th>
   );
 }
 
-function Pagination({ currentPage, totalPages, onPageChange }) {
+function Pagination({ currentPage, totalPages, onPageChange, prevLabel, nextLabel }) {
   const pages = buildVisiblePages(currentPage, totalPages);
 
   return (
@@ -487,14 +521,14 @@ function Pagination({ currentPage, totalPages, onPageChange }) {
         type="button"
         onClick={() => onPageChange((page) => Math.max(1, page - 1))}
         disabled={currentPage === 1}
-        className="w-8 h-8 rounded-lg border border-slate-200 flex items-center justify-center text-slate-500 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-        aria-label="이전 페이지"
+        className="w-8 h-8 rounded-lg border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+        aria-label={prevLabel}
       >
         <ChevronLeft size={14} />
       </button>
       {pages.map((page, index) =>
         page === "ellipsis" ? (
-          <span key={`ellipsis-${index}`} className="w-8 text-center text-xs text-slate-400">
+          <span key={`ellipsis-${index}`} className="w-8 text-center text-xs text-slate-400 dark:text-slate-500">
             ...
           </span>
         ) : (
@@ -503,7 +537,9 @@ function Pagination({ currentPage, totalPages, onPageChange }) {
             type="button"
             onClick={() => onPageChange(page)}
             className={`w-8 h-8 rounded-lg text-xs font-semibold transition-colors ${
-              page === currentPage ? "bg-slate-900 text-white" : "text-slate-500 hover:bg-slate-50 border border-slate-200"
+              page === currentPage
+                ? "bg-blue-600 text-white"
+                : "text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700"
             }`}
           >
             {page}
@@ -514,8 +550,8 @@ function Pagination({ currentPage, totalPages, onPageChange }) {
         type="button"
         onClick={() => onPageChange((page) => Math.min(totalPages, page + 1))}
         disabled={currentPage === totalPages}
-        className="w-8 h-8 rounded-lg border border-slate-200 flex items-center justify-center text-slate-500 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-        aria-label="다음 페이지"
+        className="w-8 h-8 rounded-lg border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+        aria-label={nextLabel}
       >
         <ChevronRight size={14} />
       </button>

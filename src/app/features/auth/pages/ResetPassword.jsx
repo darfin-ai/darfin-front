@@ -3,9 +3,11 @@ import { Link } from "react-router";
 import { toast } from "sonner";
 import { Mail, ArrowLeft, CheckCircle } from "lucide-react";
 import { resetPassword } from "../../../shared/api/authApi";
+import { useLocale } from "../../../shared/i18n";
 
 export function ResetPassword() {
-  const [email, setEmail] = useState('');
+  const { t } = useLocale();
+  const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
 
@@ -16,7 +18,10 @@ export function ResetPassword() {
       await resetPassword({ email });
       setSent(true);
     } catch (err) {
-      const msg = err?.status === 404 ? '입력하신 이메일로 가입된 계정을 찾을 수 없습니다.' : (err?.message || '비밀번호 재설정에 실패했습니다.');
+      const msg =
+        err?.status === 404
+          ? t("authRecovery.resetPassword.notFound")
+          : err?.message || t("authRecovery.resetPassword.fail");
       toast.error(msg);
     } finally {
       setLoading(false);
@@ -31,14 +36,14 @@ export function ResetPassword() {
         </Link>
 
         <div className="text-center mb-8 mt-2">
-          <h1 className="text-2xl font-bold text-slate-900 mb-2">비밀번호 재설정</h1>
-          <p className="text-sm text-slate-500">가입하신 이메일로 임시 비밀번호를 보내드립니다.</p>
+          <h1 className="text-2xl font-bold text-slate-900 mb-2">{t("authRecovery.resetPassword.title")}</h1>
+          <p className="text-sm text-slate-500">{t("authRecovery.resetPassword.subtitle")}</p>
         </div>
 
         {!sent ? (
           <form onSubmit={handleReset} className="space-y-4">
             <div className="space-y-1">
-              <label className="text-sm font-medium text-slate-700 block">이메일</label>
+              <label className="text-sm font-medium text-slate-700 block">{t("authRecovery.resetPassword.email")}</label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <Mail className="h-5 w-5 text-slate-400" />
@@ -49,7 +54,7 @@ export function ResetPassword() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="block w-full pl-10 pr-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 bg-slate-50"
-                  placeholder="가입 시 등록한 이메일 주소"
+                  placeholder={t("authRecovery.resetPassword.emailPlaceholder")}
                 />
               </div>
             </div>
@@ -59,7 +64,7 @@ export function ResetPassword() {
               disabled={loading}
               className="w-full py-2.5 px-4 mt-6 border border-transparent rounded-xl shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              {loading ? '발송 중...' : '임시 비밀번호 발송'}
+              {loading ? t("authRecovery.resetPassword.submitting") : t("authRecovery.resetPassword.submit")}
             </button>
           </form>
         ) : (
@@ -70,18 +75,19 @@ export function ResetPassword() {
               </div>
             </div>
             <div>
-              <p className="font-semibold text-slate-900 mb-1">이메일을 발송했습니다</p>
+              <p className="font-semibold text-slate-900 mb-1">{t("authRecovery.resetPassword.sentTitle")}</p>
               <p className="text-sm text-slate-500">
-                <span className="font-medium text-slate-700">{email}</span>으로<br />
-                임시 비밀번호를 보내드렸습니다.<br />
-                로그인 후 반드시 비밀번호를 변경해주세요.
+                {t("authRecovery.resetPassword.sentBody")}{" "}
+                <span className="font-medium text-slate-700">{email}</span>
+                <br />
+                {t("authRecovery.resetPassword.sentNote")}
               </p>
             </div>
             <Link
               to="/login"
               className="inline-block mt-4 w-full py-2.5 text-center bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700 transition-colors"
             >
-              로그인하기
+              {t("authRecovery.resetPassword.login")}
             </Link>
           </div>
         )}

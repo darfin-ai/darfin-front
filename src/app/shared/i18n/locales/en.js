@@ -1,3 +1,12 @@
+import { common } from "./en/common.js";
+import { authRecovery } from "./en/authRecovery.js";
+import { community } from "./en/community.js";
+import { billing } from "./en/billing.js";
+import { company } from "./en/company.js";
+import { trading } from "./en/trading.js";
+import { disclosure } from "./en/disclosure.js";
+import { account } from "./en/account.js";
+
 export const en = {
   nav: {
     company: "Companies",
@@ -188,6 +197,9 @@ export const en = {
         "DS revenue share jumped to 61%—HBM demand lifted operating margin from 8.45% to 42.75%.",
       tradingChrome: "Paper trading · Samsung Electronics",
       paperTrading: "Paper trading · Not real money",
+      demoCompanyName: "Samsung Electronics",
+      currencyUnit: "KRW",
+      chartPeriods: ["D", "W", "M", "Y"],
       buy: "Buy",
       sell: "Sell",
       pnl: "Unrealized P&L",
@@ -333,4 +345,12 @@ export const en = {
       },
     },
   },
+  common,
+  authRecovery,
+  community,
+  billing,
+  company,
+  disclosure,
+  account,
+  trading,
 };

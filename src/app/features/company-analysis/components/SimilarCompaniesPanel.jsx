@@ -1,10 +1,13 @@
 import { motion } from 'motion/react';
+import { useLocale } from '../../../shared/i18n';
 import { CompanyCard } from './CompanyCard';
 
 /**
  * @param {{ rows: { company: import('../../../../mocks/companyAnalysis/types').Company, scores: import('../../../../mocks/companyAnalysis/types').ScoreComponent[] }[], sector: string }} props
  */
 export function SimilarCompaniesPanel({ rows, sector }) {
+  const { t } = useLocale();
+
   if (rows.length === 0) return null;
 
   return (
@@ -16,10 +19,10 @@ export function SimilarCompaniesPanel({ rows, sector }) {
         className="mb-3"
       >
         <h2 id="similar-companies-heading" className="text-lg font-semibold tracking-tight text-slate-900 dark:text-slate-100">
-          동일 업종 유사 기업
+          {t('company.panels.similar')}
         </h2>
         <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-          <span className="font-medium text-slate-700 dark:text-slate-300">{sector}</span> 업종의 다른 기업들이에요.
+          {t('company.panels.similarDesc', { sector })}
         </p>
       </motion.div>
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">

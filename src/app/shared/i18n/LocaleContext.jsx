@@ -30,9 +30,17 @@ export function LocaleProvider({ children }) {
   }, [locale]);
 
   const t = useCallback(
-    (path) => {
-      const value = resolvePath(catalogs[locale], path) ?? resolvePath(catalogs.ko, path);
-      return value ?? path;
+    (path, vars) => {
+      let value = resolvePath(catalogs[locale], path) ?? resolvePath(catalogs.ko, path);
+      if (value == null) return path;
+      if (typeof value === "function") return value(vars);
+      if (vars && typeof value === "string") {
+        return Object.entries(vars).reduce(
+          (text, [key, replacement]) => text.replaceAll(`{${key}}`, String(replacement)),
+          value,
+        );
+      }
+      return value;
     },
     [locale],
   );

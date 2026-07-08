@@ -1,8 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { motion } from 'motion/react';
 import { Search } from 'lucide-react';
-
-const SUGGESTIONS = ['삼성전자 검색해보기', 'SK하이닉스 검색해보기', 'NAVER 검색해보기', '현대차 검색해보기', '셀트리온 검색해보기', 'LG에너지솔루션 검색해보기'];
+import { useLocale } from '../../../shared/i18n';
 
 const TYPING_SPEED_MS = 130;
 const DELETING_SPEED_MS = 70;
@@ -52,18 +51,15 @@ function useTypewriter(words, active) {
 }
 
 /**
- * The search hero's input. Deliberately static in position (no floating/
- * bobbing motion) — "magical" here means a soft gradient glow that gently
- * breathes behind the pill, plus a typewriter-style cycling placeholder.
- * Neither moves the input itself.
- *
  * @param {{ value: string, onChange: (value: string) => void, inputRef?: import('react').RefObject<HTMLInputElement> }} props
  */
 export function CompanySearchBar({ value, onChange, inputRef }) {
+  const { t } = useLocale();
+  const suggestions = t('company.grid.searchSuggestions');
   const [focused, setFocused] = useState(false);
   const fallbackRef = useRef(null);
   const resolvedRef = inputRef ?? fallbackRef;
-  const typedSuggestion = useTypewriter(SUGGESTIONS, !focused && !value);
+  const typedSuggestion = useTypewriter(Array.isArray(suggestions) ? suggestions : [], !focused && !value);
 
   useEffect(() => {
     function handleKeyDown(e) {

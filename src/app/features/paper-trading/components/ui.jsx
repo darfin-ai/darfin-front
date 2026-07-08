@@ -1,17 +1,141 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
+import { Heart as HeartIcon } from 'lucide-react';
 import { useStore } from '../store/store.jsx';
+import { useLocale } from '../../../shared/i18n';
+import {
+  CARD,
+  PAGE_TITLE,
+  PAGE_DESC,
+  BTN_PRIMARY,
+  BTN_SECONDARY,
+  BTN_GHOST,
+  TAB_ACTIVE,
+  TAB_IDLE,
+  TAB_INDICATOR,
+  SEGMENT_TRACK,
+  SEGMENT_ACTIVE,
+  SEGMENT_IDLE,
+  PRICE_UP,
+  PRICE_DOWN,
+  META,
+  CONTAINER,
+  INPUT,
+  SUBNAV,
+  SUBNAV_INNER,
+  chartColor,
+  priceToneClass,
+  CHART_UP,
+  CHART_DOWN,
+  CHART_FLAT,
+  avatarGradient,
+} from '../../../shared/lib/uiRecipes';
 
-// ===== Darfin shared UI: formatters, icons, charts, header =====
+// Re-export design tokens for page-level use
+export {
+  CARD,
+  PAGE_TITLE,
+  PAGE_DESC,
+  BTN_PRIMARY,
+  BTN_SECONDARY,
+  BTN_GHOST,
+  PRICE_UP,
+  PRICE_DOWN,
+  priceToneClass,
+  chartColor,
+  CONTAINER,
+  INPUT,
+  SUBNAV,
+  SUBNAV_INNER,
+  TAB_ACTIVE,
+  TAB_IDLE,
+  TAB_INDICATOR,
+  SEGMENT_TRACK,
+  SEGMENT_ACTIVE,
+  SEGMENT_IDLE,
+};
+
+/** @deprecated Use priceToneClass() for className or chartColor() for SVG — legacy hex aliases */
+export const UP = CHART_UP;
+export const DOWN = CHART_DOWN;
+export const SUB = CHART_FLAT;
+export const INK = '#0f172a';
+export const BRAND = '#2563eb';
+/** @deprecated Use priceToneClass() */
+export const tone = chartColor;
+
+// ===== Formatters =====
+export function createTradingFormatters(locale, t) {
+  const numLocale = locale === 'ko' ? 'ko-KR' : 'en-US';
+  const won = (n) => {
+    if (n == null) return '-';
+    const formatted = Math.round(n).toLocaleString(numLocale);
+    return locale === 'ko' ? `${formatted}원` : `₩${formatted}`;
+  };
+  const wonShort = (n) => Math.round(n).toLocaleString(numLocale);
+  const signPct = (p) => (p > 0 ? '+' : '') + p.toFixed(2) + '%';
+  const signNum = (n) => (n > 0 ? '+' : '') + Math.round(n).toLocaleString(numLocale);
+  const eokKMan = (eok) => (eok >= 10000
+    ? t('trading.format.revenueJo', { n: (eok / 10000).toFixed(1) })
+    : t('trading.format.revenueEok', { n: eok.toLocaleString(numLocale) }));
+
+  const timeAgo = (ts) => {
+    const d = Math.floor((Date.now() - ts) / 1000);
+    if (d < 3600) return t('trading.time.minutesAgo', { n: Math.max(1, Math.floor(d / 60)) });
+    if (d < 86400) return t('trading.time.hoursAgo', { n: Math.floor(d / 3600) });
+    return t('trading.time.daysAgo', { n: Math.floor(d / 86400) });
+  };
+
+  const dateLabel = (ts) => {
+    const d = new Date(ts);
+    return `${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`;
+  };
+
+  const formatMarketCap = (amount) => {
+    const eok = Math.round(amount / 1e8);
+    if (eok >= 10000) {
+      const jo = Math.floor(eok / 10000);
+      const rest = eok % 10000;
+      return rest
+        ? t('trading.format.marketCapJoEok', { jo, rest: rest.toLocaleString(numLocale) })
+        : t('trading.format.marketCapJoEok', { jo, rest: '' }).replace(/\s+$/, '');
+    }
+    return t('trading.format.marketCapEok', { n: eok.toLocaleString(numLocale) });
+  };
+
+  const formatRankValue = (displayValue, rankTab) => {
+    if (rankTab === 'volume') return t('trading.format.volumeShares', { n: displayValue.toLocaleString(numLocale) });
+    if (rankTab === 'topGainers' || rankTab === 'topLosers') {
+      return locale === 'ko'
+        ? t('trading.format.dayChangeWon', { n: displayValue.toLocaleString(numLocale) })
+        : won(displayValue);
+    }
+    return t('trading.format.tradeValueEok', { n: displayValue.toLocaleString(numLocale) });
+  };
+
+  const formatIndustryValue = (value) => t('trading.format.tradeValueEok', { n: value.toLocaleString(numLocale) });
+  const qtyShares = (n) => t('trading.format.qtyShares', { n });
+  const pnlWithRate = (pnl, rate) => t('trading.format.pnlWithRate', {
+    pnl: locale === 'ko' ? `${signNum(pnl)}원` : signNum(pnl),
+    rate: signPct(rate),
+  });
+
+  return {
+    won, wonShort, signPct, signNum, eokKMan, timeAgo, dateLabel,
+    formatMarketCap, formatRankValue, formatIndustryValue, qtyShares, pnlWithRate,
+    numLocale,
+  };
+}
+
+export function useTradingFormat() {
+  const { locale, t } = useLocale();
+  return useMemo(() => createTradingFormatters(locale, t), [locale, t]);
+}
+
+/** @deprecated Prefer useTradingFormat() — Korean defaults */
 export const won = (n) => (n == null ? '-' : Math.round(n).toLocaleString('ko-KR') + '원');
 export const wonShort = (n) => Math.round(n).toLocaleString('ko-KR');
 export const signPct = (p) => (p > 0 ? '+' : '') + p.toFixed(2) + '%';
 export const signNum = (n) => (n > 0 ? '+' : '') + Math.round(n).toLocaleString('ko-KR');
-export const UP = '#F04452';
-export const DOWN = '#3182F6';
-export const SUB = '#8B95A1';
-export const INK = '#191F28';
-export const BRAND = '#1B64DA';
-export const tone = (p) => (p > 0 ? UP : p < 0 ? DOWN : SUB);
 export const eokKMan = (eok) => eok >= 10000 ? (eok / 10000).toFixed(1) + '조원' : eok.toLocaleString() + '억원';
 export const UNKNOWN_STOCK_NAME = '종목명 확인 중';
 
@@ -39,21 +163,15 @@ export function dateLabel(ts) {
 
 export function Logo({ size = 26, onClick }) {
   return (
-    <div onClick={onClick} style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', userSelect: 'none' }}>
+    <div onClick={onClick} className="flex items-center gap-2 cursor-pointer select-none">
       <svg width={size} height={size} viewBox="0 0 32 32" fill="none">
-        <rect width="32" height="32" rx="9" fill={BRAND} />
+        <rect width="32" height="32" rx="9" className="fill-blue-600" />
         <path d="M9 8h6.5c5 0 8.5 3.2 8.5 8s-3.5 8-8.5 8H9V8z" fill="#fff" />
-        <path d="M14 13h2.2c1.8 0 3 1.2 3 3s-1.2 3-3 3H14v-6z" fill={BRAND} />
+        <path d="M14 13h2.2c1.8 0 3 1.2 3 3s-1.2 3-3 3H14v-6z" className="fill-blue-600" />
       </svg>
-      <span style={{ fontSize: size * 0.82, fontWeight: 800, color: BRAND, letterSpacing: '-0.03em' }}>Darfin</span>
+      <span className="font-bold text-blue-600 tracking-tight" style={{ fontSize: size * 0.82 }}>Darfin</span>
     </div>
   );
-}
-
-const AVATAR_COLORS = ['#1B3A7A', '#E8344E'];
-function avatarColor(code) {
-  let h = 0; for (let i = 0; i < code.length; i++) h = (h * 31 + code.charCodeAt(i)) >>> 0;
-  return AVATAR_COLORS[h % AVATAR_COLORS.length];
 }
 
 export function Avatar({ stock, size = 40 }) {
@@ -62,26 +180,31 @@ export function Avatar({ stock, size = 40 }) {
   const name = displayStockName(stock);
   const logoUrl = stock?.logoUrl || `https://file.alphasquare.co.kr/media/images/stock_logo/kr/${code}.png`;
   const ch = name.replace(/^(KODEX|SOL|TIGER|KBSTAR)\s*/, '').charAt(0);
-  const bg = stock?.color || avatarColor(code);
+  const gradient = avatarGradient(code);
 
   if (!imgFailed) {
     return (
-      <div style={{ width: size, height: size, borderRadius: '50%', overflow: 'hidden', flexShrink: 0,
-        background: '#F2F4F6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div
+        className="rounded-full overflow-hidden shrink-0 bg-slate-100 dark:bg-slate-800 flex items-center justify-center"
+        style={{ width: size, height: size }}
+      >
         <img
           src={logoUrl}
           alt={name}
           onError={() => setImgFailed(true)}
-          style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+          className="w-full h-full object-contain"
         />
       </div>
     );
   }
 
   return (
-    <div style={{ width: size, height: size, borderRadius: '50%', background: bg, color: '#fff',
-      display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: size * 0.42,
-      flexShrink: 0, letterSpacing: '-0.02em' }}>{ch}</div>
+    <div
+      className={`rounded-full shrink-0 flex items-center justify-center font-semibold text-white bg-gradient-to-br ${gradient}`}
+      style={{ width: size, height: size, fontSize: size * 0.42 }}
+    >
+      {ch}
+    </div>
   );
 }
 
@@ -92,7 +215,7 @@ export function Sparkline({ pts, color, w = 96, h = 40, fill = true }) {
   const area = d + ` L${w},${h} L0,${h} Z`;
   const gid = useMemo(() => 'sg' + Math.random().toString(36).slice(2), []);
   return (
-    <svg width={w} height={h} style={{ display: 'block' }}>
+    <svg width={w} height={h} className="block">
       <defs>
         <linearGradient id={gid} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0" stopColor={color} stopOpacity="0.22" />
@@ -106,6 +229,7 @@ export function Sparkline({ pts, color, w = 96, h = 40, fill = true }) {
 }
 
 export function CandleChart({ candles, w = 620, h = 300, showMA5, showMA20, volH = 64, currentPrice, dates }) {
+  const { t } = useLocale();
   const [hoverIdx, setHoverIdx] = useState(null);
   const svgRef = useRef(null);
 
@@ -114,7 +238,6 @@ export function CandleChart({ candles, w = 620, h = 300, showMA5, showMA20, volH
   const volY = PT + chartH + DH + SEP;
   const n = candles.length;
 
-  // useMemo는 early return 전에 항상 호출해야 함 (Rules of Hooks)
   const calcMA = (period) => candles.map((_, i) => {
     if (i < period - 1) return null;
     let s = 0; for (let k = 0; k < period; k++) s += candles[i - k].close;
@@ -124,7 +247,11 @@ export function CandleChart({ candles, w = 620, h = 300, showMA5, showMA20, volH
   const ma20v = useMemo(() => calcMA(20), [candles]);
 
   if (n === 0) {
-    return <svg width={w} height={h}><text x={w / 2} y={h / 2} textAnchor="middle" fill={SUB} fontSize="14">데이터 없음</text></svg>;
+    return (
+      <svg width={w} height={h}>
+        <text x={w / 2} y={h / 2} textAnchor="middle" fill={CHART_FLAT} fontSize="14">{t('trading.format.noData')}</text>
+      </svg>
+    );
   }
 
   const allPrices = candles.flatMap(c => [c.hi, c.lo]);
@@ -141,10 +268,7 @@ export function CandleChart({ candles, w = 620, h = 300, showMA5, showMA20, volH
     .map((v, i) => v == null ? null : `${(PL + i * cw + cw / 2).toFixed(1)},${y(v).toFixed(1)}`)
     .filter(Boolean).map((p, i) => (i === 0 ? 'M' : 'L') + p).join(' ');
 
-  // Grid ticks (4개 균등)
   const ticks = [0, 1, 2, 3].map(i => rMin + rng * (3 - i) / 3);
-
-  // X축 날짜 인덱스 (5개 균등)
   const dateIdxs = n > 1
     ? [0, Math.round(n * 0.25), Math.round(n * 0.5), Math.round(n * 0.75), n - 1]
     : [0];
@@ -155,7 +279,7 @@ export function CandleChart({ candles, w = 620, h = 300, showMA5, showMA20, volH
     if (d.length === 8) return `${d.slice(0,4)}.${d.slice(4,6)}.${d.slice(6,8)}`;
     if (d.length === 6) return `${d.slice(0,4)}.${d.slice(4,6)}`;
     if (d.length === 4) return d;
-    if (d.length === 10) return `${d.slice(0,4)}.${d.slice(4,6)}.${d.slice(6,8)} ${d.slice(8,10)}시`;
+    if (d.length === 10) return `${d.slice(0,4)}.${d.slice(4,6)}.${d.slice(6,8)} ${d.slice(8,10)}${t('trading.format.hourSuffix')}`;
     return d;
   };
 
@@ -171,9 +295,8 @@ export function CandleChart({ candles, w = 620, h = 300, showMA5, showMA20, volH
   const hCx = hoverIdx != null ? PL + hoverIdx * cw + cw / 2 : null;
 
   const lastCandle = candles[n - 1];
-  const priceCol = currentPrice != null ? (currentPrice >= lastCandle.open ? UP : DOWN) : SUB;
+  const priceCol = currentPrice != null ? (currentPrice >= lastCandle.open ? CHART_UP : CHART_DOWN) : CHART_FLAT;
 
-  // 툴팁 위치 (오른쪽 경계 초과 시 왼쪽)
   const TW = 124, startOffset = hDate ? 33 : 17;
   const TH = startOffset + 5 * 17 + 12;
   const ttX = hCx != null
@@ -181,24 +304,21 @@ export function CandleChart({ candles, w = 620, h = 300, showMA5, showMA20, volH
     : 0;
 
   return (
-    <svg ref={svgRef} width={w} height={h} style={{ display: 'block', cursor: 'crosshair' }}
+    <svg ref={svgRef} width={w} height={h} className="block cursor-crosshair"
       onMouseMove={onMouseMove} onMouseLeave={() => setHoverIdx(null)}>
 
-      {/* 수평 그리드 + Y축 레이블 */}
       {ticks.map((t, i) => (
         <g key={i}>
-          <line x1={PL} x2={w - PR} y1={y(t)} y2={y(t)} stroke="#F2F4F6" strokeWidth="1" />
-          <text x={w - PR + 6} y={y(t) + 4} fontSize="11" fill={SUB}>{Math.round(t).toLocaleString()}</text>
+          <line x1={PL} x2={w - PR} y1={y(t)} y2={y(t)} stroke="#e2e8f0" strokeWidth="1" className="dark:stroke-slate-700" />
+          <text x={w - PR + 6} y={y(t) + 4} fontSize="11" fill={CHART_FLAT}>{Math.round(t).toLocaleString()}</text>
         </g>
       ))}
 
-      {/* 가격/거래량 구분선 */}
-      <line x1={PL} x2={w - PR} y1={PT + chartH + SEP / 2} y2={PT + chartH + SEP / 2} stroke="#EEF1F4" />
+      <line x1={PL} x2={w - PR} y1={PT + chartH + SEP / 2} y2={PT + chartH + SEP / 2} stroke="#e2e8f0" className="dark:stroke-slate-700" />
 
-      {/* 캔들 + 거래량 바 */}
       {candles.map((c, i) => {
         const up = c.close >= c.open;
-        const col = up ? UP : DOWN;
+        const col = up ? CHART_UP : CHART_DOWN;
         const cx = PL + i * cw + cw / 2;
         const isLast = i === n - 1;
         const isH = hoverIdx === i;
@@ -215,7 +335,6 @@ export function CandleChart({ candles, w = 620, h = 300, showMA5, showMA20, volH
         );
       })}
 
-      {/* 현재가 점선 + 배지 */}
       {currentPrice != null && (
         <>
           <line x1={PL} x2={w - PR} y1={y(currentPrice)} y2={y(currentPrice)}
@@ -227,57 +346,53 @@ export function CandleChart({ candles, w = 620, h = 300, showMA5, showMA20, volH
         </>
       )}
 
-      {/* MA 라인 */}
-      {showMA5 && <path d={maPath(ma5v)} fill="none" stroke="#F5A623" strokeWidth="1.6" />}
-      {showMA20 && <path d={maPath(ma20v)} fill="none" stroke="#7C3AED" strokeWidth="1.6" />}
+      {showMA5 && <path d={maPath(ma5v)} fill="none" stroke="#f59e0b" strokeWidth="1.6" />}
+      {showMA20 && <path d={maPath(ma20v)} fill="none" stroke="#7c3aed" strokeWidth="1.6" />}
 
-      {/* 크로스헤어 */}
       {hc && hCx != null && (
         <>
-          <line x1={hCx} x2={hCx} y1={PT} y2={PT + chartH} stroke="#ADB5BD" strokeWidth="1" strokeDasharray="4 3" />
-          <circle cx={hCx} cy={y(hc.close)} r="4" fill={hc.close >= hc.open ? UP : DOWN} stroke="#fff" strokeWidth="1.5" />
+          <line x1={hCx} x2={hCx} y1={PT} y2={PT + chartH} stroke="#94a3b8" strokeWidth="1" strokeDasharray="4 3" />
+          <circle cx={hCx} cy={y(hc.close)} r="4" fill={hc.close >= hc.open ? CHART_UP : CHART_DOWN} stroke="#fff" strokeWidth="1.5" />
         </>
       )}
 
-      {/* X축 날짜/시간 레이블 — 길이로 포맷 자동 감지 */}
       {dates && dateIdxs.map(idx => {
         if (idx >= n || !dates[idx]) return null;
         const d = formatChartDate(dates[idx]);
         const cx = PL + idx * cw + cw / 2;
         const anchor = idx === 0 ? 'start' : idx === n - 1 ? 'end' : 'middle';
         return (
-          <text key={idx} x={Math.min(cx, w - PR - 2)} y={PT + chartH + DH - 2} fontSize="10" fill={SUB} textAnchor={anchor}>{d}</text>
+          <text key={idx} x={Math.min(cx, w - PR - 2)} y={PT + chartH + DH - 2} fontSize="10" fill={CHART_FLAT} textAnchor={anchor}>{d}</text>
         );
       })}
 
-      {/* 호버 툴팁 (SVG 내부 — overflow:hidden 영향 없음) */}
       {hc && hCx != null && (
         <g>
-          <rect x={ttX} y={PT + 4} width={TW} height={TH} rx={8} fill="#1B2335" opacity="0.94" />
+          <rect x={ttX} y={PT + 4} width={TW} height={TH} rx={8} fill="#1e293b" opacity="0.94" />
           {hDate && (
-            <text x={ttX + 10} y={PT + 18} fontSize="11" fill="#8B95A1">
+            <text x={ttX + 10} y={PT + 18} fontSize="11" fill="#94a3b8">
               {formatChartDate(hDate)}
             </text>
           )}
           {[
-            ['시가', Math.round(hc.open).toLocaleString(), '#CBD3DC'],
-            ['고가', Math.round(hc.hi).toLocaleString(), UP],
-            ['저가', Math.round(hc.lo).toLocaleString(), DOWN],
-            ['종가', Math.round(hc.close).toLocaleString(), hc.close >= hc.open ? UP : DOWN],
+            [t('trading.format.candleOpen'), Math.round(hc.open).toLocaleString(), '#cbd5e1'],
+            [t('trading.format.candleHigh'), Math.round(hc.hi).toLocaleString(), CHART_UP],
+            [t('trading.format.candleLow'), Math.round(hc.lo).toLocaleString(), CHART_DOWN],
+            [t('trading.format.candleClose'), Math.round(hc.close).toLocaleString(), hc.close >= hc.open ? CHART_UP : CHART_DOWN],
           ].map(([label, val, col], idx) => {
             const by = PT + startOffset + idx * 17;
             return (
               <g key={label}>
-                <text x={ttX + 10} y={by} fontSize="11.5" fill="#8B95A1">{label}</text>
+                <text x={ttX + 10} y={by} fontSize="11.5" fill="#94a3b8">{label}</text>
                 <text x={ttX + TW - 10} y={by} fontSize="11.5" fill={col} fontWeight="700" textAnchor="end">{val}</text>
               </g>
             );
           })}
           <line x1={ttX + 8} x2={ttX + TW - 8}
-            y1={PT + startOffset + 4 * 17 + 2} y2={PT + startOffset + 4 * 17 + 2} stroke="#2E3A4F" />
-          <text x={ttX + 10} y={PT + startOffset + 5 * 17} fontSize="11" fill="#8B95A1">거래량</text>
-          <text x={ttX + TW - 10} y={PT + startOffset + 5 * 17} fontSize="11" fill="#9BAFBF" textAnchor="end">
-            {hc.volume >= 1e6 ? (hc.volume / 1e6).toFixed(1) + 'M' : (hc.volume / 1e3).toFixed(0) + 'K'}
+            y1={PT + startOffset + 4 * 17 + 2} y2={PT + startOffset + 4 * 17 + 2} stroke="#334155" />
+          <text x={ttX + 10} y={PT + startOffset + 5 * 17} fontSize="11" fill="#94a3b8">{t('trading.format.candleVolume')}</text>
+          <text x={ttX + TW - 10} y={PT + startOffset + 5 * 17} fontSize="11" fill="#94a3b8" textAnchor="end">
+            {hc.volume >= 1e6 ? t('trading.format.volumeM', { n: (hc.volume / 1e6).toFixed(1) }) : t('trading.format.volumeK', { n: (hc.volume / 1e3).toFixed(0) })}
           </text>
         </g>
       )}
@@ -308,14 +423,24 @@ export function Donut({ slices, size = 180, thickness = 30 }) {
   );
 }
 
-export const iconBtn = { position: 'relative', width: 40, height: 40, borderRadius: 10, border: 'none', background: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' };
-export const ghostBtn = { height: 40, padding: '0 16px', borderRadius: 12, border: '1px solid #E5E8EB', background: '#fff', color: '#4E5968', fontSize: 14, fontWeight: 700, cursor: 'pointer' };
-export const primaryBtn = { height: 40, padding: '0 20px', borderRadius: 12, border: 'none', background: BRAND, color: '#fff', fontSize: 15, fontWeight: 700, cursor: 'pointer' };
+/** @deprecated Use BTN_GHOST className */
+export const ghostBtn = BTN_SECONDARY;
+/** @deprecated Use BTN_PRIMARY className */
+export const primaryBtn = BTN_PRIMARY;
+/** @deprecated Use BTN_GHOST with size overrides */
+export const iconBtn = 'relative w-10 h-10 rounded-lg border-none bg-transparent cursor-pointer flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors';
 
 export function Pill({ active, children, onClick, color }) {
   return (
-    <button onClick={onClick} style={{ height: 36, padding: '0 16px', borderRadius: 999, border: 'none', cursor: 'pointer',
-      fontSize: 14, fontWeight: 700, background: active ? (color || BRAND) : '#F2F4F6', color: active ? '#fff' : '#4E5968', whiteSpace: 'nowrap' }}>
+    <button
+      onClick={onClick}
+      className={`h-9 px-4 rounded-full border-none cursor-pointer text-sm font-medium whitespace-nowrap transition-colors ${
+        active
+          ? color ? '' : 'bg-blue-600 text-white'
+          : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+      }`}
+      style={active && color ? { background: color, color: '#fff' } : undefined}
+    >
       {children}
     </button>
   );
@@ -323,16 +448,19 @@ export function Pill({ active, children, onClick, color }) {
 
 export function Tab({ active, children, onClick }) {
   return (
-    <button onClick={onClick} style={{ position: 'relative', padding: '14px 4px', marginRight: 28, border: 'none', background: 'none',
-      cursor: 'pointer', fontSize: 19, fontWeight: 800, color: active ? INK : '#B0B8C1', letterSpacing: '-0.02em', whiteSpace: 'nowrap' }}>
+    <button onClick={onClick} className={active ? TAB_ACTIVE : TAB_IDLE}>
       {children}
-      {active && <span style={{ position: 'absolute', left: 0, right: 0, bottom: -1, height: 3, background: BRAND, borderRadius: 2 }} />}
+      {active && <span className={TAB_INDICATOR} />}
     </button>
   );
 }
 
-export function Card({ children, style }) {
-  return <div style={{ background: '#fff', border: '1px solid #EEF1F4', borderRadius: 20, padding: 24, ...style }}>{children}</div>;
+export function Card({ children, className = '', style }) {
+  return (
+    <div className={`${CARD} p-6 ${className}`} style={style}>
+      {children}
+    </div>
+  );
 }
 
 export function Skeleton({ width = '100%', height = 16, radius = 8, style }) {
@@ -363,19 +491,36 @@ export function SkeletonText({ lines = 2, widths = ['100%', '72%'], height = 12,
 
 export function Heart({ filled, onClick, size = 22 }) {
   return (
-    <button onClick={(e) => { e.stopPropagation(); onClick && onClick(); }} style={{ ...iconBtn, width: size + 12, height: size + 12, flexShrink: 0 }}>
-      <svg width={size} height={size} viewBox="0 0 24 24" fill={filled ? UP : 'none'} stroke={filled ? UP : '#C5CBD3'} strokeWidth="2">
-        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" strokeLinejoin="round" strokeLinecap="round" />
-      </svg>
+    <button
+      onClick={(e) => { e.stopPropagation(); onClick?.(); }}
+      className={`${iconBtn} shrink-0`}
+      style={{ width: size + 12, height: size + 12 }}
+    >
+      <HeartIcon
+        size={size}
+        className={filled ? 'fill-red-500 text-red-500' : 'text-slate-300 dark:text-slate-600'}
+      />
     </button>
   );
 }
 
 export function Modal({ children, onClose, width = 460 }) {
-  useEffect(() => { const f = (e) => e.key === 'Escape' && onClose(); window.addEventListener('keydown', f); return () => window.removeEventListener('keydown', f); }, []);
+  useEffect(() => {
+    const f = (e) => e.key === 'Escape' && onClose();
+    window.addEventListener('keydown', f);
+    return () => window.removeEventListener('keydown', f);
+  }, [onClose]);
+
   return (
-    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(20,25,35,0.45)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
-      <div onClick={(e) => e.stopPropagation()} style={{ background: '#fff', borderRadius: 24, width, maxWidth: '100%', maxHeight: '90vh', overflow: 'auto', boxShadow: '0 24px 60px rgba(0,0,0,0.2)' }}>
+    <div
+      onClick={onClose}
+      className="fixed inset-0 z-[100] flex items-center justify-center p-5 bg-slate-900/45 dark:bg-black/60"
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className={`${CARD} rounded-2xl max-h-[90vh] overflow-auto shadow-2xl`}
+        style={{ width, maxWidth: '100%' }}
+      >
         {children}
       </div>
     </div>
@@ -384,11 +529,11 @@ export function Modal({ children, onClose, width = 460 }) {
 
 export function PageShell({ title, sub, right, children }) {
   return (
-    <div style={{ maxWidth: 1480, margin: '0 auto', padding: '28px 28px 80px' }}>
-      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 24 }}>
+    <div className={`${CONTAINER} py-7 pb-20`}>
+      <div className="flex items-end justify-between mb-6">
         <div>
-          <div style={{ fontSize: 26, fontWeight: 800, color: INK, letterSpacing: '-0.02em' }}>{title}</div>
-          {sub && <div style={{ fontSize: 15, color: SUB, marginTop: 6 }}>{sub}</div>}
+          <h1 className={PAGE_TITLE}>{title}</h1>
+          {sub && <p className={`${PAGE_DESC} mt-1.5`}>{sub}</p>}
         </div>
         {right}
       </div>
@@ -399,9 +544,9 @@ export function PageShell({ title, sub, right, children }) {
 
 export function Empty({ text, cta, onCta }) {
   return (
-    <Card style={{ textAlign: 'center', padding: 56 }}>
-      <div style={{ fontSize: 15, color: SUB, marginBottom: cta ? 20 : 0 }}>{text}</div>
-      {cta && <button onClick={onCta} style={{ ...primaryBtn, height: 46 }}>{cta}</button>}
+    <Card className="text-center py-14">
+      <p className={`text-sm ${META} ${cta ? 'mb-5' : ''}`}>{text}</p>
+      {cta && <button onClick={onCta} className={`${BTN_PRIMARY} h-11`}>{cta}</button>}
     </Card>
   );
 }
@@ -409,17 +554,58 @@ export function Empty({ text, cta, onCta }) {
 export function Metric({ label, value }) {
   return (
     <div>
-      <div style={{ fontSize: 13, color: SUB, marginBottom: 4 }}>{label}</div>
-      <div style={{ fontSize: 17, fontWeight: 700, color: INK }}>{value}</div>
+      <div className={`text-xs ${META} mb-1`}>{label}</div>
+      <div className="text-base font-semibold text-slate-900 dark:text-slate-100 tabular-nums">{value}</div>
     </div>
   );
 }
 
 export function LoginGate() {
   const { goToLogin } = useStore();
-  return <Empty text="로그인하면 내 모의투자 계좌를 볼 수 있어요." cta="로그인" onCta={goToLogin} />;
+  const { t } = useLocale();
+  return <Empty text={t('trading.portfolio.loginGate')} cta={t('trading.portfolio.login')} onCta={goToLogin} />;
 }
 
 export function Stub({ name }) {
-  return <div style={{ maxWidth: 1480, margin: '0 auto', padding: 60, textAlign: 'center', color: SUB }}>{name} 준비 중</div>;
+  const { t } = useLocale();
+  return (
+    <div className={`${CONTAINER} py-16 text-center ${META}`}>
+      {t('trading.stub.comingSoon', { name })}
+    </div>
+  );
+}
+
+/** Segmented control — shared pattern from DESIGN_SYSTEM.md §5.7 */
+export function SegmentedControl({ options, value, onChange, className = '' }) {
+  return (
+    <div className={`${SEGMENT_TRACK} ${className}`}>
+      {options.map((opt) => (
+        <button
+          key={opt.value}
+          type="button"
+          onClick={() => onChange(opt.value)}
+          className={value === opt.value ? SEGMENT_ACTIVE : SEGMENT_IDLE}
+        >
+          {opt.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/** Section title with brand accent bar */
+export function SectionTitle({ children, action, onAction }) {
+  return (
+    <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center gap-2.5">
+        <span className="w-1 h-5 rounded-sm bg-blue-600 shrink-0" />
+        <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100 tracking-tight">{children}</h2>
+      </div>
+      {action && (
+        <button type="button" onClick={onAction} className="text-sm font-medium text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200">
+          {action} ›
+        </button>
+      )}
+    </div>
+  );
 }

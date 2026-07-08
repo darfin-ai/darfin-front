@@ -1,15 +1,15 @@
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { motion } from 'motion/react';
+import { useLocale } from '../../../shared/i18n';
 import { SourceExcerptDialog } from './SourceExcerptDialog';
 import { SoWhatCallout } from './SoWhatCallout';
 import { isAiReady } from '../lib/aiStatus';
 
-const CUSTOMER_STATUS_BADGE = {
-  new:     { label: '신규', className: 'bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800' },
-  removed: { label: '제거됨', className: 'bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-900' },
+const CUSTOMER_STATUS_BADGE_CLASS = {
+  new: 'bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800',
+  removed: 'bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-900',
 };
 
-/* KRX convention (DESIGN_SYSTEM.md §2.3): red = up, blue = down. */
 function DeltaIcon({ delta }) {
   if (delta > 0) return <TrendingUp size={13} className="text-red-500 dark:text-red-400" />;
   if (delta < 0) return <TrendingDown size={13} className="text-blue-500 dark:text-blue-400" />;
@@ -23,24 +23,24 @@ const SOURCE_CHIP =
  * @param {{ overview: import('../../../../mocks/companyAnalysis/types').CompanyOverview }} props
  */
 export function CustomerRegionPanel({ overview }) {
+  const { t } = useLocale();
   const customers = overview.customers ?? [];
   const regions   = overview.regions   ?? [];
   const maxShare  = Math.max(...regions.map((r) => r.share), 1);
 
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-      {/* 주요 고객 */}
       <section aria-labelledby="customer-heading" className="flex flex-col">
         <div className="mb-4 flex items-center justify-between gap-3">
           <h2 id="customer-heading" className="text-lg font-semibold tracking-tight text-slate-900 dark:text-slate-100">
-            주요 고객
+            {t('company.panels.customers')}
           </h2>
           {overview.customerSourceRef && (
             <SourceExcerptDialog
               sectionLabel={overview.customerSourceRef.sectionLabel}
               excerpt={overview.customerSourceRef.excerpt}
               sourceRef={overview.customerSourceRef.sourceRef}
-              label="공시 원문"
+              label={t('company.panels.viewSource')}
               className={SOURCE_CHIP}
             />
           )}
@@ -50,7 +50,7 @@ export function CustomerRegionPanel({ overview }) {
           <div className="space-y-3 flex-1">
             {customers.length === 0 && (
               <p className="rounded-md border border-dashed border-slate-200 dark:border-slate-700 px-4 py-6 text-center text-sm text-slate-400 dark:text-slate-500">
-                최근 공시에 별도 기재된 주요 고객이 없어요.
+                {t('company.panels.noCustomers')}
               </p>
             )}
             {customers.map((c, i) => (
@@ -68,8 +68,8 @@ export function CustomerRegionPanel({ overview }) {
                   <div className="flex flex-wrap items-center gap-1.5">
                     <span className="text-sm font-semibold text-slate-800 dark:text-slate-200">{c.name}</span>
                     {c.status !== 'existing' && (
-                      <span className={`rounded-full px-1.5 py-0.5 text-xs font-medium ${CUSTOMER_STATUS_BADGE[c.status].className}`}>
-                        {CUSTOMER_STATUS_BADGE[c.status].label}
+                      <span className={`rounded-full px-1.5 py-0.5 text-xs font-medium ${CUSTOMER_STATUS_BADGE_CLASS[c.status]}`}>
+                        {t(`company.labels.status.${c.status}`)}
                       </span>
                     )}
                     <span className="ml-auto text-sm font-semibold tabular-nums text-slate-700 dark:text-slate-300">
@@ -83,7 +83,7 @@ export function CustomerRegionPanel({ overview }) {
           </div>
 
           <p className="mt-4 text-xs text-slate-400 dark:text-slate-500">
-            매출 비중 10% 이상 고객은 의무 공시 대상 (일부 익명 처리)
+            {t('company.panels.customerDisclosureNote')}
           </p>
 
           {overview.customerInsight && (
@@ -92,18 +92,17 @@ export function CustomerRegionPanel({ overview }) {
         </div>
       </section>
 
-      {/* 지역별 매출 */}
       <section aria-labelledby="region-heading" className="flex flex-col">
         <div className="mb-4 flex items-center justify-between gap-3">
           <h2 id="region-heading" className="text-lg font-semibold tracking-tight text-slate-900 dark:text-slate-100">
-            지역별 매출
+            {t('company.panels.regions')}
           </h2>
           {overview.regionSourceRef && (
             <SourceExcerptDialog
               sectionLabel={overview.regionSourceRef.sectionLabel}
               excerpt={overview.regionSourceRef.excerpt}
               sourceRef={overview.regionSourceRef.sourceRef}
-              label="공시 원문"
+              label={t('company.panels.viewSource')}
               className={SOURCE_CHIP}
             />
           )}
@@ -113,7 +112,7 @@ export function CustomerRegionPanel({ overview }) {
           <div className="flex-1 space-y-3">
             {regions.length === 0 && (
               <p className="rounded-md border border-dashed border-slate-200 dark:border-slate-700 px-4 py-6 text-center text-sm text-slate-400 dark:text-slate-500">
-                최근 공시에서 지역별 매출 내역을 찾지 못했어요.
+                {t('company.panels.noRegionData')}
               </p>
             )}
             {regions.map((r, i) => (
@@ -153,7 +152,7 @@ export function CustomerRegionPanel({ overview }) {
             ))}
           </div>
 
-          <p className="mt-4 text-xs text-slate-400 dark:text-slate-500">pp = 전분기 대비 비중 변화 (percentage point)</p>
+          <p className="mt-4 text-xs text-slate-400 dark:text-slate-500">{t('company.panels.ppNote')}</p>
 
           <SoWhatCallout ready={isAiReady(overview)} insight={overview.regionInsight} />
         </div>

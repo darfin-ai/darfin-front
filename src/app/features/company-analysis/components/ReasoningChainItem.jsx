@@ -1,6 +1,8 @@
 import { motion } from 'motion/react';
+import { useLocale } from '../../../shared/i18n';
+import { scoreComponentLabel } from '../lib/i18n';
 import { ReasoningHopStep } from './ReasoningHopStep';
-import { SEVERITY_LABELS, SEVERITY_STYLES, SCORE_COMPONENT_LABELS } from '../lib/scoring';
+import { SEVERITY_STYLES } from '../lib/scoring';
 
 /**
  * @param {{
@@ -11,6 +13,7 @@ import { SEVERITY_LABELS, SEVERITY_STYLES, SCORE_COMPONENT_LABELS } from '../lib
  * }} props
  */
 export function ReasoningChainItem({ finding, selectedHopSourceRef, onSelectHop, index = 0 }) {
+  const { t } = useLocale();
   const severityStyle = SEVERITY_STYLES[finding.severity];
 
   return (
@@ -22,10 +25,10 @@ export function ReasoningChainItem({ finding, selectedHopSourceRef, onSelectHop,
     >
       <div className="flex flex-wrap items-center gap-2">
         <span className="rounded-full bg-slate-100 dark:bg-slate-800 px-2 py-0.5 text-xs font-medium text-slate-600 dark:text-slate-400">
-          {SCORE_COMPONENT_LABELS[finding.scoreComponent]}
+          {scoreComponentLabel(t, finding.scoreComponent)}
         </span>
         <span className={`rounded-full border px-2 py-0.5 text-xs font-medium ${severityStyle.badge}`}>
-          영향도 {SEVERITY_LABELS[finding.severity]}
+          {t(`company.labels.impact.${finding.severity}`)}
         </span>
       </div>
       <h3 className="mt-2 text-base font-semibold text-slate-900 dark:text-slate-100">{finding.summary}</h3>

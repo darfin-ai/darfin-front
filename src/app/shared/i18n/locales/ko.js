@@ -1,3 +1,12 @@
+import { common } from "./ko/common.js";
+import { authRecovery } from "./ko/authRecovery.js";
+import { community } from "./ko/community.js";
+import { billing } from "./ko/billing.js";
+import { company } from "./ko/company.js";
+import { trading } from "./ko/trading.js";
+import { disclosure } from "./ko/disclosure.js";
+import { account } from "./ko/account.js";
+
 export const ko = {
   nav: {
     company: "기업 분석",
@@ -187,6 +196,9 @@ export const ko = {
         "DS 부문 매출 비중이 61%로 급등 — HBM 수요 확대가 영업이익률을 8.45%→42.75%로 끌어올림.",
       tradingChrome: "모의투자 · 삼성전자",
       paperTrading: "모의투자 · 실제 돈 아님",
+      demoCompanyName: "삼성전자",
+      currencyUnit: "원",
+      chartPeriods: ["일", "주", "월", "년"],
       buy: "매수",
       sell: "매도",
       pnl: "평가손익",
@@ -332,4 +344,12 @@ export const ko = {
       },
     },
   },
+  common,
+  authRecovery,
+  community,
+  billing,
+  company,
+  disclosure,
+  account,
+  trading,
 };
