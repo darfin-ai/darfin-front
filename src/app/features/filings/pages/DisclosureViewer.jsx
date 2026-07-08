@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router";
 import { getAnalysisCategoryLabel } from "../constants";
 import { useLocale } from "@/app/shared/i18n";
@@ -47,78 +47,8 @@ import {
   getDisclosureTerms
 } from "../api/disclosureApi";
 import { RiskBadge, RiskBadgeGroup } from "../components/RiskBadge";
-
-// ── 하이라이트 마스크 빌더 ─────────────────────────────────────
-// AI 분석 항목(charOffset 기반)과 전문용어(startIndex 기반)를
-// 원문 전체(originalText) 길이의 마스크 배열 하나로 병합한다. 좌표계는 항상 원문 전체 기준이며,
-// 문단/표 블록은 이 마스크의 일부 구간을 sliceToSegments로 잘라서 사용한다.
-// 우선순위: 두 종류가 겹치면 highlight > term (AI 분석 우선)
-// 전문용어는 termId 기준으로 원문에서 첫 번째 등장 위치에만 밑줄을 친다.
-function buildHighlightMask(text, analysisItems, termHighlights, showHighlight, showTerms) {
-  const mask = new Array(text.length).fill(null); // null | { type: "highlight", item } | { type: "term", th }
-
-  if (showHighlight) {
-    for (const item of analysisItems) {
-      const s = item.charOffsetStart, e = item.charOffsetEnd;
-      if (s >= 0 && e > s && e <= text.length) {
-        for (let i = s; i < e; i++) {
-          if (mask[i] === null) mask[i] = { type: "highlight", item };
-        }
-      }
-    }
-  }
-
-  // 전문용어 밑줄 — termId 기준 첫 번째 등장 위치에만 적용
-  // (백엔드에서 중복이 내려오거나 캐시 데이터가 남아있어도 프론트에서 한 번 더 보장)
-  if (showTerms) {
-    const seenTermIds = new Set();
-    // startIndex 오름차순으로 정렬해서 원문 앞쪽 등장이 항상 첫 번째가 되도록 한다
-    const sortedTerms = [...termHighlights].sort((a, b) => a.startIndex - b.startIndex);
-
-    for (const th of sortedTerms) {
-      if (seenTermIds.has(th.termId)) continue; // 이미 처리한 용어 skip
-
-      const s = th.startIndex, e = th.endIndex;
-      if (s >= 0 && e > s && e <= text.length) {
-        for (let i = s; i < e; i++) {
-          if (mask[i] === null) mask[i] = { type: "term", th };
-        }
-        seenTermIds.add(th.termId); // 첫 번째 등장 완료 → 이후 중복 skip
-      }
-    }
-  }
-
-  return mask;
-}
-
-// mask의 [start, end) 구간을 연속 세그먼트 배열로 변환한다.
-// 타입: "plain" | "highlight"(AI 핵심 문장) | "term"(전문용어)
-function sliceToSegments(text, mask, start, end) {
-  const segments = [];
-  let i = start;
-  while (i < end) {
-    const cell = mask[i];
-    if (cell === null) {
-      let j = i + 1;
-      while (j < end && mask[j] === null) j++;
-      segments.push({ type: "plain", text: text.slice(i, j) });
-      i = j;
-    } else if (cell.type === "highlight") {
-      const item = cell.item;
-      let j = i + 1;
-      while (j < end && mask[j] !== null && mask[j].type === "highlight" && mask[j].item === item) j++;
-      segments.push({ type: "highlight", text: text.slice(i, j), item });
-      i = j;
-    } else {
-      const th = cell.th;
-      let j = i + 1;
-      while (j < end && mask[j] !== null && mask[j].type === "term" && mask[j].th === th) j++;
-      segments.push({ type: "term", text: text.slice(i, j), th });
-      i = j;
-    }
-  }
-  return segments;
-}
+import { OriginalDocument } from "../components/OriginalDocument";
+import { DocumentToc } from "../components/DocumentToc";
 
 // ── 토글 스위치 컴포넌트 ─────────────────────────────────────────
 function ToggleSwitch({ label, icon, checked, onCheckedChange, disabled, checkedBg }) {
@@ -177,6 +107,8 @@ export function DisclosureViewer() {
   const [isDownloading, setIsDownloading] = useState(false);
   const [showDownloadMenu, setShowDownloadMenu] = useState(false);
 
+  const [activeHeadingId, setActiveHeadingId] = useState(null);
+
   const originalPanelRef = useRef(null);
   const glossaryListRef = useRef(null);
 
@@ -233,7 +165,47 @@ export function DisclosureViewer() {
     return acc;
   }, []);
 
+  // 좌측 목차 레일용 제목 목록. OriginalDocument가 그리는 anchor id(odoc-h-{블록index})와
+  // 동일한 index 기준으로 만들어야 스크롤/활성표시가 맞물린다.
+  const headings = useMemo(() => {
+    if (!originalBlocks) return [];
+    return originalBlocks
+      .map((b, i) => ({ b, i }))
+      .filter(({ b }) => b.type === "heading" && b.text)
+      .map(({ b, i }) => ({ id: `odoc-h-${i}`, level: b.level || 2, text: b.text }));
+  }, [originalBlocks]);
+
   // ── 상호작용 핸들러 ──────────────────────────────────────────
+
+  const scrollToHeadingInPanel = useCallback((id) => {
+    const root = originalPanelRef.current;
+    const el = root?.querySelector(`#${CSS.escape(id)}`);
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, []);
+
+  useEffect(() => {
+    const root = originalPanelRef.current;
+    if (!root || headings.length === 0) return;
+    const els = headings
+      .map((h) => root.querySelector(`#${CSS.escape(h.id)}`))
+      .filter(Boolean);
+    if (els.length === 0) return;
+
+    const visible = new Set();
+    const io = new IntersectionObserver(
+      (entries) => {
+        for (const e of entries) {
+          if (e.isIntersecting) visible.add(e.target.id);
+          else visible.delete(e.target.id);
+        }
+        const first = headings.find((h) => visible.has(h.id));
+        if (first) setActiveHeadingId(first.id);
+      },
+      { root, rootMargin: "0px 0px -70% 0px", threshold: 0 }
+    );
+    els.forEach((el) => io.observe(el));
+    return () => io.disconnect();
+  }, [headings, originalText]);
 
   // AI 분석 카드 클릭 → 원문 해당 문장으로 스크롤
   const handleAnalysisItemClick = useCallback((item) => {
@@ -305,6 +277,12 @@ export function DisclosureViewer() {
 
   const handleOpenDartViewer = () => { setShowDownloadMenu(false); window.open(getDartViewerUrl(rceptNo), "_blank", "noopener,noreferrer"); };
 
+  const handleHighlightSelectFromText = useCallback((targetKey) => {
+    setActiveTab("analysis");
+    setActiveHighlightKey(targetKey);
+    setTimeout(() => setActiveHighlightKey(null), 2000);
+  }, []);
+
   if (isLoading) {
     return (
       <div className="h-[calc(100vh-11rem)] min-h-[720px] flex items-center justify-center text-slate-400 dark:text-slate-500">
@@ -324,117 +302,8 @@ export function DisclosureViewer() {
     );
   }
 
-  // 원문 전체 기준 하이라이트 마스크 (문단/표 블록이 이 마스크의 구간을 나눠 쓴다)
-  const highlightMask = originalText
-    ? buildHighlightMask(originalText, analysisItems, termHighlights, highlightEnabled, termsEnabled)
-    : null;
-
-  // 세그먼트(plain/highlight/term) 배열을 mark/abbr가 섞인 React 노드로 렌더링한다.
-  // 원문 패널(문단 <p>, 표 <td> 등) 여러 곳에서 재사용하므로 컴포넌트 스코프 함수로 뺐다.
-  const renderSegments = (segments, keyPrefix) =>
-    segments.map((seg, i) => {
-      const key = `${keyPrefix}-${i}`;
-      if (seg.type === "plain") return <span key={key}>{seg.text}</span>;
-
-      if (seg.type === "highlight") {
-        const isActive = activeHighlightKey === seg.item.targetKey;
-        return (
-          <mark
-            key={key}
-            data-highlight-key={seg.item.targetKey}
-            onClick={() => { setActiveTab("analysis"); setActiveHighlightKey(seg.item.targetKey); setTimeout(() => setActiveHighlightKey(null), 2000); }}
-            className={`bg-blue-100 dark:bg-blue-900/40 rounded-sm px-0.5 cursor-pointer transition-all duration-200
-              ${isActive ? "outline outline-2 outline-offset-1 outline-blue-500 dark:outline-blue-400" : ""}`}
-            title={`[${getAnalysisCategoryLabel(t, seg.item.analysisCategory)}] ${seg.item.riskLevel}`}
-          >{seg.text}</mark>
-        );
-      }
-
-      const isActive = activeTermId === seg.th.termId;
-      return (
-        <abbr
-          key={key}
-          data-term-id={seg.th.termId}
-          onClick={() => handleTermInTextClick(seg.th.termId)}
-          title={seg.th.definition?.slice(0, 120) + "…"}
-          className={`cursor-pointer border-b-2 border-dotted transition-all duration-200 no-underline
-            ${isActive
-              ? "border-blue-600 dark:border-blue-500 text-blue-900 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/40"
-              : "border-slate-400 dark:border-slate-500 text-slate-600 dark:text-slate-300 hover:border-slate-600 dark:hover:border-slate-400"}`}
-          style={{ textDecoration: "none" }}
-        >{seg.text}</abbr>
-      );
-    });
-
-  // 블록 하나(문단 또는 표)를 재귀적으로 렌더링한다. 표 셀은 문자열이 아니라 블록 목록이라
-  // (사업/분기보고서 각주처럼 표 안에 표가 중첩된 경우를 실제 <table>로 그리기 위함)
-  // 셀 내부도 같은 함수를 그대로 재귀 호출한다. charStart/charEnd는 Python이 중첩 깊이와
-  // 무관하게 원문 전체 기준으로 이미 계산해서 내려주므로, 여기서는 그대로 슬라이스만 하면 된다.
-  const renderBlock = (block, key) => {
-    if (block.type === "table") {
-      return (
-        <div key={key} className="my-4 overflow-x-auto">
-          <table className="w-full border-collapse text-xs">
-            <tbody>
-              {block.rows.map((row, ri) => (
-                <tr key={ri}>
-                  {row.map((cell, ci) => (
-                    <td
-                      key={ci}
-                      rowSpan={cell.rowSpan > 1 ? cell.rowSpan : undefined}
-                      colSpan={cell.colSpan > 1 ? cell.colSpan : undefined}
-                      className="border border-slate-200 dark:border-slate-700 px-2 py-1 align-top text-slate-700 dark:text-slate-300 leading-relaxed whitespace-pre-wrap"
-                    >
-                      {renderCellContent(cell.blocks, `${key}-${ri}-${ci}`)}
-                    </td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      );
-    }
-
-    const segments = block.charStart != null && highlightMask
-      ? sliceToSegments(originalText, highlightMask, block.charStart, block.charEnd)
-      : null;
-    return (
-      <p key={key} className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed whitespace-pre-wrap font-sans mb-3 last:mb-0">
-        {segments ? renderSegments(segments, key) : block.text}
-      </p>
-    );
-  };
-
-  // 표 셀 하나의 내용을 렌더링한다. 거래소 조회공시류(예: "정정항목/정정전/정정후" 3단 표)는
-  // <br>로 여러 줄을 한 셀에 이어붙이는데, 상위 항목명 줄에는 숫자가 없고 "- "로 시작하는
-  // 하위 항목에만 값이 있어서 옆 셀과 줄 수가 다르다 — 즉 줄 단위로 정확히 1:1 대응시킬 방법이
-  // 없다(DART 원문 자체가 그렇게 만들어져 있음). 억지로 짝짓는 대신, 셀 안에 줄이 여러 개
-  // 있다는 걸 구분선으로 명확히 보여줘서 최소한 "이 셀 안에 서로 다른 값 N개가 있다"는 것만은
-  // 헷갈리지 않게 한다.
-  const renderCellContent = (cellBlocks, key) => {
-    const isMultiLine = cellBlocks.length > 1 && cellBlocks.every((cb) => cb.type === "paragraph");
-    if (!isMultiLine) {
-      return cellBlocks.map((cb, cbi) => renderBlock(cb, `${key}-${cbi}`));
-    }
-    return (
-      <div className="divide-y divide-slate-200 dark:divide-slate-700 -my-1">
-        {cellBlocks.map((cb, cbi) => {
-          const segments = cb.charStart != null && highlightMask
-            ? sliceToSegments(originalText, highlightMask, cb.charStart, cb.charEnd)
-            : null;
-          return (
-            <div key={`${key}-${cbi}`} className="py-1">
-              {segments ? renderSegments(segments, `${key}-${cbi}`) : cb.text}
-            </div>
-          );
-        })}
-      </div>
-    );
-  };
-
   return (
-    <div className="h-[calc(100vh-11rem)] min-h-[720px] flex flex-col -mt-4 animate-in fade-in duration-300">
+    <div className="h-[calc(100vh-11rem)] min-h-[720px] flex flex-col px-4 sm:px-6 lg:px-8 pt-4 pb-8 animate-in fade-in duration-300">
 
       {/* ── 헤더 ──────────────────────────────────────────────── */}
       <div className="flex items-center justify-between pb-4 border-b border-slate-200 dark:border-slate-800 mb-4">
@@ -451,7 +320,7 @@ export function DisclosureViewer() {
             <div className="flex items-center gap-2 flex-wrap">
               <span className={BADGE_INFO}>{disclosure.typeLabel}</span>
               <span className={`text-sm ${META}`}>{disclosure.filedAt}</span>
-              {hasSummary && <RiskBadge riskLabel={disclosure.riskLabel} riskTier={disclosure.riskTier} size="sm" />}
+              {hasSummary && <RiskBadge riskLabel={disclosure.riskLabel} riskTier={disclosure.riskTier} size="lg" />}
             </div>
             <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-100 mt-1 truncate">{disclosure.title} - {companyName}</h1>
           </div>
@@ -495,7 +364,15 @@ export function DisclosureViewer() {
 
       <div className="flex-1 flex gap-6 overflow-hidden">
 
-        {/* ── 좌측: 공시 원문 패널 ──────────────────────────── */}
+        {!isLoadingOriginal && !originalTextError && headings.length >= 2 && (
+          <DocumentToc
+            headings={headings}
+            activeId={activeHeadingId}
+            onSelect={scrollToHeadingInPanel}
+          />
+        )}
+
+        {/* ── 가운데: 공시 원문 패널 ──────────────────────────── */}
         <section className={`flex-1 ${CARD} shadow-sm flex flex-col overflow-hidden`}>
 
           {/* 패널 헤더 — 두 개 독립 토글 */}
@@ -566,15 +443,18 @@ export function DisclosureViewer() {
             </div>
           ) : (
             <div className="flex-1 overflow-y-auto p-6" ref={originalPanelRef}>
-              {originalBlocks && originalBlocks.length > 0 ? (
-                originalBlocks.map((block, bi) => renderBlock(block, `b${bi}`))
-              ) : (
-                <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed whitespace-pre-wrap font-sans">
-                  {highlightMask
-                    ? renderSegments(sliceToSegments(originalText, highlightMask, 0, originalText.length), "fallback")
-                    : originalText}
-                </p>
-              )}
+              <OriginalDocument
+                text={originalText}
+                blocks={originalBlocks}
+                analysisItems={analysisItems}
+                termHighlights={termHighlights}
+                highlightEnabled={highlightEnabled}
+                termsEnabled={termsEnabled}
+                activeHighlightKey={activeHighlightKey}
+                activeTermId={activeTermId}
+                onHighlightSelect={handleHighlightSelectFromText}
+                onTermSelect={handleTermInTextClick}
+              />
             </div>
           )}
         </section>
@@ -614,7 +494,7 @@ export function DisclosureViewer() {
                 <>
                   <div className="flex items-center justify-between gap-2 mb-2 flex-wrap">
                     <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400 font-semibold"><Sparkles size={18} /><span>{t("disclosure.viewer.summaryTitle")}</span></div>
-                    <RiskBadgeGroup badges={summaryBadges} size="md" />
+                    <RiskBadgeGroup badges={summaryBadges} size="lg" />
                   </div>
                   <p className="text-base font-semibold text-slate-800 dark:text-slate-100 leading-relaxed">{disclosure.summaryText}</p>
                   <div className={`${AI_CALLOUT} gap-3`}>
@@ -659,7 +539,7 @@ export function DisclosureViewer() {
                             <h4 className={`font-semibold text-slate-800 dark:text-slate-100 ${isSingle ? "text-base" : "text-sm"}`}>{getAnalysisCategoryLabel(t, item.analysisCategory)}</h4>
                             {hasCoords && <span className={`flex items-center gap-0.5 text-[10px] ${META}`}><ChevronRight size={10} />{t("disclosure.viewer.goToOriginal")}</span>}
                           </div>
-                          <RiskBadge riskLabel={item.riskLevel} riskTier={item.riskTier} size="sm" />
+                          <RiskBadge riskLabel={item.riskLevel} riskTier={item.riskTier} size="md" />
                         </div>
                         <p className={`text-slate-500 dark:text-slate-400 mb-2 bg-amber-50 dark:bg-amber-950/30 border border-amber-100 dark:border-amber-900/50 px-2 py-1 rounded italic leading-relaxed ${isSingle ? "text-sm" : "text-xs"}`}>"{item.targetKey}"</p>
                         <p className={`text-slate-600 dark:text-slate-300 leading-relaxed ${isSingle ? "text-base" : "text-sm"}`}>{item.materialImpact}</p>

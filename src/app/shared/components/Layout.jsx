@@ -267,7 +267,7 @@ export function Layout() {
         className={
           location.pathname === "/"
             ? "flex-1 w-full overflow-hidden"
-            : location.pathname.startsWith("/trading") || location.pathname.startsWith("/company") || location.pathname.startsWith("/community") || location.pathname.startsWith("/disclosure") || location.pathname === "/pricing" || location.pathname === "/subscription" || location.pathname === "/mypage"
+            : location.pathname.startsWith("/trading") || location.pathname.startsWith("/company") || location.pathname.startsWith("/community") || location.pathname.startsWith("/disclosure/") || location.pathname === "/pricing" || location.pathname === "/subscription" || location.pathname === "/mypage"
               ? "flex-1 w-full"
               : isAuthPage
                 ? "flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-col"
