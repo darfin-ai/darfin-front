@@ -28,6 +28,21 @@ import {
   CHART_DOWN,
   CHART_FLAT,
   avatarGradient,
+  ROW_HOVER,
+  BG_PRICE_UP,
+  BG_PRICE_DOWN,
+  BADGE_NEUTRAL,
+  LABEL,
+  BTN_BUY,
+  BTN_SELL,
+  BTN_DANGER_GHOST,
+  ALERT_ERROR,
+  ALERT_WARNING,
+  AI_CALLOUT,
+  AI_CALLOUT_BODY,
+  SECTION_TITLE,
+  ROW_DIVIDER,
+  BADGE_INFO,
 } from '../../../shared/lib/uiRecipes';
 
 // Re-export design tokens for page-level use
@@ -38,10 +53,16 @@ export {
   BTN_PRIMARY,
   BTN_SECONDARY,
   BTN_GHOST,
+  BTN_BUY,
+  BTN_SELL,
+  BTN_DANGER_GHOST,
   PRICE_UP,
   PRICE_DOWN,
   priceToneClass,
   chartColor,
+  CHART_UP,
+  CHART_DOWN,
+  CHART_FLAT,
   CONTAINER,
   INPUT,
   SUBNAV,
@@ -52,6 +73,19 @@ export {
   SEGMENT_TRACK,
   SEGMENT_ACTIVE,
   SEGMENT_IDLE,
+  ROW_HOVER,
+  ROW_DIVIDER,
+  BG_PRICE_UP,
+  BG_PRICE_DOWN,
+  BADGE_NEUTRAL,
+  BADGE_INFO,
+  META,
+  LABEL,
+  SECTION_TITLE,
+  ALERT_ERROR,
+  ALERT_WARNING,
+  AI_CALLOUT,
+  AI_CALLOUT_BODY,
 };
 
 /** @deprecated Use priceToneClass() for className or chartColor() for SVG — legacy hex aliases */
@@ -481,7 +515,7 @@ export function Skeleton({ width = '100%', height = 16, radius = 8, style }) {
 
 export function SkeletonText({ lines = 2, widths = ['100%', '72%'], height = 12, gap = 8 }) {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap }}>
+    <div className="flex flex-col" style={{ gap }}>
       {Array.from({ length: lines }).map((_, i) => (
         <Skeleton key={i} width={widths[i] || widths[widths.length - 1] || '100%'} height={height} />
       ))}

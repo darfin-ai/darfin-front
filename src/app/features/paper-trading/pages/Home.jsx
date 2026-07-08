@@ -1,44 +1,44 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useNavigate as useRouterNavigate } from 'react-router';
+import { CheckCircle2 } from 'lucide-react';
 import { useStore } from '../store/store.jsx';
 import { getQuestions } from '../../community/api/communityApi.js';
 import {
-  UP, DOWN, SUB, INK, BRAND,
-  won, wonShort, signPct, signNum, tone, timeAgo,
+  won, wonShort, signPct, signNum, timeAgo,
   Avatar, Sparkline, CandleChart, Card, Pill, Tab, Heart, Skeleton, SkeletonText, displayStockName,
+  priceToneClass, chartColor, CONTAINER, ROW_HOVER,
+  BG_PRICE_UP, BG_PRICE_DOWN, BADGE_NEUTRAL, META,
 } from '../components/ui.jsx';
+
+const RANK_COLS = 'grid-cols-[28px_28px_40px_minmax(108px,1fr)_100px_76px_100px_72px]';
+
+function pctBadgeClass(pct) {
+  if (pct > 0) return `${priceToneClass(pct)} ${BG_PRICE_UP}`;
+  if (pct < 0) return `${priceToneClass(pct)} ${BG_PRICE_DOWN}`;
+  return `${priceToneClass(pct)} bg-slate-100 dark:bg-slate-800`;
+}
 
 // ===== Home dashboard (Toss layout, domestic only) =====
 function MarketCard({ idx, big }) {
-  const col = idx.up ? UP : DOWN;
+  const col = chartColor(idx.pct ?? (idx.up ? 1 : -1));
+  const toneCls = priceToneClass(idx.pct ?? (idx.up ? 1 : -1));
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 14, flex: 1, minWidth: 0 }}>
-      <div style={{ flexShrink: 0 }}><Sparkline pts={idx.spark} color={col} w={big ? 120 : 70} h={big ? 56 : 40} /></div>
-      <div style={{ minWidth: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
-          <span style={{ fontSize: 14, fontWeight: 700, color: '#4E5968', whiteSpace: 'nowrap' }}>{idx.name}</span>
-          {idx.tag && <span style={{ fontSize: 11, fontWeight: 700, color: SUB, background: '#F2F4F6', padding: '2px 6px', borderRadius: 6, whiteSpace: 'nowrap' }}>{idx.tag}</span>}
+    <div className="flex items-center gap-3.5 flex-1 min-w-0">
+      <div className="shrink-0">
+        <Sparkline pts={idx.spark} color={col} w={big ? 120 : 70} h={big ? 56 : 40} />
+      </div>
+      <div className="min-w-0">
+        <div className="flex items-center gap-1.5 mb-0.5">
+          <span className="text-sm font-medium text-slate-600 dark:text-slate-400 whitespace-nowrap">{idx.name}</span>
+          {idx.tag && <span className={`text-[11px] font-medium ${BADGE_NEUTRAL} px-1.5 py-0.5 whitespace-nowrap`}>{idx.tag}</span>}
         </div>
-        <div style={{ fontSize: big ? 26 : 19, fontWeight: 800, color: INK, letterSpacing: '-0.02em', lineHeight: 1.1, whiteSpace: 'nowrap' }}>
+        <div className={`${big ? 'text-[26px]' : 'text-lg'} font-semibold text-slate-900 dark:text-slate-100 tracking-tight leading-tight whitespace-nowrap tabular-nums`}>
           {idx.value.toLocaleString('ko-KR', { minimumFractionDigits: 2 })}
         </div>
-        <div style={{ fontSize: 13, fontWeight: 700, color: col, marginTop: 2 }}>
+        <div className={`text-[13px] font-medium ${toneCls} mt-0.5 tabular-nums`}>
           {signNum(idx.amt)} ({signPct(idx.pct)})
         </div>
       </div>
-    </div>
-  );
-}
-
-// ---------- Darfin signature pieces ----------
-function SectionTitle({ children, action, onAction }) {
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-        <span style={{ width: 5, height: 20, borderRadius: 3, background: BRAND, display: 'inline-block' }} />
-        <span style={{ fontSize: 20, fontWeight: 800, color: INK, letterSpacing: '-0.02em' }}>{children}</span>
-      </div>
-      {action && <button onClick={onAction} style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: 14, fontWeight: 700, color: SUB }}>{action} ›</button>}
     </div>
   );
 }
@@ -47,26 +47,30 @@ function SectionTitle({ children, action, onAction }) {
 function MiniIndexCard({ idx }) {
   if (!idx) {
     return (
-      <Card style={{ padding: '14px 18px', flex: 1, minWidth: 0 }}>
-        <Skeleton width={72} height={14} style={{ marginBottom: 10 }} />
-        <Skeleton width="68%" height={26} style={{ marginBottom: 8 }} />
+      <Card className="!p-3.5 !px-[18px] flex-1 min-w-0">
+        <div className="mb-2.5"><Skeleton width={72} height={14} /></div>
+        <div className="mb-2"><Skeleton width="68%" height={26} /></div>
         <Skeleton width={112} height={13} />
       </Card>
     );
   }
-  const isUp = idx.pct >= 0;
-  const col = isUp ? UP : DOWN;
+  const toneCls = priceToneClass(idx.pct);
+  const tagBg = idx.pct > 0 ? BG_PRICE_UP : idx.pct < 0 ? BG_PRICE_DOWN : 'bg-slate-100 dark:bg-slate-800';
   return (
-    <Card style={{ padding: '14px 18px', flex: 1, minWidth: 0 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
-        <span style={{ fontSize: 14, fontWeight: 700, color: '#4E5968', whiteSpace: 'nowrap' }}>{idx.name}</span>
-        {idx.tag && <span style={{ fontSize: 11, fontWeight: 700, color: col, background: col + '14', padding: '2px 7px', borderRadius: 6, whiteSpace: 'nowrap' }}>{idx.tag}</span>}
+    <Card className="!p-3.5 !px-[18px] flex-1 min-w-0">
+      <div className="flex items-center gap-1.5 mb-1.5">
+        <span className="text-sm font-medium text-slate-600 dark:text-slate-400 whitespace-nowrap">{idx.name}</span>
+        {idx.tag && (
+          <span className={`text-[11px] font-medium ${toneCls} ${tagBg} px-[7px] py-0.5 rounded-md whitespace-nowrap`}>
+            {idx.tag}
+          </span>
+        )}
       </div>
-      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 }}>
-        <span style={{ fontSize: 24, fontWeight: 800, color: INK, letterSpacing: '-0.02em', whiteSpace: 'nowrap' }}>
+      <div className="flex items-baseline justify-between gap-2">
+        <span className="text-2xl font-semibold text-slate-900 dark:text-slate-100 tracking-tight whitespace-nowrap tabular-nums">
           {(idx.value || 0).toLocaleString('ko-KR', { minimumFractionDigits: 2 })}
         </span>
-        <span style={{ fontSize: 13, fontWeight: 700, color: col, whiteSpace: 'nowrap' }}>
+        <span className={`text-[13px] font-medium ${toneCls} whitespace-nowrap tabular-nums`}>
           {signNum(idx.amt)} ({signPct(idx.pct)})
         </span>
       </div>
@@ -78,15 +82,25 @@ export function InvestHero() {
   const { state, getStock, navigate, goToLogin } = useStore();
   if (!state.isLoggedIn) {
     return (
-      <div style={{ position: 'relative', overflow: 'hidden', borderRadius: 24, padding: '36px 36px', marginBottom: 28,
-        background: 'linear-gradient(120deg,#1B64DA 0%,#2E7DF0 55%,#3D8BFF 100%)', color: '#fff' }}>
+      <div className="relative overflow-hidden rounded-3xl p-9 mb-7 bg-gradient-to-br from-blue-600 via-blue-500 to-blue-400 text-white">
         <HeroGlow />
-        <div style={{ position: 'relative', maxWidth: 560 }}>
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 700, background: 'rgba(255,255,255,0.18)', padding: '6px 12px', borderRadius: 999, marginBottom: 16 }}>✦ AI 모의투자</div>
-          <div style={{ fontSize: 32, fontWeight: 800, lineHeight: 1.25, letterSpacing: '-0.03em' }}>실전처럼 연습하는 모의투자,<br />Darfin에서 시작하세요</div>
-          <div style={{ fontSize: 15, color: 'rgba(255,255,255,0.85)', marginTop: 12, lineHeight: 1.6 }}>가상 자금 1,000만 원으로 국내 주식을 사고팔며<br />AI가 내 투자 성향을 분석해줘요.</div>
-          <button onClick={goToLogin} style={{ marginTop: 22, height: 52, padding: '0 28px', borderRadius: 14, border: 'none',
-            background: '#fff', color: BRAND, fontSize: 16, fontWeight: 800, cursor: 'pointer' }}>1,000만 원으로 시작하기</button>
+        <div className="relative max-w-[560px]">
+          <div className="inline-flex items-center gap-1.5 text-[13px] font-medium bg-white/18 px-3 py-1.5 rounded-full mb-4">
+            ✦ AI 모의투자
+          </div>
+          <div className="text-[32px] font-semibold leading-tight tracking-tight">
+            실전처럼 연습하는 모의투자,<br />Darfin에서 시작하세요
+          </div>
+          <div className="text-[15px] text-white/85 mt-3 leading-relaxed">
+            가상 자금 1,000만 원으로 국내 주식을 사고팔며<br />AI가 내 투자 성향을 분석해줘요.
+          </div>
+          <button
+            type="button"
+            onClick={goToLogin}
+            className="mt-5 h-[52px] px-7 rounded-[14px] border-none bg-white text-blue-600 text-base font-semibold cursor-pointer"
+          >
+            1,000만 원으로 시작하기
+          </button>
         </div>
       </div>
     );
@@ -105,65 +119,66 @@ export function InvestHero() {
   const pnlPct = totalCost ? (pnl / totalCost) * 100 : 0;
   const pnlUp = pnl >= 0;
   return (
-    <div style={{ position: 'relative', overflow: 'hidden', borderRadius: 24, padding: '28px 32px', marginBottom: 28,
-      background: 'linear-gradient(120deg,#103E8C 0%,#1B64DA 60%,#2E7DF0 100%)', color: '#fff' }}>
+    <div className="relative overflow-hidden rounded-3xl py-7 px-8 mb-7 bg-gradient-to-br from-blue-900 via-blue-600 to-blue-500 text-white">
       <HeroGlow />
-      <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 24, flexWrap: 'wrap' }}>
+      <div className="relative flex items-center justify-between gap-6 flex-wrap">
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14, fontWeight: 700, color: 'rgba(255,255,255,0.82)', marginBottom: 10, whiteSpace: 'nowrap' }}>
-            <span style={{ width: 28, height: 28, borderRadius: 8, background: 'rgba(255,255,255,0.18)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>나</span>
+          <div className="flex items-center gap-1.5 text-sm font-medium text-white/82 mb-2.5 whitespace-nowrap">
+            <span className="w-7 h-7 rounded-lg bg-white/18 inline-flex items-center justify-center">나</span>
             내 모의투자 자산
           </div>
-          <div style={{ fontSize: 40, fontWeight: 800, letterSpacing: '-0.03em', lineHeight: 1, whiteSpace: 'nowrap' }}>{won(assets)}</div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 14 }}>
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 15, fontWeight: 800, background: 'rgba(255,255,255,0.16)', padding: '7px 14px', borderRadius: 999, whiteSpace: 'nowrap' }}>
+          <div className="text-[40px] font-semibold tracking-tight leading-none whitespace-nowrap tabular-nums">{won(assets)}</div>
+          <div className="flex items-center gap-2.5 mt-3.5">
+            <span className="inline-flex items-center gap-1.5 text-[15px] font-semibold bg-white/16 px-3.5 py-[7px] rounded-full whitespace-nowrap tabular-nums">
               {pnlUp ? '▲' : '▼'} {signNum(pnl)}원 ({signPct(pnlPct)})
             </span>
-            <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.7)', whiteSpace: 'nowrap' }}>평가손익</span>
+            <span className="text-[13px] text-white/70 whitespace-nowrap">평가손익</span>
           </div>
         </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, width: 250, flexShrink: 0 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, whiteSpace: 'nowrap' }}>
-            <span style={{ color: 'rgba(255,255,255,0.72)' }}>주문 가능 현금</span>
-            <span style={{ fontWeight: 800 }}>{won(cash)}</span>
+        <div className="flex flex-col gap-3 w-[250px] shrink-0">
+          <div className="flex justify-between text-sm whitespace-nowrap">
+            <span className="text-white/72">주문 가능 현금</span>
+            <span className="font-semibold tabular-nums">{won(cash)}</span>
           </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, whiteSpace: 'nowrap' }}>
-            <span style={{ color: 'rgba(255,255,255,0.72)' }}>보유 종목</span>
-            <span style={{ fontWeight: 800 }}>{state.holdings.length}종목</span>
+          <div className="flex justify-between text-sm whitespace-nowrap">
+            <span className="text-white/72">보유 종목</span>
+            <span className="font-semibold tabular-nums">{state.holdings.length}종목</span>
           </div>
-          <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
-            <button onClick={() => navigate('portfolio')} style={heroBtn(true)}>내 주식</button>
-            <button onClick={() => navigate('ai')} style={heroBtn(false)}>✦ AI 리포트</button>
+          <div className="flex gap-2 mt-1.5">
+            <button type="button" onClick={() => navigate('portfolio')} className={heroBtnClass(true)}>내 주식</button>
+            <button type="button" onClick={() => navigate('ai')} className={heroBtnClass(false)}>✦ AI 리포트</button>
           </div>
         </div>
       </div>
     </div>
   );
 }
+
 function HeroGlow() {
   return (
     <>
-      <div style={{ position: 'absolute', top: -80, right: -40, width: 280, height: 280, borderRadius: '50%', background: 'rgba(255,255,255,0.10)' }} />
-      <div style={{ position: 'absolute', bottom: -120, right: 160, width: 240, height: 240, borderRadius: '50%', background: 'rgba(255,255,255,0.07)' }} />
+      <div className="absolute -top-20 -right-10 w-[280px] h-[280px] rounded-full bg-white/10" />
+      <div className="absolute -bottom-[120px] right-40 w-60 h-60 rounded-full bg-white/[0.07]" />
     </>
   );
 }
-const heroBtn = (solid) => ({ flex: 1, height: 44, borderRadius: 12, border: 'none', cursor: 'pointer', fontSize: 14, fontWeight: 800, whiteSpace: 'nowrap',
-  background: solid ? '#fff' : 'rgba(255,255,255,0.16)', color: solid ? BRAND : '#fff' });
 
-const RANK_COLS = '28px 28px 40px minmax(108px, 1fr) 100px 76px 100px 72px';
+const heroBtnClass = (solid) =>
+  `flex-1 h-11 rounded-xl border-none cursor-pointer text-sm font-semibold whitespace-nowrap ${
+    solid ? 'bg-white text-blue-600' : 'bg-white/16 text-white'
+  }`;
 
 function StockRowSkeleton() {
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: RANK_COLS, alignItems: 'center', gap: 8, padding: '10px 8px', borderRadius: 12 }}>
-      <Skeleton width={20} height={20} radius={10} style={{ justifySelf: 'center' }} />
-      <Skeleton width={16} height={14} style={{ justifySelf: 'center' }} />
-      <Skeleton width={34} height={34} radius={17} style={{ justifySelf: 'center' }} />
+    <div className={`grid ${RANK_COLS} items-center gap-2 py-2.5 px-2 rounded-xl`}>
+      <div className="justify-self-center"><Skeleton width={20} height={20} radius={10} /></div>
+      <div className="justify-self-center"><Skeleton width={16} height={14} /></div>
+      <div className="justify-self-center"><Skeleton width={34} height={34} radius={17} /></div>
       <Skeleton width="78%" height={16} />
-      <Skeleton width={82} height={16} style={{ justifySelf: 'end' }} />
-      <Skeleton width={58} height={24} radius={8} style={{ justifySelf: 'end' }} />
-      <Skeleton width={76} height={14} style={{ justifySelf: 'end' }} />
-      <Skeleton width={48} height={20} radius={6} style={{ justifySelf: 'end' }} />
+      <div className="justify-self-end"><Skeleton width={82} height={16} /></div>
+      <div className="justify-self-end"><Skeleton width={58} height={24} radius={8} /></div>
+      <div className="justify-self-end"><Skeleton width={76} height={14} /></div>
+      <div className="justify-self-end"><Skeleton width={48} height={20} radius={6} /></div>
     </div>
   );
 }
@@ -173,7 +188,6 @@ function StockRowsSkeleton({ count = 10 }) {
 }
 
 function StockRow({ rank, stock, onClick, watched, onWatch, onHover, rankTab }) {
-  const col = tone(stock.pct);
   const displayValue = (rankTab === 'volume' ? stock.volume : stock.value) || 0;
 
   let valText = `${displayValue.toLocaleString()}억원`;
@@ -181,54 +195,45 @@ function StockRow({ rank, stock, onClick, watched, onWatch, onHover, rankTab }) 
   else if (rankTab === 'topGainers' || rankTab === 'topLosers') valText = `${displayValue.toLocaleString()}원`;
 
   return (
-    <div onClick={onClick}
-      style={{ display: 'grid', gridTemplateColumns: RANK_COLS, alignItems: 'center',
-        gap: 8, padding: '10px 8px', borderRadius: 12, cursor: 'pointer' }}
-      onMouseEnter={e => { e.currentTarget.style.background = '#F9FAFB'; onHover && onHover(); }}
-      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-
-      {/* 찜 */}
-      <div style={{ display: 'flex', justifyContent: 'center' }} onClick={e => e.stopPropagation()}>
+    <div
+      onClick={onClick}
+      className={`grid ${RANK_COLS} items-center gap-2 py-2.5 px-2 rounded-xl ${ROW_HOVER}`}
+      onMouseEnter={() => onHover && onHover()}
+    >
+      <div className="flex justify-center" onClick={e => e.stopPropagation()}>
         <Heart filled={watched} onClick={onWatch} size={18} />
       </div>
 
-      {/* 순위 */}
-      <span style={{ fontSize: 14, fontWeight: 700, color: '#8B95A1', textAlign: 'center' }}>{rank}</span>
+      <span className="text-sm font-medium text-slate-400 dark:text-slate-500 text-center tabular-nums">{rank}</span>
 
-      {/* 아이콘 */}
-      <div style={{ display: 'flex', justifyContent: 'center' }}>
+      <div className="flex justify-center">
         <Avatar stock={stock} size={34} />
       </div>
 
-      {/* 종목명 */}
-      <span title={displayStockName(stock)} style={{ fontSize: 15, fontWeight: 700, color: INK, minWidth: 108, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+      <span
+        title={displayStockName(stock)}
+        className="text-[15px] font-medium text-slate-900 dark:text-slate-100 min-w-[108px] overflow-hidden text-ellipsis whitespace-nowrap"
+      >
         {displayStockName(stock)}
       </span>
 
-      {/* 현재가 */}
-      <div style={{ textAlign: 'right', fontSize: 15, fontWeight: 700, color: INK }}>{won(stock.price)}</div>
+      <div className="text-right text-[15px] font-medium text-slate-900 dark:text-slate-100 tabular-nums">{won(stock.price)}</div>
 
-      {/* 등락률 */}
-      <div style={{ textAlign: 'right' }}>
-        <span style={{ display: 'inline-block', padding: '4px 8px', borderRadius: 8, fontSize: 13, fontWeight: 700,
-          color: col, background: stock.pct > 0 ? '#FEF0F1' : stock.pct < 0 ? '#EFF5FF' : '#F2F4F6' }}>
+      <div className="text-right">
+        <span className={`inline-block px-2 py-1 rounded-lg text-[13px] font-medium tabular-nums ${pctBadgeClass(stock.pct)}`}>
           {signPct(stock.pct)}
         </span>
       </div>
 
-      {/* 거래대금/거래량 */}
-      <div style={{ textAlign: 'right', fontSize: 13, fontWeight: 600, color: '#4E5968' }}>{valText}</div>
+      <div className="text-right text-[13px] font-medium text-slate-600 dark:text-slate-400 tabular-nums">{valText}</div>
 
-      {/* 업종 태그 (stock_info DB 기반 — 없으면 미표시) */}
-      <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+      <div className="flex justify-end">
         {stock.sector ? (
-          <span style={{ fontSize: 11, fontWeight: 700, color: '#4E5968', background: '#F2F4F6',
-            padding: '3px 8px', borderRadius: 6, whiteSpace: 'nowrap', overflow: 'hidden',
-            textOverflow: 'ellipsis', maxWidth: '100%' }}>
+          <span className={`text-[11px] font-medium ${BADGE_NEUTRAL} px-2 py-[3px] whitespace-nowrap overflow-hidden text-ellipsis max-w-full`}>
             {stock.sector}
           </span>
         ) : (
-          <span style={{ fontSize: 12, color: '#C5CBD3' }}>-</span>
+          <span className="text-xs text-slate-300 dark:text-slate-600">-</span>
         )}
       </div>
     </div>
@@ -252,7 +257,6 @@ function HomeMain() {
     return found || displayStocks[0];
   }, [hoveredCode, displayStocks]);
 
-  // 탭 변경 시에만 hover 초기화 — stocks가 300ms마다 바뀌어도 리셋하지 않음
   useEffect(() => {
     setHoveredCode('');
   }, [rankTab]);
@@ -261,58 +265,55 @@ function HomeMain() {
     <div>
       <InvestHero />
 
-      {/* market status */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#1FA463' }} />
-          <span style={{ fontSize: 15, fontWeight: 700, color: INK }}>{market?.status?.label || '장 운영중'}</span>
-          <span style={{ fontSize: 14, color: SUB }}>{market?.status?.hours || '09:00 ~ 15:30'}</span>
-          <span style={{ fontSize: 13, color: marketError ? DOWN : SUB, marginLeft: 4 }}>
+      <div className="flex items-center justify-between mb-3.5">
+        <div className="flex items-center gap-2">
+          <span className="w-2 h-2 rounded-full bg-emerald-600 dark:bg-emerald-500" />
+          <span className="text-[15px] font-medium text-slate-900 dark:text-slate-100">{market?.status?.label || '장 운영중'}</span>
+          <span className={`text-sm ${META}`}>{market?.status?.hours || '09:00 ~ 15:30'}</span>
+          <span className={`text-[13px] ml-1 ${marketError ? priceToneClass(-1) : META}`}>
             · {marketError ? 'KIS 시장 지표 연결 실패' : '실시간 자동 갱신 중'}
           </span>
         </div>
       </div>
 
-      {/* 1. 코스피/코스닥 지수 연동 섹션 (TR_ID: FHPUP02100000) */}
-      <div style={{ display: 'flex', gap: 12, marginBottom: 32 }}>
+      <div className="flex gap-3 mb-8">
         <MiniIndexCard idx={market?.kospi} />
         <MiniIndexCard idx={market?.kosdaq} />
         <MiniIndexCard idx={market?.usd} />
       </div>
 
-      {/* tabs */}
-      <div style={{ borderBottom: '1px solid #EEF1F4', marginBottom: 18 }}>
+      <div className="border-b border-slate-100 dark:border-slate-800 mb-[18px]">
         <Tab active={tab === 'chart'} onClick={() => setTab('chart')}>실시간 차트</Tab>
         <Tab active={tab === 'industry'} onClick={() => setTab('industry')}>지금 뜨는 산업</Tab>
       </div>
 
       {tab === 'chart' && (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 392px', gap: 24, alignItems: 'start' }}>
+        <div className="grid grid-cols-[1fr_392px] gap-6 items-start">
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
+            <div className="flex items-center gap-2 mb-4 flex-wrap">
               <Pill active={rankTab === 'tradeValue'} onClick={() => setRankTab('tradeValue')}>거래대금</Pill>
               <Pill active={rankTab === 'volume'} onClick={() => setRankTab('volume')}>거래량</Pill>
               <Pill active={rankTab === 'topGainers'} onClick={() => setRankTab('topGainers')}>급상승</Pill>
               <Pill active={rankTab === 'topLosers'} onClick={() => setRankTab('topLosers')}>급하락</Pill>
-              <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6, fontSize: 14, fontWeight: 700, color: BRAND }}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={BRAND} strokeWidth="2"><circle cx="12" cy="12" r="9" /><path d="M8 12l3 3 5-6" strokeLinecap="round" strokeLinejoin="round" /></svg>
+              <div className="ml-auto flex items-center gap-1.5 text-sm font-medium text-blue-600 dark:text-blue-400">
+                <CheckCircle2 size={16} className="shrink-0" />
                 투자위험 주식 숨기기
               </div>
             </div>
-            
-            <div style={{ display: 'grid', gridTemplateColumns: RANK_COLS, gap: 8, padding: '0 8px 10px', fontSize: 12, color: SUB, fontWeight: 600 }}>
+
+            <div className={`grid ${RANK_COLS} gap-2 px-2 pb-2.5 text-xs ${META} font-medium`}>
               <span />
-              <span style={{ textAlign: 'center' }}>순위</span>
+              <span className="text-center">순위</span>
               <span />
               <span>종목</span>
-              <span style={{ textAlign: 'right' }}>현재가</span>
-              <span style={{ textAlign: 'right' }}>등락률</span>
-              <span style={{ textAlign: 'right' }}>
+              <span className="text-right">현재가</span>
+              <span className="text-right">등락률</span>
+              <span className="text-right">
                 {rankTab === 'tradeValue' ? '거래대금' : rankTab === 'volume' ? '거래량' : '당일변동'}
               </span>
-              <span style={{ textAlign: 'right' }}>업종</span>
+              <span className="text-right">업종</span>
             </div>
-            
+
             {displayStocks.length > 0 ? (
               displayStocks.map((s, i) => (
                 <StockRow key={s.code} rank={i + 1} stock={s} rankTab={rankTab}
@@ -323,45 +324,53 @@ function HomeMain() {
             ) : kisLoading.ranks ? (
               <StockRowsSkeleton />
             ) : (
-              <div style={{ padding: '40px 0', textAlign: 'center', fontSize: 14, color: SUB }}>순위 데이터를 불러올 수 없어요.</div>
+              <div className={`py-10 text-center text-sm ${META}`}>순위 데이터를 불러올 수 없어요.</div>
             )}
           </div>
-          
-          <div style={{ position: 'sticky', top: 84, display: 'flex', flexDirection: 'column', gap: 16 }}>
-            {/* 3. 당일 투자자 동향 연동 섹션 (TR_ID: HHPPG046600C1) */}
+
+          <div className="sticky top-[84px] flex flex-col gap-4">
             <InvestorTrendCard market={market} loading={kisLoading.sentiment} />
             {activeHovered && <StockPreviewCard stock={activeHovered} />}
           </div>
         </div>
       )}
 
-      {/* 2. 지금 뜨는 산업 연동 섹션 (TR_ID: FHPUP02140000) */}
       {tab === 'industry' && (
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, padding: '0 4px', flexWrap: 'wrap' }}>
-            <span style={{ fontSize: 13, fontWeight: 700, color: '#4E5968' }}>최근 거래대금 및 상승률 상위 업종</span>
-            <span style={{ fontSize: 12, color: SUB }}>· 등락률은 당일 업종 평균 기준</span>
-            <span style={{ fontSize: 11, fontWeight: 700, color: BRAND, background: '#EFF5FF', padding: '3px 8px', borderRadius: 6, marginLeft: 'auto', whiteSpace: 'nowrap' }}>실시간 업데이트</span>
+          <div className="flex items-center gap-2 mb-3 px-1 flex-wrap">
+            <span className="text-[13px] font-medium text-slate-600 dark:text-slate-400">최근 거래대금 및 상승률 상위 업종</span>
+            <span className={`text-xs ${META}`}>· 등락률은 당일 업종 평균 기준</span>
+            <span className="text-[11px] font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/30 px-2 py-[3px] rounded-md ml-auto whitespace-nowrap">
+              실시간 업데이트
+            </span>
           </div>
-          <Card style={{ padding: 8 }}>
+          <Card className="!p-2">
             {kisLoading.industries ? (
               <IndustrySkeleton />
             ) : industries && industries.length > 0 ? (
-              industries.map((ind, i) => (
-                <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 20px', borderBottom: i < industries.length - 1 ? '1px solid #F6F8FA' : 'none' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                    <span style={{ fontSize: 15, fontWeight: 700, color: '#8B95A1', width: 18 }}>{i + 1}</span>
-                    <span style={{ fontSize: 17, fontWeight: 700, color: INK }}>{ind.name}</span>
-                    {ind.code && <span style={{ fontSize: 12, color: SUB }}>({ind.code})</span>}
+              <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                {industries.map((ind, i) => (
+                  <div key={i} className="flex items-center justify-between py-[18px] px-5">
+                    <div className="flex items-center gap-3.5">
+                      <span className="text-[15px] font-medium text-slate-400 dark:text-slate-500 w-[18px] tabular-nums">{i + 1}</span>
+                      <span className="text-[17px] font-medium text-slate-900 dark:text-slate-100">{ind.name}</span>
+                      {ind.code && <span className={`text-xs ${META}`}>({ind.code})</span>}
+                    </div>
+                    <div className="flex items-center gap-4">
+                      {ind.value && (
+                        <span className="text-sm text-slate-600 dark:text-slate-400 font-medium tabular-nums">
+                          {ind.value.toLocaleString()}억원
+                        </span>
+                      )}
+                      <span className={`text-base font-semibold ${priceToneClass(ind.pct)} min-w-16 text-right tabular-nums`}>
+                        {signPct(ind.pct)}
+                      </span>
+                    </div>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                    {ind.value && <span style={{ fontSize: 14, color: '#4E5968', fontWeight: 500 }}>{ind.value.toLocaleString()}억원</span>}
-                    <span style={{ fontSize: 16, fontWeight: 800, color: tone(ind.pct), minWidth: 64, textAlign: 'right' }}>{signPct(ind.pct)}</span>
-                  </div>
-                </div>
-              ))
+                ))}
+              </div>
             ) : (
-              <div style={{ padding: '40px 0', textAlign: 'center', fontSize: 14, color: SUB }}>업종 지표 데이터를 불러오는 중입니다...</div>
+              <div className={`py-10 text-center text-sm ${META}`}>업종 지표 데이터를 불러오는 중입니다...</div>
             )}
           </Card>
         </div>
@@ -371,21 +380,24 @@ function HomeMain() {
 }
 
 function IndustrySkeleton({ count = 5 }) {
-  return Array.from({ length: count }).map((_, i) => (
-    <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 20px', borderBottom: i < count - 1 ? '1px solid #F6F8FA' : 'none' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-        <Skeleton width={18} height={16} />
-        <Skeleton width={130 + i * 10} height={18} />
-      </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-        <Skeleton width={72} height={14} />
-        <Skeleton width={54} height={18} />
-      </div>
+  return (
+    <div className="divide-y divide-slate-100 dark:divide-slate-800">
+      {Array.from({ length: count }).map((_, i) => (
+        <div key={i} className="flex items-center justify-between py-[18px] px-5">
+          <div className="flex items-center gap-3.5">
+            <Skeleton width={18} height={16} />
+            <Skeleton width={130 + i * 10} height={18} />
+          </div>
+          <div className="flex items-center gap-4">
+            <Skeleton width={72} height={14} />
+            <Skeleton width={54} height={18} />
+          </div>
+        </div>
+      ))}
     </div>
-  ));
+  );
 }
 
-// 일봉 → 주봉 집계 (월요일 기준)
 function toWeekly(daily) {
   const weeks = {};
   for (const d of daily) {
@@ -411,12 +423,11 @@ const weeklyCache = {};
 function StockPreviewCard({ stock: rawStock }) {
   const { navigate, getStock } = useStore();
   const routerNavigate = useRouterNavigate();
-  // 모든 훅을 조건 분기 전에 선언 (Rules of Hooks)
   const [candles, setCandles] = useState([]);
   const [dates,   setDates]   = useState([]);
-  const [status,  setStatus]  = useState('idle'); // idle | loading | ok | error
+  const [status,  setStatus]  = useState('idle');
   const [communityPosts, setCommunityPosts] = useState([]);
-  const [communityStatus, setCommunityStatus] = useState('idle'); // idle | loading | ok | error
+  const [communityStatus, setCommunityStatus] = useState('idle');
 
   const stock     = rawStock ? (getStock(rawStock.code) || rawStock) : null;
   const stockCode = stock?.code ?? null;
@@ -425,7 +436,6 @@ function StockPreviewCard({ stock: rawStock }) {
   useEffect(() => {
     if (!stockCode) return;
 
-    // 캐시 히트
     if (weeklyCache[stockCode]) {
       const { c, d } = weeklyCache[stockCode];
       setCandles(c); setDates(d); setStatus('ok');
@@ -487,55 +497,72 @@ function StockPreviewCard({ stock: rawStock }) {
     return () => { cancelled = true; };
   }, [stockCode, stockName, stock?.short]);
 
-  // 훅 이후 조건부 렌더링
   if (!stock) return null;
 
-  const col       = tone(stock.pct);
+  const toneCls = priceToneClass(stock.pct);
   const changeAmt = stock.changeAmt || 0;
 
   return (
-    <Card style={{ padding: 18 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14, cursor: 'pointer' }}
-        onClick={() => navigate('detail', { code: stock.code })}>
+    <Card className="!p-[18px]">
+      <div
+        className="flex items-center gap-2.5 mb-3.5 cursor-pointer"
+        onClick={() => navigate('detail', { code: stock.code })}
+      >
         <Avatar stock={stock} size={36} />
-        <div style={{ minWidth: 0 }}>
-          <div style={{ fontSize: 15, fontWeight: 800, color: INK, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{displayStockName(stock)}</div>
-          <div style={{ fontSize: 13, fontWeight: 700 }}>
-            <span style={{ color: INK }}>{won(stock.price)}</span>
-            <span style={{ color: col, marginLeft: 6 }}>{signNum(changeAmt)} ({signPct(stock.pct)})</span>
+        <div className="min-w-0">
+          <div className="text-[15px] font-semibold text-slate-900 dark:text-slate-100 overflow-hidden text-ellipsis whitespace-nowrap">
+            {displayStockName(stock)}
+          </div>
+          <div className="text-[13px] font-medium tabular-nums">
+            <span className="text-slate-900 dark:text-slate-100">{won(stock.price)}</span>
+            <span className={`${toneCls} ml-1.5`}>{signNum(changeAmt)} ({signPct(stock.pct)})</span>
           </div>
         </div>
       </div>
-      <div style={{ fontSize: 12, fontWeight: 700, color: SUB, marginBottom: 4 }}>주봉</div>
+      <div className={`text-xs font-medium ${META} mb-1`}>주봉</div>
       {status === 'loading' && (
         <ChartSkeleton height={170} />
       )}
       {status === 'error' && (
-        <div style={{ height: 170, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, color: SUB }}>차트를 불러올 수 없어요</div>
+        <div className={`h-[170px] flex items-center justify-center text-[13px] ${META}`}>차트를 불러올 수 없어요</div>
       )}
       {status === 'ok' && (
         <CandleChart candles={candles} dates={dates} w={356} h={170} volH={36} currentPrice={stock.price} />
       )}
-      <div style={{ borderTop: '1px solid #F2F4F6', marginTop: 14, paddingTop: 14 }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-          <span style={{ fontSize: 14, fontWeight: 800, color: INK }}>커뮤니티</span>
-          <span onClick={() => routerNavigate('/community')} style={{ fontSize: 12, color: SUB, cursor: 'pointer' }}>더보기 ›</span>
+      <div className="border-t border-slate-100 dark:border-slate-800 mt-3.5 pt-3.5">
+        <div className="flex items-center justify-between mb-2.5">
+          <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">커뮤니티</span>
+          <button
+            type="button"
+            onClick={() => routerNavigate('/community')}
+            className={`text-xs ${META} cursor-pointer hover:text-slate-600 dark:hover:text-slate-300`}
+          >
+            더보기 ›
+          </button>
         </div>
         {communityStatus === 'loading' ? (
           <SkeletonText lines={2} widths={['76%', '58%']} height={13} />
         ) : communityStatus === 'error' ? (
-          <div style={{ fontSize: 13, color: SUB, padding: '8px 0' }}>커뮤니티 글을 불러올 수 없어요.</div>
+          <div className={`text-[13px] ${META} py-2`}>커뮤니티 글을 불러올 수 없어요.</div>
         ) : communityPosts.length === 0 ? (
-          <div style={{ fontSize: 13, color: SUB, padding: '8px 0' }}>아직 글이 없어요. 첫 글을 남겨보세요.</div>
+          <div className={`text-[13px] ${META} py-2`}>아직 글이 없어요. 첫 글을 남겨보세요.</div>
         ) : communityPosts.map(p => (
-          <div key={p.id} onClick={() => routerNavigate(`/community/${p.id}`)} style={{ display: 'flex', gap: 8, marginBottom: 10, cursor: 'pointer' }}>
-            <div style={{ width: 28, height: 28, borderRadius: '50%', background: BRAND, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 12, flexShrink: 0 }}>{(p.authorNickname || '익').charAt(0)}</div>
-            <div style={{ minWidth: 0 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <span style={{ fontSize: 13, fontWeight: 700, color: INK }}>{p.authorNickname || '익명'}</span>
-                <span style={{ fontSize: 11, color: SUB }}>{timeAgo(new Date(p.createdAt).getTime())}</span>
+          <div
+            key={p.id}
+            onClick={() => routerNavigate(`/community/${p.id}`)}
+            className={`flex gap-2 mb-2.5 cursor-pointer ${ROW_HOVER} rounded-lg p-1 -mx-1`}
+          >
+            <div className="w-7 h-7 rounded-full bg-blue-600 text-white flex items-center justify-center font-medium text-xs shrink-0">
+              {(p.authorNickname || '익').charAt(0)}
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5">
+                <span className="text-[13px] font-medium text-slate-900 dark:text-slate-100">{p.authorNickname || '익명'}</span>
+                <span className={`text-[11px] ${META}`}>{timeAgo(new Date(p.createdAt).getTime())}</span>
               </div>
-              <div style={{ fontSize: 13, color: '#4E5968', lineHeight: 1.5, overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{p.title || p.content}</div>
+              <div className="text-[13px] text-slate-600 dark:text-slate-400 leading-normal overflow-hidden text-ellipsis line-clamp-2">
+                {p.title || p.content}
+              </div>
             </div>
           </div>
         ))}
@@ -544,18 +571,17 @@ function StockPreviewCard({ stock: rawStock }) {
   );
 }
 
-// 3. 투자자 동향 (TR_ID: HHPPG046600C1) 반영 컴포넌트
 function InvestorTrendCard({ market, loading }) {
   if (loading || !market || !market.invSentiment) {
     return (
       <Card>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
+        <div className="flex items-center justify-between mb-[18px]">
           <Skeleton width={132} height={18} />
           <Skeleton width={58} height={12} />
         </div>
         {Array.from({ length: 3 }).map((_, i) => (
-          <div key={i} style={{ marginBottom: i < 2 ? 18 : 0 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+          <div key={i} className={i < 2 ? 'mb-[18px]' : ''}>
+            <div className="flex justify-between mb-2">
               <Skeleton width={44} height={15} />
               <Skeleton width={96} height={15} />
             </div>
@@ -568,23 +594,24 @@ function InvestorTrendCard({ market, loading }) {
   const maxAbs = Math.max(...market.invSentiment.map(s => Math.abs(s.val || 0)), 1);
   return (
     <Card>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
-        <span style={{ fontSize: 17, fontWeight: 800, color: INK, whiteSpace: 'nowrap' }}>국내 투자자 동향</span>
-        <span style={{ fontSize: 12, fontWeight: 600, color: SUB, whiteSpace: 'nowrap' }}>오늘 · 억원</span>
+      <div className="flex items-center justify-between mb-[18px]">
+        <span className="text-[17px] font-semibold text-slate-900 dark:text-slate-100 whitespace-nowrap">국내 투자자 동향</span>
+        <span className={`text-xs font-medium ${META} whitespace-nowrap`}>오늘 · 억원</span>
       </div>
       {market.invSentiment.map((s, i) => {
-        const col = s.buy ? UP : DOWN;
+        const toneCls = priceToneClass(s.buy ? 1 : -1);
+        const barBg = s.buy ? 'bg-red-500 dark:bg-red-400' : 'bg-blue-500 dark:bg-blue-400';
         const pct = Math.min(100, (Math.abs(s.val || 0) / maxAbs) * 100);
         return (
-          <div key={i} style={{ marginBottom: i < market.invSentiment.length - 1 ? 18 : 0 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-              <span style={{ fontSize: 15, fontWeight: 700, color: INK, whiteSpace: 'nowrap' }}>{s.who}</span>
-              <span style={{ fontSize: 15, fontWeight: 800, color: col, whiteSpace: 'nowrap' }}>
+          <div key={i} className={i < market.invSentiment.length - 1 ? 'mb-[18px]' : ''}>
+            <div className="flex justify-between mb-2">
+              <span className="text-[15px] font-medium text-slate-900 dark:text-slate-100 whitespace-nowrap">{s.who}</span>
+              <span className={`text-[15px] font-semibold ${toneCls} whitespace-nowrap tabular-nums`}>
                 {s.buy ? '순매수' : '순매도'} {Math.abs(s.val || 0).toLocaleString()}
               </span>
             </div>
-            <div style={{ height: 8, background: '#F2F4F6', borderRadius: 4, overflow: 'hidden' }}>
-              <div style={{ width: pct + '%', height: '100%', background: col }} />
+            <div className="h-2 bg-slate-100 dark:bg-slate-800 rounded overflow-hidden">
+              <div className={`h-full rounded ${barBg}`} style={{ width: `${pct}%` }} />
             </div>
           </div>
         );
@@ -598,35 +625,47 @@ function WatchRail() {
   const top = state.watchlist.map(getStock).filter(Boolean).slice(0, 10);
   const loading = state.isLoggedIn && (kisLoading.watchlist || kisLoading.summaries) && state.watchlist.length > 0 && top.length === 0;
   return (
-    <aside style={{ width: 320, flexShrink: 0 }}>
-      <div style={{ position: 'sticky', top: 84 }}>
-        <div style={{ fontSize: 22, fontWeight: 800, color: INK, marginBottom: 16 }}>관심</div>
-        <Card style={{ padding: 0 }}>
-          <div style={{ padding: '18px 18px 8px' }}>
-            <div style={{ fontSize: 17, fontWeight: 800, color: INK }}>관심 주식 TOP 10</div>
-            <div style={{ fontSize: 13, color: SUB, marginTop: 4 }}>관심 종목을 등록하면 상위 10개 종목이 표시됩니다.</div>
+    <aside className="w-80 shrink-0">
+      <div className="sticky top-[84px]">
+        <div className="text-[22px] font-semibold text-slate-900 dark:text-slate-100 mb-4">관심</div>
+        <Card className="!p-0">
+          <div className="px-[18px] pt-[18px] pb-2">
+            <div className="text-[17px] font-semibold text-slate-900 dark:text-slate-100">관심 주식 TOP 10</div>
+            <div className={`text-[13px] ${META} mt-1`}>관심 종목을 등록하면 상위 10개 종목이 표시됩니다.</div>
           </div>
           {loading ? (
             <WatchRailSkeleton />
           ) : top.map((s) => {
             const changeAmt = s.changeAmt || 0;
             return (
-              <div key={s.code} onClick={() => navigate('detail', { code: s.code })}
-                style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '11px 18px', cursor: 'pointer' }}
-                onMouseEnter={e => e.currentTarget.style.background = '#F9FAFB'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+              <div
+                key={s.code}
+                onClick={() => navigate('detail', { code: s.code })}
+                className={`flex items-center gap-2.5 py-[11px] px-[18px] ${ROW_HOVER}`}
+              >
                 <Avatar stock={s} size={34} />
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 14, fontWeight: 700, color: INK, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{displayStockName(s)}</div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-medium text-slate-900 dark:text-slate-100 overflow-hidden text-ellipsis whitespace-nowrap">
+                    {displayStockName(s)}
+                  </div>
                 </div>
-                <div style={{ textAlign: 'right', flexShrink: 0, whiteSpace: 'nowrap' }}>
-                  <div style={{ fontSize: 14, fontWeight: 700, color: INK }}>{wonShort(s.price)}</div>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: tone(s.pct) }}>{signNum(changeAmt)} ({signPct(s.pct)})</div>
+                <div className="text-right shrink-0 whitespace-nowrap">
+                  <div className="text-sm font-medium text-slate-900 dark:text-slate-100 tabular-nums">{wonShort(s.price)}</div>
+                  <div className={`text-xs font-medium ${priceToneClass(s.pct)} tabular-nums`}>
+                    {signNum(changeAmt)} ({signPct(s.pct)})
+                  </div>
                 </div>
                 <Heart filled onClick={() => toggleWatch(s.code)} size={18} />
               </div>
             );
           })}
-          <button onClick={() => navigate('watchlist')} style={{ width: '100%', padding: 14, border: 'none', borderTop: '1px solid #F2F4F6', background: 'none', color: BRAND, fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>관심 종목 전체 보기</button>
+          <button
+            type="button"
+            onClick={() => navigate('watchlist')}
+            className="w-full py-3.5 border-none border-t border-slate-100 dark:border-slate-800 bg-transparent text-blue-600 dark:text-blue-400 font-medium text-sm cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
+          >
+            관심 종목 전체 보기
+          </button>
         </Card>
       </div>
     </aside>
@@ -635,12 +674,12 @@ function WatchRail() {
 
 function WatchRailSkeleton({ count = 6 }) {
   return Array.from({ length: count }).map((_, i) => (
-    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '11px 18px' }}>
+    <div key={i} className="flex items-center gap-2.5 py-[11px] px-[18px]">
       <Skeleton width={34} height={34} radius={17} />
-      <div style={{ flex: 1 }}>
+      <div className="flex-1">
         <Skeleton width="70%" height={14} />
       </div>
-      <div style={{ width: 82, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
+      <div className="w-[82px] flex flex-col items-end gap-1.5">
         <Skeleton width={64} height={14} />
         <Skeleton width={74} height={12} />
       </div>
@@ -651,16 +690,19 @@ function WatchRailSkeleton({ count = 6 }) {
 
 function ChartSkeleton({ height = 170 }) {
   return (
-    <div style={{ height, position: 'relative', padding: '12px 8px 28px' }}>
-      <div style={{ position: 'absolute', inset: '12px 8px 28px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+    <div className="relative" style={{ height }}>
+      <div className="absolute inset-x-2 top-3 bottom-7 flex flex-col justify-between">
         {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} height={1} radius={1} />)}
       </div>
-      <div style={{ position: 'absolute', left: 12, right: 78, bottom: 42, height: height - 72, display: 'flex', alignItems: 'flex-end', gap: 6 }}>
+      <div
+        className="absolute left-3 right-[78px] bottom-[42px] flex items-end gap-1.5"
+        style={{ height: height - 72 }}
+      >
         {Array.from({ length: 24 }).map((_, i) => (
           <Skeleton key={i} width="100%" height={Math.min(height - 78, 28 + ((i * 17) % 92))} radius={3} style={{ flex: 1 }} />
         ))}
       </div>
-      <div style={{ position: 'absolute', left: 12, right: 78, bottom: 12, display: 'flex', gap: 6 }}>
+      <div className="absolute left-3 right-[78px] bottom-3 flex gap-1.5">
         {Array.from({ length: 24 }).map((_, i) => (
           <Skeleton key={i} width="100%" height={8 + ((i * 7) % 18)} radius={2} style={{ flex: 1 }} />
         ))}
@@ -678,9 +720,9 @@ function MarketTicker() {
     onScroll();
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
-  
+
   if (!market) return null;
-  
+
   const items = [
     market.kospi,
     market.kosdaq,
@@ -688,18 +730,28 @@ function MarketTicker() {
   ].filter(Boolean);
   if (items.length === 0) return null;
   return (
-    <div style={{ position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 45,
-      background: 'rgba(255,255,255,0.96)', backdropFilter: 'blur(10px)', borderTop: '1px solid #EEF1F4',
-      transform: show ? 'translateY(0)' : 'translateY(100%)', transition: 'transform 0.28s cubic-bezier(0.2,0.8,0.2,1)',
-      boxShadow: '0 -4px 20px rgba(0,0,0,0.05)' }}>
-      <div style={{ maxWidth: 1480, margin: '0 auto', padding: '0 28px', height: 52, display: 'flex', alignItems: 'center', gap: 8 }}>
+    <div
+      className={`fixed inset-x-0 bottom-0 z-[45] bg-white/96 dark:bg-slate-900/96 backdrop-blur-[10px] border-t border-slate-100 dark:border-slate-800 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] transition-transform duration-[280ms] ease-[cubic-bezier(0.2,0.8,0.2,1)] ${
+        show ? 'translate-y-0' : 'translate-y-full'
+      }`}
+    >
+      <div className={`${CONTAINER} h-[52px] flex items-center gap-2`}>
         {items.map((it, i) => {
-          const col = tone(it.pct);
+          const toneCls = priceToneClass(it.pct);
           return (
-            <div key={i} style={{ display: 'flex', alignItems: 'baseline', gap: 7, padding: '0 14px', borderLeft: i === 0 ? 'none' : '1px solid #F2F4F6', flexShrink: 0, whiteSpace: 'nowrap' }}>
-              <span style={{ fontSize: 13, fontWeight: 700, color: '#4E5968' }}>{it.name}</span>
-              <span style={{ fontSize: 13, fontWeight: 800, color: INK }}>{(it.value || 0).toLocaleString('ko-KR', { minimumFractionDigits: 2 })}</span>
-              <span style={{ fontSize: 12, fontWeight: 700, color: col }}>{signNum(it.amt)} ({signPct(it.pct)})</span>
+            <div
+              key={i}
+              className={`flex items-baseline gap-[7px] px-3.5 shrink-0 whitespace-nowrap ${
+                i > 0 ? 'border-l border-slate-100 dark:border-slate-800' : ''
+              }`}
+            >
+              <span className="text-[13px] font-medium text-slate-600 dark:text-slate-400">{it.name}</span>
+              <span className="text-[13px] font-semibold text-slate-900 dark:text-slate-100 tabular-nums">
+                {(it.value || 0).toLocaleString('ko-KR', { minimumFractionDigits: 2 })}
+              </span>
+              <span className={`text-xs font-medium ${toneCls} tabular-nums`}>
+                {signNum(it.amt)} ({signPct(it.pct)})
+              </span>
             </div>
           );
         })}
@@ -711,8 +763,8 @@ function MarketTicker() {
 export function Home() {
   return (
     <>
-      <div style={{ maxWidth: 1480, margin: '0 auto', padding: '28px 28px 100px', display: 'flex', gap: 40 }}>
-        <div style={{ flex: 1, minWidth: 0 }}><HomeMain /></div>
+      <div className={`${CONTAINER} py-7 pb-[100px] flex gap-10`}>
+        <div className="flex-1 min-w-0"><HomeMain /></div>
         <WatchRail />
       </div>
       <MarketTicker />

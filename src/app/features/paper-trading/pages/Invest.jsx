@@ -1,11 +1,16 @@
 import { useState, useMemo } from 'react';
 import { useStore } from '../store/store.jsx';
 import {
-  UP, DOWN, SUB, INK, BRAND,
-  won, wonShort, signPct, signNum, tone, dateLabel,
-  Avatar, Donut, Card, Modal, ghostBtn, primaryBtn, iconBtn, Heart,
+  won, wonShort, signPct, signNum, dateLabel,
+  Avatar, Donut, Card, Modal, Heart,
   PageShell, Empty, Metric, Skeleton, SkeletonText, displayStockName,
+  LoginGate, SegmentedControl,
+  BTN_PRIMARY, BTN_SECONDARY, BTN_GHOST,
+  PRICE_UP, PRICE_DOWN, priceToneClass, INPUT,
+  META, ROW_HOVER, BG_PRICE_UP, BG_PRICE_DOWN,
 } from '../components/ui.jsx';
+import { SECTION_TITLE, ROW_DIVIDER, BTN_DANGER_GHOST } from '../../../shared/lib/uiRecipes';
+
 // ===== 포트폴리오 · 관심종목 · 모의자금 · 체결내역 · AI분석 =====
 
 // ---------- usePortfolio ----------
@@ -35,6 +40,23 @@ function usePortfolio() {
 
 const DONUT_COLORS = ['#1B64DA', '#F04452', '#F5A623', '#7C3AED', '#1FA463', '#FF7A45', '#00B8D9', '#8B95A1'];
 
+const PORTFOLIO_SUBTABS = [
+  { value: 'holdings', label: '보유 주식' },
+  { value: 'trades', label: '체결 내역' },
+];
+
+const WATCHLIST_SORT_OPTIONS = [
+  { value: 'added', label: '추가일순' },
+  { value: 'pct', label: '등락률순' },
+  { value: 'name', label: '종목명순' },
+];
+
+const TRADE_FILTER_OPTIONS = [
+  { value: 'ALL', label: '전체' },
+  { value: 'BUY', label: '매수' },
+  { value: 'SELL', label: '매도' },
+];
+
 export function Portfolio() {
   const { state, navigate, kisLoading } = useStore();
   const p = usePortfolio();
@@ -50,25 +72,27 @@ export function Portfolio() {
 
   return (
     <PageShell title="내 주식" sub={`보유 ${p.rows.length}종목 · 모의투자 계좌`}
-      right={<button onClick={() => navigate('funds')} style={ghostBtn}>자금 관리</button>}>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: 20, marginBottom: 20 }}>
+      right={<button type="button" onClick={() => navigate('funds')} className={BTN_SECONDARY}>자금 관리</button>}>
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-5 mb-5">
         {/* summary */}
         <Card>
-          <div style={{ fontSize: 14, color: SUB, marginBottom: 6 }}>총 자산</div>
-          {loading ? <Skeleton width={220} height={40} style={{ margin: '8px 0' }} /> : <div style={{ fontSize: 36, fontWeight: 800, color: INK, letterSpacing: '-0.02em' }}>{won(p.assets)}</div>}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}>
+          <div className={`text-sm ${META} mb-1.5`}>총 자산</div>
+          {loading ? <Skeleton width={220} height={40} style={{ margin: '8px 0' }} /> : (
+            <div className="text-4xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight tabular-nums">{won(p.assets)}</div>
+          )}
+          <div className="flex items-center gap-2 mt-2">
             {loading ? (
               <Skeleton width={170} height={18} />
             ) : (
               <>
-                <span style={{ fontSize: 17, fontWeight: 800, color: tone(p.totalPnl) }}>
+                <span className={`text-lg font-extrabold tabular-nums ${priceToneClass(p.totalPnl)}`}>
                   {signNum(p.totalPnl)}원 ({signPct(p.totalPnlPct)})
                 </span>
-                <span style={{ fontSize: 13, color: SUB }}>평가손익</span>
+                <span className={`text-sm ${META}`}>평가손익</span>
               </>
             )}
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16, marginTop: 24, paddingTop: 24, borderTop: '1px solid #F2F4F6' }}>
+          <div className="grid grid-cols-3 gap-4 mt-6 pt-6 border-t border-slate-100 dark:border-slate-800">
             {loading ? <MetricSkeleton count={3} /> : (
               <>
                 <Metric label="매수 금액" value={won(p.totalCost)} />
@@ -80,69 +104,68 @@ export function Portfolio() {
         </Card>
         {/* donut */}
         <Card>
-          <div style={{ fontSize: 16, fontWeight: 800, color: INK, marginBottom: 14 }}>종목별 비중</div>
+          <div className={`${SECTION_TITLE} mb-3.5`}>종목별 비중</div>
           {loading ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
+            <div className="flex items-center gap-[18px]">
               <Skeleton width={140} height={140} radius={70} />
-              <div style={{ flex: 1 }}><SkeletonText lines={5} widths={['90%', '78%', '84%', '68%', '72%']} height={13} gap={11} /></div>
+              <div className="flex-1"><SkeletonText lines={5} widths={['90%', '78%', '84%', '68%', '72%']} height={13} gap={11} /></div>
             </div>
           ) : slices.length > 1 ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
-              <div style={{ position: 'relative' }}>
+            <div className="flex items-center gap-[18px]">
+              <div className="relative">
                 <Donut slices={slices} size={140} thickness={26} />
-                <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                  <div style={{ fontSize: 11, color: SUB }}>종목수</div>
-                  <div style={{ fontSize: 20, fontWeight: 800, color: INK }}>{p.rows.length}</div>
+                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                  <div className={`text-[11px] ${META}`}>종목수</div>
+                  <div className="text-xl font-extrabold text-slate-900 dark:text-slate-100 tabular-nums">{p.rows.length}</div>
                 </div>
               </div>
-              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <div className="flex-1 flex flex-col gap-2">
                 {slices.slice(0, 5).map((s, i) => (
-                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
-                    <span style={{ width: 9, height: 9, borderRadius: 3, background: s.color, flexShrink: 0 }} />
-                    <span style={{ color: '#4E5968', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.label}</span>
-                    <span style={{ fontWeight: 700, color: INK }}>{((s.value / totalForPct) * 100).toFixed(0)}%</span>
+                  <div key={i} className="flex items-center gap-2 text-sm">
+                    <span className="w-[9px] h-[9px] rounded-sm shrink-0" style={{ background: s.color }} />
+                    <span className="text-slate-600 dark:text-slate-400 flex-1 overflow-hidden text-ellipsis whitespace-nowrap">{s.label}</span>
+                    <span className="font-bold text-slate-900 dark:text-slate-100 tabular-nums">{((s.value / totalForPct) * 100).toFixed(0)}%</span>
                   </div>
                 ))}
               </div>
             </div>
-          ) : <div style={{ fontSize: 14, color: SUB, padding: '20px 0' }}>현금 100%</div>}
+          ) : <div className={`text-sm ${META} py-5`}>현금 100%</div>}
         </Card>
       </div>
 
       {/* sub-tabs */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 18 }}>
-        {[['holdings', '보유 주식'], ['trades', '체결 내역']].map(([k, l]) => (
-          <button key={k} onClick={() => setSubtab(k)} style={{ height: 40, padding: '0 18px', borderRadius: 999, border: 'none', cursor: 'pointer',
-            fontSize: 15, fontWeight: 700, background: subtab === k ? INK : '#F2F4F6', color: subtab === k ? '#fff' : '#4E5968' }}>{l}</button>
-        ))}
-      </div>
+      <SegmentedControl
+        options={PORTFOLIO_SUBTABS}
+        value={subtab}
+        onChange={setSubtab}
+        className="mb-[18px] max-w-xs text-sm"
+      />
 
       {loading ? <HoldingsTableSkeleton /> : subtab === 'trades' ? <TradesTable /> : (
       <>
       {/* holdings list */}
       {p.rows.length === 0 ? <Empty text="보유 중인 주식이 없어요. 종목을 매수해보세요." cta="종목 둘러보기" onCta={() => navigate('home')} /> : (
-        <Card style={{ padding: 8 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1.6fr 1fr 1fr 1.1fr 1.1fr', gap: 8, padding: '12px 16px', fontSize: 13, color: SUB, fontWeight: 600 }}>
-            <span>종목</span><span style={{ textAlign: 'right' }}>보유수량</span><span style={{ textAlign: 'right' }}>평균매수가</span>
-            <span style={{ textAlign: 'right' }}>평가금액</span><span style={{ textAlign: 'right' }}>평가손익</span>
+        <Card className="!p-2">
+          <div className="grid grid-cols-[1.6fr_1fr_1fr_1.1fr_1.1fr] gap-2 px-4 py-3 text-sm text-slate-500 dark:text-slate-400 font-semibold">
+            <span>종목</span><span className="text-right">보유수량</span><span className="text-right">평균매수가</span>
+            <span className="text-right">평가금액</span><span className="text-right">평가손익</span>
           </div>
           {p.rows.map(r => (
             <div key={r.code} onClick={() => navigate('detail', { code: r.code })}
-              style={{ display: 'grid', gridTemplateColumns: '1.6fr 1fr 1fr 1.1fr 1.1fr', gap: 8, padding: '14px 16px', alignItems: 'center', borderRadius: 12, cursor: 'pointer' }}
-              onMouseEnter={e => e.currentTarget.style.background = '#F9FAFB'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
+              className={`grid grid-cols-[1.6fr_1fr_1fr_1.1fr_1.1fr] gap-2 px-4 py-3.5 items-center rounded-xl ${ROW_HOVER}`}>
+              <div className="flex items-center gap-3 min-w-0">
                 <Avatar stock={r.stock} size={38} />
-                <div style={{ minWidth: 0 }}>
-                  <div style={{ fontSize: 15, fontWeight: 700, color: INK, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{displayStockName(r.stock)}</div>
-                  <div style={{ fontSize: 13, color: tone(r.stock.pct) }}>{won(r.stock.price)} {signPct(r.stock.pct)}</div>
+                <div className="min-w-0">
+                  <div className="text-[15px] font-bold text-slate-900 dark:text-slate-100 overflow-hidden text-ellipsis whitespace-nowrap">{displayStockName(r.stock)}</div>
+                  <div className={`text-sm tabular-nums ${priceToneClass(r.stock.pct)}`}>{won(r.stock.price)} {signPct(r.stock.pct)}</div>
                 </div>
               </div>
-              <div style={{ textAlign: 'right', fontSize: 15, fontWeight: 600, color: INK }}>{r.qty}주</div>
-              <div style={{ textAlign: 'right', fontSize: 15, color: '#4E5968' }}>{won(r.avgPrice)}</div>
-              <div style={{ textAlign: 'right', fontSize: 15, fontWeight: 700, color: INK }}>{won(r.eval)}</div>
-              <div style={{ textAlign: 'right' }}>
-                <div style={{ fontSize: 15, fontWeight: 700, color: tone(r.pnl) }}>{signNum(r.pnl)}</div>
-                <div style={{ fontSize: 13, fontWeight: 700, color: tone(r.pnl) }}>{signPct(r.pnlPct)}</div>
+              <div className="text-right text-[15px] font-semibold text-slate-900 dark:text-slate-100 tabular-nums">{r.qty}주</div>
+              <div className="text-right text-[15px] text-slate-600 dark:text-slate-400 tabular-nums">{won(r.avgPrice)}</div>
+              <div className="text-right text-[15px] font-bold text-slate-900 dark:text-slate-100 tabular-nums">{won(r.eval)}</div>
+              <div className="text-right tabular-nums">
+                <div className={`text-[15px] font-bold ${priceToneClass(r.pnl)}`}>{signNum(r.pnl)}</div>
+                <div className={`text-sm font-bold ${priceToneClass(r.pnl)}`}>{signPct(r.pnlPct)}</div>
               </div>
             </div>
           ))}
@@ -151,10 +174,6 @@ export function Portfolio() {
       </>)}
     </PageShell>
   );
-}
-function LoginGate() {
-  const { goToLogin } = useStore();
-  return <Empty text="로그인하면 내 모의투자 계좌를 볼 수 있어요." cta="로그인" onCta={goToLogin} />;
 }
 
 // ---------- 관심 종목 ----------
@@ -175,33 +194,33 @@ export function Watchlist() {
   return (
     <PageShell title="관심 종목" sub={`${state.watchlist.length} / 30 종목 · 현재가·등락률은 오늘 14:09 기준`}
       right={
-        <div style={{ display: 'flex', gap: 6, background: '#F2F4F6', borderRadius: 10, padding: 4 }}>
-          {[['added', '추가일순'], ['pct', '등락률순'], ['name', '종목명순']].map(([k, l]) => (
-            <button key={k} onClick={() => setSort(k)} style={{ padding: '8px 14px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 700,
-              background: sort === k ? '#fff' : 'transparent', color: sort === k ? INK : '#8B95A1', boxShadow: sort === k ? '0 1px 3px rgba(0,0,0,0.08)' : 'none' }}>{l}</button>
-          ))}
-        </div>}>
+        <SegmentedControl
+          options={WATCHLIST_SORT_OPTIONS}
+          value={sort}
+          onChange={setSort}
+        />
+      }>
       {loading ? <WatchlistSkeleton /> : rows.length === 0 ? <Empty text="관심 종목이 없어요. 종목 옆 하트를 눌러 담아보세요." cta="종목 둘러보기" onCta={() => navigate('home')} /> : (
-        <Card style={{ padding: 8 }}>
+        <Card className="!p-2">
           {rows.map(({ stock: s }) => (
             <div key={s.code} onClick={() => navigate('detail', { code: s.code })}
-              style={{ display: 'grid', gridTemplateColumns: '40px 1.6fr 1.2fr 1.4fr 44px', gap: 8, padding: '14px 12px', alignItems: 'center', borderRadius: 12, cursor: 'pointer' }}
-              onMouseEnter={e => e.currentTarget.style.background = '#F9FAFB'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+              className={`grid grid-cols-[40px_1.6fr_1.2fr_1.4fr_44px] gap-2 px-3 py-3.5 items-center rounded-xl ${ROW_HOVER}`}>
               <Heart filled onClick={() => toggleWatch(s.code)} size={20} />
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
+              <div className="flex items-center gap-3 min-w-0">
                 <Avatar stock={s} size={38} />
-                <div style={{ minWidth: 0 }}>
-                  <div style={{ fontSize: 15, fontWeight: 700, color: INK, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{displayStockName(s)}</div>
-                  <div style={{ fontSize: 12, color: SUB }}>{s.sector}</div>
+                <div className="min-w-0">
+                  <div className="text-[15px] font-bold text-slate-900 dark:text-slate-100 overflow-hidden text-ellipsis whitespace-nowrap">{displayStockName(s)}</div>
+                  <div className={`text-xs ${META}`}>{s.sector}</div>
                 </div>
               </div>
-              <div style={{ textAlign: 'right', fontSize: 16, fontWeight: 700, color: INK }}>{won(s.price)}</div>
-              <div style={{ textAlign: 'right' }}>
-                <div style={{ fontSize: 15, fontWeight: 700, color: tone(s.pct) }}>{signNum(s.changeAmt)}</div>
-                <div style={{ fontSize: 13, fontWeight: 700, color: tone(s.pct) }}>{signPct(s.pct)}</div>
+              <div className="text-right text-base font-bold text-slate-900 dark:text-slate-100 tabular-nums">{won(s.price)}</div>
+              <div className="text-right tabular-nums">
+                <div className={`text-[15px] font-bold ${priceToneClass(s.pct)}`}>{signNum(s.changeAmt)}</div>
+                <div className={`text-sm font-bold ${priceToneClass(s.pct)}`}>{signPct(s.pct)}</div>
               </div>
-              <button onClick={(e) => { e.stopPropagation(); toggleWatch(s.code); }} style={{ ...iconBtn, width: 34, height: 34, color: SUB }}>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#C5CBD3" strokeWidth="2" strokeLinecap="round"><path d="M6 6l12 12M18 6L6 18" /></svg>
+              <button type="button" onClick={(e) => { e.stopPropagation(); toggleWatch(s.code); }}
+                className={`${BTN_GHOST} w-[34px] h-[34px] p-0`}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="text-slate-300 dark:text-slate-600"><path d="M6 6l12 12M18 6L6 18" /></svg>
               </button>
             </div>
           ))}
@@ -222,20 +241,20 @@ function MetricSkeleton({ count = 3 }) {
 
 function HoldingsTableSkeleton({ count = 5 }) {
   return (
-    <Card style={{ padding: 8 }}>
-      <div style={{ display: 'grid', gridTemplateColumns: '1.6fr 1fr 1fr 1.1fr 1.1fr', gap: 8, padding: '12px 16px' }}>
+    <Card className="!p-2">
+      <div className="grid grid-cols-[1.6fr_1fr_1fr_1.1fr_1.1fr] gap-2 px-4 py-3">
         {['42%', '58%', '64%', '62%', '60%'].map((w, i) => <Skeleton key={i} width={w} height={13} style={{ justifySelf: i === 0 ? 'start' : 'end' }} />)}
       </div>
       {Array.from({ length: count }).map((_, i) => (
-        <div key={i} style={{ display: 'grid', gridTemplateColumns: '1.6fr 1fr 1fr 1.1fr 1.1fr', gap: 8, padding: '14px 16px', alignItems: 'center' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <div key={i} className="grid grid-cols-[1.6fr_1fr_1fr_1.1fr_1.1fr] gap-2 px-4 py-3.5 items-center">
+          <div className="flex items-center gap-3">
             <Skeleton width={38} height={38} radius={19} />
-            <div style={{ flex: 1 }}><SkeletonText lines={2} widths={['58%', '42%']} height={13} gap={7} /></div>
+            <div className="flex-1"><SkeletonText lines={2} widths={['58%', '42%']} height={13} gap={7} /></div>
           </div>
           <Skeleton width={44} height={15} style={{ justifySelf: 'end' }} />
           <Skeleton width={72} height={15} style={{ justifySelf: 'end' }} />
           <Skeleton width={86} height={15} style={{ justifySelf: 'end' }} />
-          <div style={{ justifySelf: 'end', width: 82 }}><SkeletonText lines={2} widths={['100%', '76%']} height={13} gap={6} /></div>
+          <div className="justify-self-end w-[82px]"><SkeletonText lines={2} widths={['100%', '76%']} height={13} gap={6} /></div>
         </div>
       ))}
     </Card>
@@ -244,16 +263,16 @@ function HoldingsTableSkeleton({ count = 5 }) {
 
 function WatchlistSkeleton({ count = 6 }) {
   return (
-    <Card style={{ padding: 8 }}>
+    <Card className="!p-2">
       {Array.from({ length: count }).map((_, i) => (
-        <div key={i} style={{ display: 'grid', gridTemplateColumns: '40px 1.6fr 1.2fr 1.4fr 44px', gap: 8, padding: '14px 12px', alignItems: 'center' }}>
+        <div key={i} className="grid grid-cols-[40px_1.6fr_1.2fr_1.4fr_44px] gap-2 px-3 py-3.5 items-center">
           <Skeleton width={20} height={20} radius={10} />
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div className="flex items-center gap-3">
             <Skeleton width={38} height={38} radius={19} />
-            <div style={{ flex: 1 }}><SkeletonText lines={2} widths={['62%', '42%']} height={13} gap={7} /></div>
+            <div className="flex-1"><SkeletonText lines={2} widths={['62%', '42%']} height={13} gap={7} /></div>
           </div>
           <Skeleton width={82} height={16} style={{ justifySelf: 'end' }} />
-          <div style={{ justifySelf: 'end', width: 86 }}><SkeletonText lines={2} widths={['100%', '68%']} height={13} gap={6} /></div>
+          <div className="justify-self-end w-[86px]"><SkeletonText lines={2} widths={['100%', '68%']} height={13} gap={6} /></div>
           <Skeleton width={34} height={34} radius={10} />
         </div>
       ))}
@@ -263,7 +282,7 @@ function WatchlistSkeleton({ count = 6 }) {
 
 // ---------- 모의 자금 관리 ----------
 export function Funds() {
-  const { state, chargeFunds, resetFunds, navigate } = useStore();
+  const { state, chargeFunds, resetFunds } = useStore();
   const [chargeOpen, setChargeOpen] = useState(false);
   const [resetOpen, setResetOpen] = useState(false);
   const f = state.funds;
@@ -273,58 +292,70 @@ export function Funds() {
 
   return (
     <PageShell title="모의 자금 관리" sub="모의투자 계좌의 자금을 설정하고 관리해요">
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: 20 }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-5">
+        <div className="flex flex-col gap-5">
           <Card>
-            <div style={{ fontSize: 14, color: SUB, marginBottom: 6 }}>주문 가능 현금</div>
-            <div style={{ fontSize: 36, fontWeight: 800, color: INK, letterSpacing: '-0.02em' }}>{won(f.cashBalance)}</div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginTop: 24, paddingTop: 24, borderTop: '1px solid #F2F4F6' }}>
+            <div className={`text-sm ${META} mb-1.5`}>주문 가능 현금</div>
+            <div className="text-4xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight tabular-nums">{won(f.cashBalance)}</div>
+            <div className="grid grid-cols-2 gap-4 mt-6 pt-6 border-t border-slate-100 dark:border-slate-800">
               <Metric label="초기 설정 자금" value={won(f.initialAmount)} />
               <Metric label="총 평가 자산" value={won(p.assets)} />
             </div>
-            <div style={{ display: 'flex', gap: 10, marginTop: 24 }}>
-              <button onClick={() => setChargeOpen(true)} disabled={remainCharge <= 0}
-                style={{ flex: 1, height: 52, borderRadius: 14, border: 'none', fontSize: 16, fontWeight: 800, cursor: remainCharge > 0 ? 'pointer' : 'not-allowed',
-                  background: remainCharge > 0 ? BRAND : '#E5E8EB', color: remainCharge > 0 ? '#fff' : '#B0B8C1' }}>
+            <div className="flex gap-2.5 mt-6">
+              <button type="button" onClick={() => setChargeOpen(true)} disabled={remainCharge <= 0}
+                className={`${BTN_PRIMARY} flex-1 h-[52px] text-base font-extrabold`}>
                 자금 충전 {remainCharge > 0 ? `(오늘 ${remainCharge}회 남음)` : '(오늘 소진)'}
               </button>
-              <button onClick={() => setResetOpen(true)} style={{ flex: '0 0 auto', height: 52, padding: '0 22px', borderRadius: 14, border: '1px solid #FFD9DC', background: '#FFF5F6', color: UP, fontSize: 16, fontWeight: 800, cursor: 'pointer' }}>자금 초기화</button>
+              <button type="button" onClick={() => setResetOpen(true)}
+                className={`${BTN_DANGER_GHOST} shrink-0 h-[52px] px-5 text-base font-extrabold border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/30 ${PRICE_UP}`}>
+                자금 초기화
+              </button>
             </div>
-            <div style={{ fontSize: 12, color: SUB, marginTop: 12, lineHeight: 1.5 }}>· 자금 충전은 1일 3회까지 가능해요. · 초기화 시 보유 주식과 체결 내역이 모두 삭제되며 복구할 수 없어요. (AI 분석 이력은 보존)</div>
+            <div className={`text-xs ${META} mt-3 leading-relaxed`}>· 자금 충전은 1일 3회까지 가능해요. · 초기화 시 보유 주식과 체결 내역이 모두 삭제되며 복구할 수 없어요. (AI 분석 이력은 보존)</div>
           </Card>
 
-          <Card style={{ padding: 8 }}>
-            <div style={{ padding: '14px 16px', fontSize: 16, fontWeight: 800, color: INK }}>자금 이력</div>
-            {state.fundHistory.map(h => (
-              <div key={h.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', borderTop: '1px solid #F6F8FA' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <span style={{ width: 36, height: 36, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 800,
-                    background: h.type === 'CHARGE' ? '#EFF5FF' : h.type === 'RESET' ? '#FFF5F6' : '#F2F4F6', color: h.type === 'CHARGE' ? DOWN : h.type === 'RESET' ? UP : SUB }}>
-                    {h.type === 'CHARGE' ? '충전' : h.type === 'RESET' ? '초기' : '설정'}
-                  </span>
-                  <div>
-                    <div style={{ fontSize: 15, fontWeight: 700, color: INK }}>{h.type === 'CHARGE' ? '자금 충전' : h.type === 'RESET' ? '자금 초기화' : '초기 자금 설정'}</div>
-                    <div style={{ fontSize: 12, color: SUB }}>{dateLabel(h.ts)}</div>
+          <Card className="!p-2">
+            <div className={`px-4 py-3.5 ${SECTION_TITLE}`}>자금 이력</div>
+            <div className={ROW_DIVIDER}>
+              {state.fundHistory.map(h => (
+                <div key={h.id} className="flex items-center justify-between px-4 py-3.5">
+                  <div className="flex items-center gap-3">
+                    <span className={`w-9 h-9 rounded-[10px] flex items-center justify-center text-[13px] font-extrabold ${
+                      h.type === 'CHARGE' ? 'bg-blue-50 dark:bg-blue-950/30 text-blue-500 dark:text-blue-400'
+                        : h.type === 'RESET' ? `${BG_PRICE_UP} ${PRICE_UP}`
+                        : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400'
+                    }`}>
+                      {h.type === 'CHARGE' ? '충전' : h.type === 'RESET' ? '초기' : '설정'}
+                    </span>
+                    <div>
+                      <div className="text-[15px] font-bold text-slate-900 dark:text-slate-100">{h.type === 'CHARGE' ? '자금 충전' : h.type === 'RESET' ? '자금 초기화' : '초기 자금 설정'}</div>
+                      <div className={`text-xs ${META}`}>{dateLabel(h.ts)}</div>
+                    </div>
+                  </div>
+                  <div className={`text-base font-bold tabular-nums ${h.type === 'RESET' ? 'text-slate-500 dark:text-slate-400' : PRICE_DOWN}`}>
+                    {h.type === 'RESET' ? '' : '+'}{won(h.amount)}
                   </div>
                 </div>
-                <div style={{ fontSize: 16, fontWeight: 700, color: h.type === 'RESET' ? SUB : DOWN }}>{h.type === 'RESET' ? '' : '+'}{won(h.amount)}</div>
-              </div>
-            ))}
+              ))}
+            </div>
           </Card>
         </div>
 
-        <Card style={{ background: 'linear-gradient(135deg,#F4F8FF,#fff)', alignSelf: 'start' }}>
-          <div style={{ fontSize: 16, fontWeight: 800, color: INK, marginBottom: 14 }}>모의투자 안내</div>
-          <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <Card className="bg-gradient-to-br from-blue-50 to-white dark:from-blue-950/30 dark:to-slate-900 self-start">
+          <div className={`${SECTION_TITLE} mb-3.5`}>모의투자 안내</div>
+          <ul className="list-none flex flex-col gap-3.5">
             {[
               ['초기 자금', '최초 1회만 설정 가능하며, 이후 변경할 수 없어요.'],
               ['자금 충전', '1일 3회, 충전 한도 내에서 현금을 추가할 수 있어요.'],
               ['자금 초기화', '이중 확인 후 진행되며 복구가 불가능해요.'],
               ['체결 방식', '모든 주문은 KIS 현재가 기준으로 즉시 체결돼요.'],
             ].map(([t, d], i) => (
-              <li key={i} style={{ display: 'flex', gap: 10 }}>
-                <span style={{ color: BRAND, fontWeight: 800 }}>✦</span>
-                <div><div style={{ fontSize: 14, fontWeight: 700, color: INK }}>{t}</div><div style={{ fontSize: 13, color: '#4E5968', marginTop: 2, lineHeight: 1.5 }}>{d}</div></div>
+              <li key={i} className="flex gap-2.5">
+                <span className="text-blue-600 dark:text-blue-400 font-extrabold">✦</span>
+                <div>
+                  <div className="text-sm font-bold text-slate-900 dark:text-slate-100">{t}</div>
+                  <div className="text-sm text-slate-600 dark:text-slate-400 mt-0.5 leading-relaxed">{d}</div>
+                </div>
               </li>
             ))}
           </ul>
@@ -341,52 +372,70 @@ function ChargeModal({ onClose, onCharge }) {
   const presets = [500000, 1000000, 3000000, 5000000];
   return (
     <Modal onClose={onClose} width={420}>
-      <div style={{ padding: 28 }}>
-        <div style={{ fontSize: 20, fontWeight: 800, color: INK, marginBottom: 6 }}>자금 충전</div>
-        <div style={{ fontSize: 14, color: SUB, marginBottom: 22 }}>충전할 금액을 선택하세요. (1일 3회 제한)</div>
-        <div style={{ fontSize: 30, fontWeight: 800, color: BRAND, textAlign: 'center', marginBottom: 20 }}>{won(amt)}</div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 22 }}>
+      <div className="p-7">
+        <div className="text-xl font-extrabold text-slate-900 dark:text-slate-100 mb-1.5">자금 충전</div>
+        <div className={`text-sm ${META} mb-5`}>충전할 금액을 선택하세요. (1일 3회 제한)</div>
+        <div className="text-3xl font-extrabold text-blue-600 dark:text-blue-400 text-center mb-5 tabular-nums">{won(amt)}</div>
+        <div className="grid grid-cols-2 gap-2.5 mb-5">
           {presets.map(p => (
-            <button key={p} onClick={() => setAmt(p)} style={{ height: 48, borderRadius: 12, cursor: 'pointer', fontSize: 15, fontWeight: 700,
-              border: '1px solid ' + (amt === p ? BRAND : '#E5E8EB'), background: amt === p ? '#EFF5FF' : '#fff', color: amt === p ? BRAND : '#4E5968' }}>
+            <button key={p} type="button" onClick={() => setAmt(p)}
+              className={`h-12 rounded-xl cursor-pointer text-[15px] font-bold transition-colors ${
+                amt === p
+                  ? 'border border-blue-600 dark:border-blue-400 bg-blue-50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400'
+                  : 'border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'
+              }`}>
               +{(p / 10000).toLocaleString()}만원
             </button>
           ))}
         </div>
-        <button onClick={() => { onCharge(amt); onClose(); }} style={{ ...primaryBtn, width: '100%', height: 52 }}>{won(amt)} 충전하기</button>
+        <button type="button" onClick={() => { onCharge(amt); onClose(); }} className={`${BTN_PRIMARY} w-full h-[52px] text-base`}>
+          {won(amt)} 충전하기
+        </button>
       </div>
     </Modal>
   );
 }
+
 function ResetModal({ onClose, onReset }) {
   const [step, setStep] = useState(1);
   const [confirm, setConfirm] = useState('');
   return (
     <Modal onClose={onClose} width={420}>
-      <div style={{ padding: 28 }}>
-        <div style={{ width: 56, height: 56, borderRadius: '50%', background: '#FFF5F6', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={UP} strokeWidth="2.2"><path d="M12 9v4M12 17h.01M10.3 4.3L2.4 18a2 2 0 0 0 1.7 3h15.8a2 2 0 0 0 1.7-3L13.7 4.3a2 2 0 0 0-3.4 0z" strokeLinecap="round" strokeLinejoin="round" /></svg>
+      <div className="p-7">
+        <div className={`w-14 h-14 rounded-full ${BG_PRICE_UP} flex items-center justify-center mx-auto mb-4`}>
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" className={PRICE_UP} stroke="currentColor" strokeWidth="2.2"><path d="M12 9v4M12 17h.01M10.3 4.3L2.4 18a2 2 0 0 0 1.7 3h15.8a2 2 0 0 0 1.7-3L13.7 4.3a2 2 0 0 0-3.4 0z" strokeLinecap="round" strokeLinejoin="round" /></svg>
         </div>
-        <div style={{ fontSize: 20, fontWeight: 800, color: INK, textAlign: 'center', marginBottom: 10 }}>정말 초기화할까요?</div>
+        <div className="text-xl font-extrabold text-slate-900 dark:text-slate-100 text-center mb-2.5">정말 초기화할까요?</div>
         {step === 1 ? (
           <>
-            <div style={{ fontSize: 14, color: '#4E5968', textAlign: 'center', lineHeight: 1.6, marginBottom: 24 }}>
-              보유 주식, 체결 내역, 현금이 모두 초기 상태로 돌아가요.<br /><b style={{ color: UP }}>복구할 수 없어요.</b> (AI 분석 이력은 보존)
+            <div className="text-sm text-slate-600 dark:text-slate-400 text-center leading-relaxed mb-6">
+              보유 주식, 체결 내역, 현금이 모두 초기 상태로 돌아가요.<br /><b className={PRICE_UP}>복구할 수 없어요.</b> (AI 분석 이력은 보존)
             </div>
-            <div style={{ display: 'flex', gap: 10 }}>
-              <button onClick={onClose} style={{ ...ghostBtn, flex: 1, height: 52 }}>취소</button>
-              <button onClick={() => setStep(2)} style={{ flex: 1, height: 52, borderRadius: 12, border: 'none', background: UP, color: '#fff', fontSize: 16, fontWeight: 800, cursor: 'pointer' }}>계속</button>
+            <div className="flex gap-2.5">
+              <button type="button" onClick={onClose} className={`${BTN_SECONDARY} flex-1 h-[52px] text-base`}>취소</button>
+              <button type="button" onClick={() => setStep(2)}
+                className={`flex-1 h-[52px] rounded-xl border-none bg-red-500 hover:bg-red-600 text-white text-base font-extrabold cursor-pointer transition-colors`}>
+                계속
+              </button>
             </div>
           </>
         ) : (
           <>
-            <div style={{ fontSize: 14, color: '#4E5968', textAlign: 'center', marginBottom: 14 }}>확인을 위해 <b style={{ color: INK }}>초기화</b>를 입력하세요.</div>
+            <div className="text-sm text-slate-600 dark:text-slate-400 text-center mb-3.5">
+              확인을 위해 <b className="text-slate-900 dark:text-slate-100">초기화</b>를 입력하세요.
+            </div>
             <input value={confirm} onChange={e => setConfirm(e.target.value)} placeholder="초기화"
-              style={{ width: '100%', height: 50, border: '1px solid #E5E8EB', borderRadius: 12, padding: '0 16px', fontSize: 16, textAlign: 'center', marginBottom: 20, outline: 'none' }} />
-            <div style={{ display: 'flex', gap: 10 }}>
-              <button onClick={onClose} style={{ ...ghostBtn, flex: 1, height: 52 }}>취소</button>
-              <button onClick={onReset} disabled={confirm !== '초기화'} style={{ flex: 1, height: 52, borderRadius: 12, border: 'none', cursor: confirm === '초기화' ? 'pointer' : 'not-allowed',
-                background: confirm === '초기화' ? UP : '#E5E8EB', color: confirm === '초기화' ? '#fff' : '#B0B8C1', fontSize: 16, fontWeight: 800 }}>초기화</button>
+              className={`${INPUT} h-[50px] text-base text-center mb-5`} />
+            <div className="flex gap-2.5">
+              <button type="button" onClick={onClose} className={`${BTN_SECONDARY} flex-1 h-[52px] text-base`}>취소</button>
+              <button type="button" onClick={onReset} disabled={confirm !== '초기화'}
+                className={`flex-1 h-[52px] rounded-xl border-none text-base font-extrabold transition-colors ${
+                  confirm === '초기화'
+                    ? 'bg-red-500 hover:bg-red-600 text-white cursor-pointer'
+                    : 'bg-slate-200 dark:bg-slate-700 text-slate-400 dark:text-slate-500 cursor-not-allowed'
+                }`}>
+                초기화
+              </button>
             </div>
           </>
         )}
@@ -402,40 +451,42 @@ function TradesTable() {
   const rows = state.trades.filter(t => filter === 'ALL' || t.type === filter);
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-        <span style={{ fontSize: 15, color: SUB }}>총 {state.trades.length}건</span>
-        <div style={{ display: 'flex', gap: 6, background: '#F2F4F6', borderRadius: 10, padding: 4 }}>
-          {[['ALL', '전체'], ['BUY', '매수'], ['SELL', '매도']].map(([k, l]) => (
-            <button key={k} onClick={() => setFilter(k)} style={{ padding: '8px 16px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 700,
-              background: filter === k ? '#fff' : 'transparent', color: filter === k ? INK : '#8B95A1', boxShadow: filter === k ? '0 1px 3px rgba(0,0,0,0.08)' : 'none' }}>{l}</button>
-          ))}
-        </div>
+      <div className="flex justify-between items-center mb-3.5">
+        <span className={`text-[15px] ${META}`}>총 {state.trades.length}건</span>
+        <SegmentedControl
+          options={TRADE_FILTER_OPTIONS}
+          value={filter}
+          onChange={setFilter}
+        />
       </div>
       {rows.length === 0 ? <Empty text="체결 내역이 없어요." cta="종목 둘러보기" onCta={() => navigate('home')} /> : (
-        <Card style={{ padding: 8 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '100px 1.6fr 1fr 1fr 1.1fr 0.8fr 1fr', gap: 8, padding: '12px 16px', fontSize: 13, color: SUB, fontWeight: 600 }}>
-            <span>날짜</span><span>종목</span><span style={{ textAlign: 'right' }}>구분</span><span style={{ textAlign: 'right' }}>체결가</span>
-            <span style={{ textAlign: 'right' }}>수량</span><span style={{ textAlign: 'right' }}>보유일</span><span style={{ textAlign: 'right' }}>실현손익</span>
+        <Card className="!p-2">
+          <div className="grid grid-cols-[100px_1.6fr_1fr_1fr_1.1fr_0.8fr_1fr] gap-2 px-4 py-3 text-sm text-slate-500 dark:text-slate-400 font-semibold">
+            <span>날짜</span><span>종목</span><span className="text-right">구분</span><span className="text-right">체결가</span>
+            <span className="text-right">수량</span><span className="text-right">보유일</span><span className="text-right">실현손익</span>
           </div>
           {rows.map(t => {
             const s = getStock(t.code);
             const isBuy = t.type === 'BUY';
             return (
               <div key={t.id} onClick={() => navigate('detail', { code: t.code })}
-                style={{ display: 'grid', gridTemplateColumns: '100px 1.6fr 1fr 1fr 1.1fr 0.8fr 1fr', gap: 8, padding: '14px 16px', alignItems: 'center', borderRadius: 12, cursor: 'pointer' }}
-                onMouseEnter={e => e.currentTarget.style.background = '#F9FAFB'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-                <span style={{ fontSize: 14, color: '#4E5968' }}>{dateLabel(t.ts)}</span>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+                className={`grid grid-cols-[100px_1.6fr_1fr_1fr_1.1fr_0.8fr_1fr] gap-2 px-4 py-3.5 items-center rounded-xl ${ROW_HOVER}`}>
+                <span className="text-sm text-slate-600 dark:text-slate-400">{dateLabel(t.ts)}</span>
+                <div className="flex items-center gap-2.5 min-w-0">
                   <Avatar stock={s} size={32} />
-                  <span style={{ fontSize: 15, fontWeight: 700, color: INK, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{displayStockName(s)}</span>
+                  <span className="text-[15px] font-bold text-slate-900 dark:text-slate-100 overflow-hidden text-ellipsis whitespace-nowrap">{displayStockName(s)}</span>
                 </div>
-                <div style={{ textAlign: 'right' }}>
-                  <span style={{ fontSize: 13, fontWeight: 800, padding: '4px 10px', borderRadius: 8, color: isBuy ? UP : DOWN, background: isBuy ? '#FEF0F1' : '#EFF5FF' }}>{isBuy ? '매수' : '매도'}</span>
+                <div className="text-right">
+                  <span className={`text-[13px] font-extrabold px-2.5 py-1 rounded-lg ${isBuy ? `${PRICE_UP} ${BG_PRICE_UP}` : `${PRICE_DOWN} ${BG_PRICE_DOWN}`}`}>
+                    {isBuy ? '매수' : '매도'}
+                  </span>
                 </div>
-                <div style={{ textAlign: 'right', fontSize: 15, color: INK }}>{won(t.price)}</div>
-                <div style={{ textAlign: 'right', fontSize: 15, color: '#4E5968' }}>{t.qty}주</div>
-                <div style={{ textAlign: 'right', fontSize: 15, color: '#4E5968' }}>{isBuy || t.holdDays == null ? '-' : `${t.holdDays}일`}</div>
-                <div style={{ textAlign: 'right', fontSize: 15, fontWeight: 700, color: t.pnl == null ? SUB : tone(t.pnl) }}>{t.pnl == null ? '-' : signNum(t.pnl)}</div>
+                <div className="text-right text-[15px] text-slate-900 dark:text-slate-100 tabular-nums">{won(t.price)}</div>
+                <div className="text-right text-[15px] text-slate-600 dark:text-slate-400 tabular-nums">{t.qty}주</div>
+                <div className="text-right text-[15px] text-slate-600 dark:text-slate-400 tabular-nums">{isBuy || t.holdDays == null ? '-' : `${t.holdDays}일`}</div>
+                <div className={`text-right text-[15px] font-bold tabular-nums ${t.pnl == null ? 'text-slate-500 dark:text-slate-400' : priceToneClass(t.pnl)}`}>
+                  {t.pnl == null ? '-' : signNum(t.pnl)}
+                </div>
               </div>
             );
           })}

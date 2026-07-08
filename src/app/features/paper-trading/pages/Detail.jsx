@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router';
 import { useStore, seedRand } from '../store/store.jsx';
 import { getQuestions } from '../../community/api/communityApi.js';
 import {
@@ -6,9 +7,16 @@ import {
   fetchPaperTradingBalance, fetchPaperTradingHolding, placeBuyOrder, placeSellOrder,
 } from '../lib/stockApi.js';
 import {
-  UP, DOWN, SUB, INK, BRAND,
-  won, wonShort, signPct, signNum, tone, timeAgo,
-  Avatar, Card, Heart, Modal, primaryBtn, iconBtn, CandleChart, Stub, Skeleton, SkeletonText, displayStockName,
+  won, wonShort, signPct, signNum, timeAgo,
+  Avatar, Card, Heart, Modal, CandleChart, Stub, Skeleton, SkeletonText, displayStockName,
+  BTN_PRIMARY, BTN_SECONDARY, BTN_BUY, BTN_SELL,
+  CONTAINER, META, LABEL,
+  TAB_ACTIVE, TAB_IDLE, TAB_INDICATOR,
+  SEGMENT_TRACK, SEGMENT_ACTIVE, SEGMENT_IDLE,
+  PRICE_UP, PRICE_DOWN,
+  chartColor, priceToneClass,
+  CHART_UP, CHART_DOWN,
+  ALERT_ERROR,
 } from '../components/ui.jsx';
 
 const PERIODS = [
@@ -18,6 +26,14 @@ const PERIODS = [
   { key: '1Y', label: '년', n: 10 },
 ];
 const MASTER_CANDLES = 250;
+
+const OB_STEP_BTN =
+  'w-11 h-12 shrink-0 rounded-[10px] border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xl font-bold text-slate-600 dark:text-slate-400 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors';
+const FIELD_LABEL = `${LABEL} shrink-0 w-[72px]`;
+const RATIO_BTN =
+  'flex-1 h-9 rounded-[10px] border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 cursor-pointer text-sm font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors';
+const MORE_BTN =
+  'w-full mt-2.5 h-[38px] rounded-[10px] border border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 text-slate-600 dark:text-slate-400 text-sm font-semibold cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors';
 
 function InteractiveChart({ allCandles, allDates, currentPrice, w, h, showMA5, showMA20, volH, count, resetKey }) {
   const total = allCandles.length;
@@ -48,19 +64,26 @@ function InteractiveChart({ allCandles, allDates, currentPrice, w, h, showMA5, s
 
   return (
     <div>
-      <div ref={ref} onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={endDrag} onPointerLeave={endDrag}
-        style={{ cursor: drag.current ? 'grabbing' : 'grab', touchAction: 'pan-y', userSelect: 'none', overflow: 'hidden' }}>
+      <div
+        ref={ref}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={endDrag}
+        onPointerLeave={endDrag}
+        className="touch-pan-y select-none overflow-hidden"
+        style={{ cursor: drag.current ? 'grabbing' : 'grab' }}
+      >
         <CandleChart candles={slice} w={w} h={h} showMA5={showMA5} showMA20={showMA20} volH={volH}
           currentPrice={atEnd ? currentPrice : undefined}
           dates={sliceDates} />
       </div>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 8, fontSize: 12, color: SUB }}>
+      <div className={`flex items-center justify-between mt-2 text-xs ${META}`}>
         <span>◀ 과거</span>
         <span>좌우로 드래그해 과거 시세를 볼 수 있어요</span>
         <span>{atEnd ? '현재 ▶' : '최근 ▶'}</span>
       </div>
       {sliceDates && sliceDates.length > 0 && (
-        <div style={{ marginTop: 6, fontSize: 12, color: SUB, textAlign: 'right' }}>
+        <div className={`mt-1.5 text-xs ${META} text-right`}>
           {sliceDates.length === 1 ? sliceDates[0] : `${sliceDates[0]} ~ ${sliceDates[sliceDates.length - 1]}`}
         </div>
       )}
@@ -68,11 +91,11 @@ function InteractiveChart({ allCandles, allDates, currentPrice, w, h, showMA5, s
   );
 }
 
-function Row({ label, value, bold, color }) {
+function Row({ label, value, bold, colorClass }) {
   return (
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '5px 0' }}>
-      <span style={{ fontSize: 14, color: SUB, whiteSpace: 'nowrap' }}>{label}</span>
-      <span style={{ fontSize: bold ? 17 : 14, fontWeight: bold ? 800 : 600, color: color || INK, whiteSpace: 'nowrap' }}>{value}</span>
+    <div className="flex justify-between items-center py-[5px]">
+      <span className={`text-sm ${META} whitespace-nowrap`}>{label}</span>
+      <span className={`${bold ? 'text-[17px] font-extrabold' : 'text-sm font-semibold'} whitespace-nowrap text-slate-900 dark:text-slate-100 ${colorClass || ''}`}>{value}</span>
     </div>
   );
 }
@@ -87,7 +110,6 @@ function tickSize(p) {
   return 1;
 }
 
-// 시가총액(원) → "4조 2,100억" / "4,210억" 형식
 function formatMarketCap(won) {
   const eok = Math.round(won / 1e8);
   if (eok >= 10000) {
@@ -98,12 +120,12 @@ function formatMarketCap(won) {
   return `${eok.toLocaleString()}억`;
 }
 
-function PanelTitle({ children, right }) {
+function PanelHeader({ children, right }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <span style={{ width: 4, height: 16, borderRadius: 2, background: BRAND }} />
-        <span style={{ fontSize: 17, fontWeight: 800, color: INK, whiteSpace: 'nowrap' }}>{children}</span>
+    <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center gap-2.5">
+        <span className="w-1 h-5 rounded-sm bg-blue-600 shrink-0" />
+        <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100 tracking-tight whitespace-nowrap">{children}</h2>
       </div>
       {right}
     </div>
@@ -112,16 +134,16 @@ function PanelTitle({ children, right }) {
 
 function ChartSkeleton({ height = 360 }) {
   return (
-    <div style={{ height, position: 'relative', padding: '18px 8px 38px' }}>
-      <div style={{ position: 'absolute', inset: '18px 8px 60px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+    <div className="relative px-2 pt-[18px] pb-[38px]" style={{ height }}>
+      <div className="absolute inset-x-2 top-[18px] bottom-[60px] flex flex-col justify-between">
         {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} height={1} radius={1} />)}
       </div>
-      <div style={{ position: 'absolute', left: 12, right: 72, bottom: 76, height: height - 126, display: 'flex', alignItems: 'flex-end', gap: 5 }}>
+      <div className="absolute left-3 right-[72px] bottom-[76px] flex items-end gap-[5px]" style={{ height: height - 126 }}>
         {Array.from({ length: 44 }).map((_, i) => (
           <Skeleton key={i} width="100%" height={36 + ((i * 19) % 170)} radius={3} style={{ flex: 1 }} />
         ))}
       </div>
-      <div style={{ position: 'absolute', left: 12, right: 72, bottom: 24, display: 'flex', alignItems: 'flex-end', gap: 5 }}>
+      <div className="absolute left-3 right-[72px] bottom-6 flex items-end gap-[5px]">
         {Array.from({ length: 44 }).map((_, i) => (
           <Skeleton key={i} width="100%" height={10 + ((i * 11) % 34)} radius={2} style={{ flex: 1 }} />
         ))}
@@ -135,7 +157,7 @@ function OrderBookSkeleton() {
   return (
     <>
       {Array.from({ length: 5 }).map((_, i) => (
-        <div key={'a' + i} style={{ display: 'grid', gridTemplateColumns: '1fr 96px 1fr', alignItems: 'center', height: 30 }}>
+        <div key={'a' + i} className="grid grid-cols-[1fr_96px_1fr] items-center h-[30px]">
           <Skeleton width={`${38 + i * 9}%`} height={16} radius={4} style={{ justifySelf: 'end' }} />
           <Skeleton width={58} height={16} style={{ justifySelf: 'center' }} />
           <span />
@@ -143,7 +165,7 @@ function OrderBookSkeleton() {
       ))}
       <Skeleton height={38} radius={10} style={{ margin: '4px 0' }} />
       {Array.from({ length: 5 }).map((_, i) => (
-        <div key={'b' + i} style={{ display: 'grid', gridTemplateColumns: '1fr 96px 1fr', alignItems: 'center', height: 30 }}>
+        <div key={'b' + i} className="grid grid-cols-[1fr_96px_1fr] items-center h-[30px]">
           <span />
           <Skeleton width={58} height={16} style={{ justifySelf: 'center' }} />
           <Skeleton width={`${78 - i * 8}%`} height={16} radius={4} />
@@ -155,7 +177,7 @@ function OrderBookSkeleton() {
 
 function QuoteRowsSkeleton({ count = 6, columns = '1.2fr 0.9fr 0.9fr 1fr' }) {
   return Array.from({ length: count }).map((_, i) => (
-    <div key={i} style={{ display: 'grid', gridTemplateColumns: columns, gap: 4, padding: '8px 4px', borderTop: '1px solid #F6F8FA' }}>
+    <div key={i} className="grid gap-1 px-1 py-2 border-t border-slate-100 dark:border-slate-800" style={{ gridTemplateColumns: columns }}>
       <Skeleton width={68} height={13} />
       <Skeleton width={44} height={13} style={{ justifySelf: 'end' }} />
       <Skeleton width={54} height={13} style={{ justifySelf: 'end' }} />
@@ -178,52 +200,58 @@ function formatTradeTime(value) {
 
 function OrderResultModal({ result, onClose }) {
   const isBuy = result.side === 'BUY';
-  const accent = isBuy ? UP : DOWN;
+  const accent = chartColor(isBuy ? 1 : -1);
   const holding = result.holding;
   const balance = result.balance;
   const realizedPnl = result.realizedPnl ?? 0;
 
   return (
     <Modal onClose={onClose} width={500}>
-      <div style={{ padding: 30 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 22 }}>
-          <div style={{ width: 54, height: 54, borderRadius: 18, background: accent + '14', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div className="p-7">
+        <div className="flex items-center gap-3.5 mb-5">
+          <div
+            className="w-[54px] h-[54px] rounded-[18px] flex items-center justify-center"
+            style={{ background: accent + '14' }}
+          >
             <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={accent} strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round">
               <path d="M5 12l5 5L20 7" />
             </svg>
           </div>
           <div>
-            <div style={{ fontSize: 22, fontWeight: 900, color: INK, marginBottom: 4 }}>{isBuy ? '매수' : '매도'} 체결 완료</div>
-            <div style={{ fontSize: 13, color: SUB }}>{formatTradeTime(result.tradedAt)} · {result.orderType === 'MARKET' ? '시장가' : '지정가'} 주문</div>
+            <div className="text-[22px] font-black text-slate-900 dark:text-slate-100 mb-1">{isBuy ? '매수' : '매도'} 체결 완료</div>
+            <div className={`text-sm ${META}`}>{formatTradeTime(result.tradedAt)} · {result.orderType === 'MARKET' ? '시장가' : '지정가'} 주문</div>
           </div>
         </div>
 
-        <div style={{ border: '1px solid #EEF1F4', borderRadius: 16, padding: 18, marginBottom: 16 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+        <div className="border border-slate-100 dark:border-slate-800 rounded-2xl p-[18px] mb-4">
+          <div className="flex items-center gap-3 mb-4">
             <Avatar stock={result.stock} size={42} />
-            <div style={{ minWidth: 0 }}>
-              <div style={{ fontSize: 17, fontWeight: 900, color: INK, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{result.stockName}</div>
-              <div style={{ fontSize: 12, color: SUB }}>{result.stockCode}</div>
+            <div className="min-w-0">
+              <div className="text-[17px] font-black text-slate-900 dark:text-slate-100 truncate">{result.stockName}</div>
+              <div className={`text-xs ${META}`}>{result.stockCode}</div>
             </div>
-            <span style={{ marginLeft: 'auto', fontSize: 13, fontWeight: 900, color: accent, background: accent + '12', padding: '6px 10px', borderRadius: 8 }}>
+            <span
+              className="ml-auto text-sm font-black px-2.5 py-1.5 rounded-lg"
+              style={{ color: accent, background: accent + '12' }}
+            >
               {isBuy ? '매수' : '매도'}
             </span>
           </div>
           <Row label="체결가" value={won(result.price)} bold />
           <Row label="체결 수량" value={`${result.quantity.toLocaleString()}주`} />
-          <Row label="총 체결 금액" value={won(result.totalAmount)} bold color={INK} />
+          <Row label="총 체결 금액" value={won(result.totalAmount)} bold />
           {!isBuy && (
-            <Row label="실현 손익" value={`${signNum(realizedPnl)}원`} color={tone(realizedPnl)} bold />
+            <Row label="실현 손익" value={`${signNum(realizedPnl)}원`} bold colorClass={priceToneClass(realizedPnl)} />
           )}
         </div>
 
-        <div style={{ background: '#F9FAFB', borderRadius: 16, padding: 18, marginBottom: 22 }}>
-          <div style={{ fontSize: 15, fontWeight: 900, color: INK, marginBottom: 12 }}>주문 후 내 자산</div>
+        <div className="bg-slate-50 dark:bg-slate-800/50 rounded-2xl p-[18px] mb-5">
+          <div className="text-[15px] font-black text-slate-900 dark:text-slate-100 mb-3">주문 후 내 자산</div>
           <Row label="주문 가능 현금" value={balance?.availableBalance == null ? '-' : won(balance.availableBalance)} bold />
           <Row label="해당 종목 보유" value={holding?.quantity == null ? '-' : `${holding.quantity.toLocaleString()}주`} />
         </div>
 
-        <button onClick={onClose} style={{ ...primaryBtn, width: '100%', height: 52, fontSize: 16, fontWeight: 900 }}>
+        <button onClick={onClose} className={`${BTN_PRIMARY} w-full h-[52px] text-base font-black`}>
           확인
         </button>
       </div>
@@ -234,9 +262,9 @@ function OrderResultModal({ result, onClose }) {
 function OrderPanel({ stock, price, setPrice, priceType, setPriceType }) {
   const { refreshPortfolio } = useStore();
   const ts = tickSize(stock.price);
-  const [tab, setTab] = useState('BUY'); // 'BUY' | 'SELL' | 'HOLDING'
-  const [balance, setBalance] = useState(null); // API 1: { availableBalance }
-  const [holding, setHolding] = useState(null); // API 2: { quantity, avgBuyPrice, valuationPnl, valuationPnlRate, ... }
+  const [tab, setTab] = useState('BUY');
+  const [balance, setBalance] = useState(null);
+  const [holding, setHolding] = useState(null);
   const [accountLoading, setAccountLoading] = useState(true);
   const [qty, setQty] = useState(0);
   const [submitting, setSubmitting] = useState(false);
@@ -246,7 +274,6 @@ function OrderPanel({ stock, price, setPrice, priceType, setPriceType }) {
   const isBuy = tab === 'BUY';
   const isSell = tab === 'SELL';
 
-  // 탭 전환/종목 변경 시마다 잔액·보유 현황 재조회
   const refresh = () => {
     setAccountLoading(true);
     Promise.allSettled([
@@ -254,7 +281,6 @@ function OrderPanel({ stock, price, setPrice, priceType, setPriceType }) {
       fetchPaperTradingHolding(stock.code).then(setHolding).catch(() => setHolding(null)),
     ]).finally(() => setAccountLoading(false));
   };
-  // stock.code가 빠르게 바뀌면(연속 탐색) 이전 종목 응답이 늦게 도착해 새 종목 값을 덮어쓸 수 있어 취소 가드 필요
   useEffect(() => {
     let cancelled = false;
     setAccountLoading(true);
@@ -267,7 +293,7 @@ function OrderPanel({ stock, price, setPrice, priceType, setPriceType }) {
   useEffect(() => { setQty(0); }, [tab, stock.code]);
 
   const effPrice = priceType === 'market' ? stock.price : price;
-  const priceValid = effPrice > 0; // 지정가를 0으로 지웠을 때 최대수량/제출이 뚫리는 걸 방지
+  const priceValid = effPrice > 0;
   const cash = balance?.availableBalance ?? 0;
   const ownedQty = holding?.quantity ?? 0;
   const maxQty = isBuy ? (priceValid ? Math.floor(cash / effPrice) : 0) : ownedQty;
@@ -297,7 +323,7 @@ function OrderPanel({ stock, price, setPrice, priceType, setPriceType }) {
       const [balanceRes, holdingRes] = await Promise.allSettled([
         fetchPaperTradingBalance(),
         fetchPaperTradingHolding(stock.code),
-        refreshPortfolio(), // "내 자산" 페이지의 잔액·보유(state.holdings/funds)도 즉시 갱신
+        refreshPortfolio(),
       ]);
       const nextBalance = balanceRes.status === 'fulfilled' ? balanceRes.value : null;
       const nextHolding = holdingRes.status === 'fulfilled' ? holdingRes.value : null;
@@ -326,21 +352,27 @@ function OrderPanel({ stock, price, setPrice, priceType, setPriceType }) {
     }
   };
 
-  const accent = isBuy ? UP : DOWN;
-  const errColor = '#E03131';
-  const lblStyle = { fontSize: 14, color: '#4E5968', fontWeight: 600, flexShrink: 0, width: 72 };
-  const obStep = { width: 44, height: 48, flexShrink: 0, borderRadius: 10, border: '1px solid #E5E8EB', background: '#fff', fontSize: 20, fontWeight: 700, color: '#4E5968', cursor: 'pointer' };
+  const tabColorClass = (k) => {
+    if (tab !== k) return '';
+    if (k === 'BUY') return PRICE_UP;
+    if (k === 'SELL') return PRICE_DOWN;
+    return 'text-slate-900 dark:text-slate-100';
+  };
 
   return (
-    <Card style={{ padding: 20 }}>
-      <PanelTitle right={<span style={{ fontSize: 12, color: SUB, whiteSpace: 'nowrap' }}>모의투자</span>}>일반주문</PanelTitle>
+    <Card className="p-5">
+      <PanelHeader right={<span className={`text-xs ${META} whitespace-nowrap`}>모의투자</span>}>일반주문</PanelHeader>
 
-      <div style={{ display: 'flex', background: '#F2F4F6', borderRadius: 12, padding: 4, marginBottom: 18 }}>
-        {[['BUY', '매수', UP], ['SELL', '매도', DOWN], ['HOLDING', '내 보유', INK]].map(([k, l, c]) => (
-          <button key={k} onClick={() => setTab(k)}
-            style={{ flex: 1, height: 40, borderRadius: 9, border: 'none', cursor: 'pointer', fontSize: 15, fontWeight: 800,
-              background: tab === k ? '#fff' : 'transparent', color: tab === k ? c : '#8B95A1',
-              boxShadow: tab === k ? '0 1px 3px rgba(0,0,0,0.08)' : 'none' }}>{l}</button>
+      <div className={`${SEGMENT_TRACK} mb-[18px] text-[15px] font-extrabold`}>
+        {[['BUY', '매수'], ['SELL', '매도'], ['HOLDING', '내 보유']].map(([k, l]) => (
+          <button
+            key={k}
+            type="button"
+            onClick={() => setTab(k)}
+            className={`flex-1 h-10 rounded-[9px] border-none cursor-pointer ${tab === k ? SEGMENT_ACTIVE : SEGMENT_IDLE} ${tabColorClass(k)}`}
+          >
+            {l}
+          </button>
         ))}
       </div>
 
@@ -351,92 +383,114 @@ function OrderPanel({ stock, price, setPrice, priceType, setPriceType }) {
           <div>
             <Row label="보유 수량" value={holding.quantity + '주'} />
             <Row label="평균 매수가" value={won(holding.avgBuyPrice)} />
-            <Row label="평가 손익" value={`${signNum(holding.valuationPnl)}원 (${signPct(holding.valuationPnlRate)})`} color={tone(holding.valuationPnlRate)} bold />
+            <Row label="평가 손익" value={`${signNum(holding.valuationPnl)}원 (${signPct(holding.valuationPnlRate)})`} colorClass={priceToneClass(holding.valuationPnlRate)} bold />
           </div>
         ) : (
-          <div style={{ textAlign: 'center', color: SUB, fontSize: 14, padding: '40px 0' }}>보유 종목 없음</div>
+          <div className={`text-center ${META} text-sm py-10`}>보유 종목 없음</div>
         )
       ) : (
         <>
-          <div style={{ display: 'flex', alignItems: 'center', marginBottom: 14 }}>
-            <span style={lblStyle}>주문 유형</span>
-            <div style={{ flex: 1, height: 44, borderRadius: 10, border: '1px solid #E5E8EB', display: 'flex', alignItems: 'center', padding: '0 14px', fontSize: 14, fontWeight: 700, color: INK, justifyContent: 'space-between' }}>
+          <div className="flex items-center mb-3.5">
+            <span className={FIELD_LABEL}>주문 유형</span>
+            <div className="flex-1 h-11 rounded-[10px] border border-slate-200 dark:border-slate-700 flex items-center px-3.5 text-sm font-bold text-slate-900 dark:text-slate-100 justify-between">
               정규장 주문
             </div>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', marginBottom: 10 }}>
-            <span style={lblStyle}>{isBuy ? '구매' : '판매'} 가격</span>
-            <div style={{ flex: 1, display: 'flex', background: '#F2F4F6', borderRadius: 10, padding: 3 }}>
+          <div className="flex items-center mb-2.5">
+            <span className={FIELD_LABEL}>{isBuy ? '구매' : '판매'} 가격</span>
+            <div className={`flex-1 ${SEGMENT_TRACK}`}>
               {[['limit', '지정가'], ['market', '시장가']].map(([k, l]) => (
-                <button key={k} onClick={() => setPriceType(k)} style={{ flex: 1, height: 34, borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 700,
-                  background: priceType === k ? '#fff' : 'transparent', color: priceType === k ? INK : '#8B95A1', boxShadow: priceType === k ? '0 1px 2px rgba(0,0,0,0.08)' : 'none' }}>{l}</button>
+                <button
+                  key={k}
+                  type="button"
+                  onClick={() => setPriceType(k)}
+                  className={`h-[34px] rounded-lg border-none cursor-pointer text-[13px] font-bold ${priceType === k ? SEGMENT_ACTIVE : SEGMENT_IDLE}`}
+                >
+                  {l}
+                </button>
               ))}
             </div>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
-            <span style={{ width: 72, flexShrink: 0 }} />
+          <div className="flex items-center gap-2 mb-4">
+            <span className="w-[72px] shrink-0" />
             {priceType === 'market' ? (
-              <div style={{ flex: 1, height: 48, borderRadius: 10, background: '#F9FAFB', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, color: SUB }}>시장가 ({won(stock.price)})</div>
+              <div className={`flex-1 h-12 rounded-[10px] bg-slate-50 dark:bg-slate-800/50 flex items-center justify-center text-sm font-bold ${META}`}>
+                시장가 ({won(stock.price)})
+              </div>
             ) : (
               <>
-                <button onClick={() => stepPrice(-1)} style={obStep}>−</button>
-                <div style={{ flex: 1, height: 48, borderRadius: 10, border: '1px solid #E5E8EB', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', padding: '0 12px' }}>
-                  <input value={wonShort(price)} onChange={e => { const n = parseInt(e.target.value.replace(/\D/g, '')) || 0; setPrice(n); }}
-                    style={{ width: '100%', border: 'none', outline: 'none', textAlign: 'right', fontSize: 18, fontWeight: 800, color: INK, background: 'transparent' }} />
-                  <span style={{ fontSize: 14, color: SUB, marginLeft: 4 }}>원</span>
+                <button type="button" onClick={() => stepPrice(-1)} className={OB_STEP_BTN}>−</button>
+                <div className="flex-1 h-12 rounded-[10px] border border-slate-200 dark:border-slate-700 flex items-center justify-end px-3">
+                  <input
+                    value={wonShort(price)}
+                    onChange={e => { const n = parseInt(e.target.value.replace(/\D/g, '')) || 0; setPrice(n); }}
+                    className="w-full border-none outline-none text-right text-lg font-extrabold text-slate-900 dark:text-slate-100 bg-transparent"
+                  />
+                  <span className={`text-sm ${META} ml-1`}>원</span>
                 </div>
-                <button onClick={() => stepPrice(1)} style={obStep}>＋</button>
+                <button type="button" onClick={() => stepPrice(1)} className={OB_STEP_BTN}>＋</button>
               </>
             )}
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-            <span style={lblStyle}>수량</span>
-            <button onClick={() => setQty(q => Math.max(0, q - 1))} style={obStep}>−</button>
-            <div style={{ flex: 1, height: 48, borderRadius: 10, border: '1px solid #E5E8EB', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', padding: '0 12px' }}>
-              <input value={qty === 0 ? '' : qty} placeholder="수량 입력" onChange={e => { const n = parseInt(e.target.value.replace(/\D/g, '')) || 0; setQty(n); }}
-                style={{ width: '100%', border: 'none', outline: 'none', textAlign: 'right', fontSize: 18, fontWeight: 800, color: INK, background: 'transparent' }} />
-              <span style={{ fontSize: 14, color: SUB, marginLeft: 4 }}>주</span>
+          <div className="flex items-center gap-2 mb-3">
+            <span className={FIELD_LABEL}>수량</span>
+            <button type="button" onClick={() => setQty(q => Math.max(0, q - 1))} className={OB_STEP_BTN}>−</button>
+            <div className="flex-1 h-12 rounded-[10px] border border-slate-200 dark:border-slate-700 flex items-center justify-end px-3">
+              <input
+                value={qty === 0 ? '' : qty}
+                placeholder="수량 입력"
+                onChange={e => { const n = parseInt(e.target.value.replace(/\D/g, '')) || 0; setQty(n); }}
+                className="w-full border-none outline-none text-right text-lg font-extrabold text-slate-900 dark:text-slate-100 bg-transparent placeholder:text-slate-400 dark:placeholder:text-slate-500"
+              />
+              <span className={`text-sm ${META} ml-1`}>주</span>
             </div>
-            <button onClick={() => setQty(q => q + 1)} style={obStep}>＋</button>
+            <button type="button" onClick={() => setQty(q => q + 1)} className={OB_STEP_BTN}>＋</button>
           </div>
-          <div style={{ display: 'flex', gap: 8, marginBottom: 18 }}>
+          <div className="flex gap-2 mb-[18px]">
             {[[0.1, '10%'], [0.25, '25%'], [0.5, '50%'], [1, '최대']].map(([r, l]) => (
-              <button key={l} onClick={() => ratio(r)} style={{ flex: 1, height: 36, borderRadius: 10, border: '1px solid #E5E8EB', background: '#fff', cursor: 'pointer', fontSize: 13, fontWeight: 700, color: '#4E5968' }}>{l}</button>
+              <button key={l} type="button" onClick={() => ratio(r)} className={RATIO_BTN}>{l}</button>
             ))}
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', marginBottom: 6 }}>
-            <span style={lblStyle}>총 주문 금액</span>
-            <div style={{ flex: 1, height: 48, borderRadius: 10, background: '#F9FAFB', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', padding: '0 14px', fontSize: 18, fontWeight: 800, color: total > 0 ? INK : '#C5CBD3' }}>
+          <div className="flex items-center mb-1.5">
+            <span className={FIELD_LABEL}>총 주문 금액</span>
+            <div className={`flex-1 h-12 rounded-[10px] bg-slate-50 dark:bg-slate-800/50 flex items-center justify-end px-3.5 text-lg font-extrabold ${total > 0 ? 'text-slate-900 dark:text-slate-100' : 'text-slate-300 dark:text-slate-600'}`}>
               {total > 0 ? won(total) : '금액 입력'}
             </div>
           </div>
-          <div style={{ textAlign: 'right', fontSize: 13, color: SUB, marginBottom: 16 }}>
+          <div className={`text-right text-[13px] ${META} mb-4`}>
             {accountLoading ? (
               <Skeleton width={150} height={13} style={{ marginLeft: 'auto' }} />
             ) : isBuy ? `주문 가능 금액 ${won(cash)}` : `보유 수량 ${ownedQty}주`}
           </div>
 
           {!canSubmit && qty > 0 && (
-            <div style={{ fontSize: 13, color: UP, fontWeight: 600, marginBottom: 12, textAlign: 'center' }}>
+            <div className={`text-[13px] ${PRICE_UP} font-semibold mb-3 text-center`}>
               {!priceValid ? '주문 가격을 입력해주세요.' : isBuy ? '주문 가능 금액이 부족해요.' : '보유 수량을 초과했어요.'}
             </div>
           )}
 
-          <button onClick={submit} disabled={!canSubmit} style={{
-            width: '100%', height: 54, borderRadius: 14, border: 'none', fontSize: 17, fontWeight: 800, cursor: canSubmit ? 'pointer' : 'not-allowed',
-            background: canSubmit ? accent : '#E5E8EB', color: canSubmit ? '#fff' : '#B0B8C1' }}>
+          <button
+            type="button"
+            onClick={submit}
+            disabled={!canSubmit}
+            className={`w-full h-[54px] rounded-[14px] border-none text-[17px] font-extrabold ${
+              canSubmit
+                ? (isBuy ? BTN_BUY : BTN_SELL) + ' cursor-pointer'
+                : 'bg-slate-200 dark:bg-slate-700 text-slate-400 dark:text-slate-500 cursor-not-allowed'
+            }`}
+          >
             {submitting ? '주문 처리 중…' : qty > 0 ? `${won(total)} ${isBuy ? '매수하기' : '매도하기'}` : `${isBuy ? '매수' : '매도'}하기`}
           </button>
         </>
       )}
 
       {errorToast && (
-        <div style={{ marginTop: 14, display: 'flex', alignItems: 'center', gap: 8, background: '#FDEDED', borderRadius: 12, padding: '12px 14px' }}>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={errColor} strokeWidth="2.4"><path d="M12 8v5M12 16h.01M12 3l9 16H3l9-16z" strokeLinecap="round" strokeLinejoin="round" /></svg>
-          <span style={{ fontSize: 14, fontWeight: 700, color: errColor }}>{errorToast}</span>
+        <div className={`${ALERT_ERROR} mt-3.5 flex items-center gap-2 rounded-xl py-3 px-3.5`}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4"><path d="M12 8v5M12 16h.01M12 3l9 16H3l9-16z" strokeLinecap="round" strokeLinejoin="round" /></svg>
+          <span className="text-sm font-bold">{errorToast}</span>
         </div>
       )}
       {orderResult && <OrderResultModal result={orderResult} onClose={() => setOrderResult(null)} />}
@@ -450,23 +504,22 @@ function DetailTabs({ stock, info }) {
     { key: 'info', label: '종목 정보' }
   ];
   return (
-    <Card style={{ padding: 0, overflow: 'hidden' }}>
-      <div style={{ display: 'flex', borderBottom: '1px solid #EEF1F4', padding: '0 8px' }}>
+    <Card className="p-0 overflow-hidden">
+      <div className="flex border-b border-slate-100 dark:border-slate-800 px-2">
         {tabs.map(t => (
-          <button key={t.key} onClick={() => setTab(t.key)} style={{ position: 'relative', padding: '16px 16px', border: 'none', background: 'none',
-            cursor: 'pointer', fontSize: 15, fontWeight: 700, color: tab === t.key ? INK : '#8B95A1', whiteSpace: 'nowrap' }}>
+          <button key={t.key} type="button" onClick={() => setTab(t.key)} className={tab === t.key ? TAB_ACTIVE : TAB_IDLE}>
             {t.label}
-            {tab === t.key && <span style={{ position: 'absolute', left: 12, right: 12, bottom: -1, height: 3, background: BRAND, borderRadius: 2 }} />}
+            {tab === t.key && <span className={TAB_INDICATOR} />}
           </button>
         ))}
       </div>
-      <div style={{ padding: 24 }}>
+      <div className="p-6">
         {tab === 'info' && (
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '20px 24px' }}>
-                {info.map(([k, v], i) => (
+          <div className="grid grid-cols-3 gap-x-6 gap-y-5">
+            {info.map(([k, v], i) => (
               <div key={i}>
-                <div style={{ fontSize: 13, color: SUB, marginBottom: 4 }}>{k}</div>
-                <div style={{ fontSize: 16, fontWeight: 700, color: INK }}>{v}</div>
+                <div className={`text-[13px] ${META} mb-1`}>{k}</div>
+                <div className="text-base font-bold text-slate-900 dark:text-slate-100">{v}</div>
               </div>
             ))}
           </div>
@@ -483,18 +536,16 @@ export function Detail() {
   const code = state.route.params.code;
   const stock = getStock(code);
 
-  // 상세 페이지 마운트/종목 변경 시 실시간 체결(EXECUTION) 구독 1회 전송
   useEffect(() => { subscribeDetail(code); }, [code, subscribeDetail]);
   const [period, setPeriod] = useState('1W');
   const [ma5, setMa5] = useState(true);
   const [ma20, setMa20] = useState(false);
   const [orderPrice, setOrderPrice] = useState(stock?.price || 0);
   const [priceType, setPriceType] = useState('limit');
-  const [apiCandles, setApiCandles] = useState(null);        // 일봉: null=로딩, []=실패, [...]=성공
+  const [apiCandles, setApiCandles] = useState(null);
   const [candlesLoading, setCandlesLoading] = useState(true);
-  const [stockInfo, setStockInfo] = useState(undefined);     // 종목 개요: undefined=로딩("...") | null=404·에러("-") | { marketCap, week52High, week52Low, per, sector }
+  const [stockInfo, setStockInfo] = useState(undefined);
 
-  // 종목 개요 API 호출 (종목 변경 시 1회) — 404(데이터 없음)면 '-' 표시
   useEffect(() => {
     let cancelled = false;
     setStockInfo(undefined);
@@ -504,14 +555,11 @@ export function Detail() {
     return () => { cancelled = true; };
   }, [code]);
 
-  // 종목 변경 시 주문가 리셋
   useEffect(() => { setOrderPrice(stock?.price || 0); }, [code]);
-  // 처음 stock이 로드될 때 주문가 초기화 (code 변경 이후 stock이 뒤늦게 세팅되는 경우)
   useEffect(() => {
     if (stock?.price && orderPrice === 0) setOrderPrice(stock.price);
   }, [stock?.price]);
 
-  // 일봉 데이터 API 호출 (종목 변경 시 1회)
   useEffect(() => {
     let cancelled = false;
     setCandlesLoading(true);
@@ -639,7 +687,6 @@ export function Detail() {
 
   const candleDates = useMemo(() => allCandles.map(c => c.date || ''), [allCandles]);
 
-  // 마지막 캔들을 현재가로 실시간 업데이트
   const liveCandles = useMemo(() => {
     if (!allCandles.length || !stock?.price) return allCandles;
     const last = allCandles[allCandles.length - 1];
@@ -652,7 +699,7 @@ export function Detail() {
   }, [allCandles, stock?.price]);
 
   if (!stock) return <Stub name="종목" />;
-  const col = tone(stock.pct);
+  const pctClass = priceToneClass(stock.pct);
   const watched = state.watchlist.includes(code);
 
   const infoLoading = stockInfo === undefined;
@@ -667,49 +714,58 @@ export function Detail() {
   ];
 
   return (
-    <div style={{ maxWidth: 1480, margin: '0 auto', padding: '24px 28px 80px' }}>
-      <button onClick={() => navigate('home')} style={{ display: 'flex', alignItems: 'center', gap: 6, border: '1px solid #E5E8EB', background: '#fff', color: '#4E5968', fontSize: 16, fontWeight: 700, cursor: 'pointer', marginBottom: 18, whiteSpace: 'nowrap', height: 44, padding: '0 18px', borderRadius: 12 }}>
+    <div className={`${CONTAINER} py-6 pb-20`}>
+      <button
+        type="button"
+        onClick={() => navigate('home')}
+        className={`${BTN_SECONDARY} mb-[18px] h-11 px-[18px] rounded-xl text-base font-bold`}
+      >
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
         실시간 차트
       </button>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: 28, alignItems: 'start' }}>
+      <div className="grid grid-cols-[1fr_380px] gap-7 items-start">
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 24 }}>
+          <div className="flex items-center gap-4 mb-6">
             <Avatar stock={stock} size={56} />
-            <div style={{ flex: 1 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ fontSize: 24, fontWeight: 800, color: INK, whiteSpace: 'nowrap' }}>{displayStockName(stock)}</span>
-                <span style={{ fontSize: 14, color: SUB }}>{stock.code}</span>
+            <div className="flex-1">
+              <div className="flex items-center gap-2">
+                <span className="text-2xl font-extrabold text-slate-900 dark:text-slate-100 whitespace-nowrap">{displayStockName(stock)}</span>
+                <span className={`text-sm ${META}`}>{stock.code}</span>
               </div>
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginTop: 4, flexWrap: 'wrap' }}>
-                <span style={{ fontSize: 30, fontWeight: 800, color: INK, letterSpacing: '-0.02em', whiteSpace: 'nowrap' }}>{won(stock.price)}</span>
-                <span style={{ fontSize: 17, fontWeight: 700, color: col, whiteSpace: 'nowrap' }}>{signNum(stock.changeAmt)} ({signPct(stock.pct)})</span>
+              <div className="flex items-baseline gap-2.5 mt-1 flex-wrap">
+                <span className="text-[30px] font-extrabold text-slate-900 dark:text-slate-100 tracking-tight whitespace-nowrap">{won(stock.price)}</span>
+                <span className={`text-[17px] font-bold whitespace-nowrap ${pctClass}`}>{signNum(stock.changeAmt)} ({signPct(stock.pct)})</span>
               </div>
             </div>
             <Heart filled={watched} onClick={() => toggleWatch(code)} size={26} />
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 332px', gap: 20, marginBottom: 20, alignItems: 'start' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+          <div className="grid grid-cols-[1fr_332px] gap-5 mb-5 items-start">
+            <div className="flex flex-col gap-5">
               <Card>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
-                  <div style={{ display: 'flex', gap: 6, background: '#F2F4F6', borderRadius: 12, padding: 4 }}>
+                <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
+                  <div className={SEGMENT_TRACK}>
                     {PERIODS.map(p => (
-                      <button key={p.key} onClick={() => setPeriod(p.key)} style={{ padding: '8px 12px', borderRadius: 9, border: 'none', cursor: 'pointer',
-                        fontSize: 13, fontWeight: 700, background: period === p.key ? '#fff' : 'transparent', color: period === p.key ? INK : '#8B95A1',
-                        boxShadow: period === p.key ? '0 1px 3px rgba(0,0,0,0.08)' : 'none' }}>{p.label}</button>
+                      <button
+                        key={p.key}
+                        type="button"
+                        onClick={() => setPeriod(p.key)}
+                        className={`px-3 py-2 rounded-[9px] border-none cursor-pointer text-[13px] font-bold ${period === p.key ? SEGMENT_ACTIVE : SEGMENT_IDLE}`}
+                      >
+                        {p.label}
+                      </button>
                     ))}
                   </div>
-                  <div style={{ display: 'flex', gap: 8 }}>
+                  <div className="flex gap-2">
                     <MAToggle on={ma5} color="#F5A623" label="MA5" onClick={() => setMa5(v => !v)} />
                     <MAToggle on={ma20} color="#7C3AED" label="MA20" onClick={() => setMa20(v => !v)} />
                   </div>
                 </div>
-                <div style={{ display: 'flex', gap: 18, marginBottom: 8, fontSize: 12, color: SUB }}>
-                  <span><span style={{ color: UP, fontWeight: 800 }}>■</span> 양봉</span>
-                  <span><span style={{ color: DOWN, fontWeight: 800 }}>■</span> 음봉</span>
-                  <span style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 5 }}>
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={SUB} strokeWidth="2" strokeLinecap="round"><path d="M5 9l-3 3 3 3M19 9l3 3-3 3M2 12h20" /></svg>
+                <div className={`flex gap-[18px] mb-2 text-xs ${META}`}>
+                  <span><span className={`${PRICE_UP} font-extrabold`}>■</span> 양봉</span>
+                  <span><span className={`${PRICE_DOWN} font-extrabold`}>■</span> 음봉</span>
+                  <span className="ml-auto flex items-center gap-1.5">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M5 9l-3 3 3 3M19 9l3 3-3 3M2 12h20" /></svg>
                     드래그로 이동
                   </span>
                 </div>
@@ -722,7 +778,7 @@ export function Detail() {
               </Card>
               <DetailTabs stock={stock} info={info} />
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+            <div className="flex flex-col gap-5">
               <OrderBook stock={stock} selectedPrice={priceType === 'limit' ? orderPrice : null}
                 onPick={(p) => { setPriceType('limit'); setOrderPrice(p); }} />
               <TickTape stock={stock} />
@@ -730,7 +786,7 @@ export function Detail() {
           </div>
         </div>
 
-        <div style={{ position: 'sticky', top: 84, display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <div className="sticky top-[84px] flex flex-col gap-4">
           <OrderPanel stock={stock} price={orderPrice} setPrice={setOrderPrice} priceType={priceType} setPriceType={setPriceType} />
         </div>
       </div>
@@ -740,9 +796,19 @@ export function Detail() {
 
 function MAToggle({ on, color, label, onClick }) {
   return (
-    <button onClick={onClick} style={{ display: 'flex', alignItems: 'center', gap: 6, height: 34, padding: '0 12px', borderRadius: 10,
-      border: '1px solid ' + (on ? color : '#E5E8EB'), background: on ? color + '14' : '#fff', cursor: 'pointer', fontSize: 13, fontWeight: 700, color: on ? color : '#8B95A1' }}>
-      <span style={{ width: 14, height: 3, borderRadius: 2, background: on ? color : '#C5CBD3' }} />{label}
+    <button
+      type="button"
+      onClick={onClick}
+      className={`flex items-center gap-1.5 h-[34px] px-3 rounded-[10px] cursor-pointer text-[13px] font-bold border transition-colors ${
+        on ? '' : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-400 dark:text-slate-500'
+      }`}
+      style={on ? { borderColor: color, background: color + '14', color } : undefined}
+    >
+      <span
+        className="w-3.5 h-[3px] rounded-sm"
+        style={{ background: on ? color : '#C5CBD3' }}
+      />
+      {label}
     </button>
   );
 }
@@ -768,38 +834,49 @@ function FinancialsChart({ stock, bare }) {
   const yoy = yoyBase[metric] ? ((last[metric] - yoyBase[metric]) / Math.abs(yoyBase[metric]) * 100) : 0;
   const fmt = (v) => v >= 10000 ? (v / 10000).toFixed(2) + '조원' : v.toLocaleString() + '억원';
   const metricTabs = (
-    <div style={{ display: 'flex', gap: 4, background: '#F2F4F6', borderRadius: 10, padding: 4 }}>
+    <div className={SEGMENT_TRACK}>
       {Object.entries(labels).map(([k, l]) => (
-        <button key={k} onClick={() => setMetric(k)} style={{ padding: '7px 12px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap',
-          background: metric === k ? '#fff' : 'transparent', color: metric === k ? INK : '#8B95A1', boxShadow: metric === k ? '0 1px 3px rgba(0,0,0,0.08)' : 'none' }}>{l}</button>
+        <button
+          key={k}
+          type="button"
+          onClick={() => setMetric(k)}
+          className={`px-3 py-[7px] rounded-lg border-none cursor-pointer text-[13px] font-bold whitespace-nowrap ${metric === k ? SEGMENT_ACTIVE : SEGMENT_IDLE}`}
+        >
+          {l}
+        </button>
       ))}
     </div>
   );
   const body = (
     <>
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 18 }}>
-        <span style={{ fontSize: 24, fontWeight: 800, color: INK, whiteSpace: 'nowrap' }}>{fmt(last[metric])}</span>
-        <span style={{ fontSize: 14, color: SUB, whiteSpace: 'nowrap' }}>{last.q} {labels[metric]}</span>
-        <span style={{ fontSize: 14, fontWeight: 700, color: tone(yoy), marginLeft: 'auto', whiteSpace: 'nowrap' }}>전년比 {signPct(yoy)}</span>
+      <div className="flex items-baseline gap-2.5 mb-[18px]">
+        <span className="text-2xl font-extrabold text-slate-900 dark:text-slate-100 whitespace-nowrap">{fmt(last[metric])}</span>
+        <span className={`text-sm ${META} whitespace-nowrap`}>{last.q} {labels[metric]}</span>
+        <span className={`text-sm font-bold ml-auto whitespace-nowrap ${priceToneClass(yoy)}`}>전년比 {signPct(yoy)}</span>
       </div>
-      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 12, height: 170 }}>
+      <div className="flex items-end justify-between gap-3 h-[170px]">
         {data.map((d, i) => {
           const h = Math.max(4, (d[metric] / max) * 150);
           const isLast = i === data.length - 1;
           return (
-            <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', gap: 8, height: '100%' }}>
-              <span style={{ fontSize: 12, fontWeight: 700, color: isLast ? BRAND : '#8B95A1', whiteSpace: 'nowrap' }}>{(d[metric] / (d[metric] >= 10000 ? 10000 : 1)).toLocaleString(undefined, { maximumFractionDigits: d[metric] >= 10000 ? 1 : 0 })}{d[metric] >= 10000 ? '조' : ''}</span>
-              <div style={{ width: '70%', maxWidth: 56, height: h, borderRadius: '8px 8px 0 0', background: isLast ? BRAND : '#C8D6F5' }} />
-              <span style={{ fontSize: 12, color: SUB }}>{d.q}</span>
+            <div key={i} className="flex-1 flex flex-col items-center justify-end gap-2 h-full">
+              <span className={`text-xs font-bold whitespace-nowrap ${isLast ? 'text-blue-600 dark:text-blue-400' : 'text-slate-400 dark:text-slate-500'}`}>
+                {(d[metric] / (d[metric] >= 10000 ? 10000 : 1)).toLocaleString(undefined, { maximumFractionDigits: d[metric] >= 10000 ? 1 : 0 })}{d[metric] >= 10000 ? '조' : ''}
+              </span>
+              <div
+                className={`w-[70%] max-w-14 rounded-t-lg ${isLast ? 'bg-blue-600' : 'bg-blue-200 dark:bg-blue-900/50'}`}
+                style={{ height: h }}
+              />
+              <span className={`text-xs ${META}`}>{d.q}</span>
             </div>
           );
         })}
       </div>
-      <div style={{ display: 'flex', gap: 10, marginTop: 20, paddingTop: 18, borderTop: '1px solid #F2F4F6' }}>
+      <div className="flex gap-2.5 mt-5 pt-[18px] border-t border-slate-100 dark:border-slate-800">
         {[['영업이익률', (last.operating / last.revenue * 100).toFixed(1) + '%'], ['순이익률', (last.net / last.revenue * 100).toFixed(1) + '%'], ['공시 기준', '분기보고서']].map(([k, v], i) => (
-          <div key={i} style={{ flex: 1, background: '#F9FAFB', borderRadius: 12, padding: '12px 14px' }}>
-            <div style={{ fontSize: 12, color: SUB, marginBottom: 4 }}>{k}</div>
-            <div style={{ fontSize: 15, fontWeight: 700, color: INK }}>{v}</div>
+          <div key={i} className="flex-1 bg-slate-50 dark:bg-slate-800/50 rounded-xl py-3 px-3.5">
+            <div className={`text-xs ${META} mb-1`}>{k}</div>
+            <div className="text-[15px] font-bold text-slate-900 dark:text-slate-100">{v}</div>
           </div>
         ))}
       </div>
@@ -807,16 +884,16 @@ function FinancialsChart({ stock, bare }) {
   );
   if (bare) return (
     <div>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18, flexWrap: 'wrap', gap: 10 }}>
-        <span style={{ fontSize: 13, color: SUB, fontWeight: 600 }}>최근 6개 분기 · 단일 매출 기준</span>
+      <div className="flex items-center justify-between mb-[18px] flex-wrap gap-2.5">
+        <span className={`text-[13px] ${META} font-semibold`}>최근 6개 분기 · 단일 매출 기준</span>
         {metricTabs}
       </div>
       {body}
     </div>
   );
   return (
-    <Card style={{ marginBottom: 20 }}>
-      <PanelTitle right={metricTabs}>정기공시 · 재무 추이</PanelTitle>
+    <Card className="mb-5">
+      <PanelHeader right={metricTabs}>정기공시 · 재무 추이</PanelHeader>
       {body}
     </Card>
   );
@@ -829,7 +906,6 @@ function TickTape({ stock }) {
   const [ticks, setTicks] = useState([]);
   const [ticksLoading, setTicksLoading] = useState(true);
 
-  // 최근 체결 초기 로드 (종목 변경 시 1회)
   useEffect(() => {
     let cancelled = false;
     setTicks([]);
@@ -841,7 +917,6 @@ function TickTape({ stock }) {
     return () => { cancelled = true; };
   }, [stock.code]);
 
-  // 실시간 체결(EXECUTION) 수신 시 맨 앞에 추가, 최대 50개 유지
   useEffect(() => {
     if (!lastExecution) return;
     setTicks(prev => [lastExecution, ...prev].slice(0, 50));
@@ -851,7 +926,6 @@ function TickTape({ stock }) {
   const [dailyLoading, setDailyLoading] = useState(false);
   const dailyLoadedCode = useRef(null);
 
-  // 일별 탭 처음 열릴 때(종목당) 1회만 호출
   useEffect(() => {
     if (tab !== 'daily' || dailyLoadedCode.current === stock.code) return;
     dailyLoadedCode.current = stock.code;
@@ -862,45 +936,52 @@ function TickTape({ stock }) {
       .catch(() => setDaily([]))
       .finally(() => setDailyLoading(false));
   }, [tab, stock.code]);
-  const moreBtn = { width: '100%', marginTop: 10, height: 38, borderRadius: 10, border: '1px solid #EEF1F4', background: '#F9FAFB', color: '#4E5968', fontSize: 13, fontWeight: 700, cursor: 'pointer' };
+
   return (
-    <Card style={{ padding: 18 }}>
-      <PanelTitle right={
-        <div style={{ display: 'flex', gap: 4, background: '#F2F4F6', borderRadius: 9, padding: 3 }}>
+    <Card className="p-[18px]">
+      <PanelHeader right={
+        <div className={SEGMENT_TRACK}>
           {[['real', '실시간'], ['daily', '일별']].map(([k, l]) => (
-            <button key={k} onClick={() => setTab(k)} style={{ padding: '6px 12px', borderRadius: 7, border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 700,
-              background: tab === k ? '#fff' : 'transparent', color: tab === k ? INK : '#8B95A1', boxShadow: tab === k ? '0 1px 3px rgba(0,0,0,0.08)' : 'none' }}>{l}</button>
+            <button
+              key={k}
+              type="button"
+              onClick={() => setTab(k)}
+              className={`px-3 py-1.5 rounded-[7px] border-none cursor-pointer text-[13px] font-bold ${tab === k ? SEGMENT_ACTIVE : SEGMENT_IDLE}`}
+            >
+              {l}
+            </button>
           ))}
-        </div>}>시세</PanelTitle>
+        </div>
+      }>시세</PanelHeader>
       {tab === 'real' ? (
         <div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.9fr 0.9fr 1fr', gap: 4, padding: '0 4px 8px', fontSize: 12, color: SUB, fontWeight: 600 }}>
-            <span>체결가</span><span style={{ textAlign: 'right' }}>체결량</span><span style={{ textAlign: 'right' }}>등락률</span><span style={{ textAlign: 'right' }}>시간</span>
+          <div className={`grid grid-cols-[1.2fr_0.9fr_0.9fr_1fr] gap-1 px-1 pb-2 text-xs ${META} font-semibold`}>
+            <span>체결가</span><span className="text-right">체결량</span><span className="text-right">등락률</span><span className="text-right">시간</span>
           </div>
           {ticksLoading ? <QuoteRowsSkeleton /> : (expanded ? ticks : ticks.slice(0, 6)).map((t, i) => (
-            <div key={i} style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.9fr 0.9fr 1fr', gap: 4, padding: '7px 4px', fontSize: 13, borderTop: '1px solid #F6F8FA' }}>
-              <span style={{ fontWeight: 700, color: tone(t.changeRate) }}>{wonShort(t.price)}</span>
-              <span style={{ textAlign: 'right', color: '#4E5968' }}>{t.quantity}</span>
-              <span style={{ textAlign: 'right', fontWeight: 700, color: tone(t.changeRate) }}>{signPct(t.changeRate)}</span>
-              <span style={{ textAlign: 'right', color: SUB }}>{t.time}</span>
+            <div key={i} className="grid grid-cols-[1.2fr_0.9fr_0.9fr_1fr] gap-1 px-1 py-[7px] text-[13px] border-t border-slate-100 dark:border-slate-800">
+              <span className={`font-bold ${priceToneClass(t.changeRate)}`}>{wonShort(t.price)}</span>
+              <span className="text-right text-slate-600 dark:text-slate-400">{t.quantity}</span>
+              <span className={`text-right font-bold ${priceToneClass(t.changeRate)}`}>{signPct(t.changeRate)}</span>
+              <span className={`text-right ${META}`}>{t.time}</span>
             </div>
           ))}
-          {!ticksLoading && <button onClick={() => setExpanded(v => !v)} style={moreBtn}>{expanded ? '접기' : `체결 더보기 (${Math.max(0, ticks.length - 6)})`}</button>}
+          {!ticksLoading && <button type="button" onClick={() => setExpanded(v => !v)} className={MORE_BTN}>{expanded ? '접기' : `체결 더보기 (${Math.max(0, ticks.length - 6)})`}</button>}
         </div>
       ) : (
         <div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.2fr 0.9fr 1.2fr', gap: 4, padding: '0 4px 8px', fontSize: 12, color: SUB, fontWeight: 600 }}>
-            <span>일자</span><span style={{ textAlign: 'right' }}>종가</span><span style={{ textAlign: 'right' }}>등락률</span><span style={{ textAlign: 'right' }}>거래량</span>
+          <div className={`grid grid-cols-[1fr_1.2fr_0.9fr_1.2fr] gap-1 px-1 pb-2 text-xs ${META} font-semibold`}>
+            <span>일자</span><span className="text-right">종가</span><span className="text-right">등락률</span><span className="text-right">거래량</span>
           </div>
           {dailyLoading ? <QuoteRowsSkeleton columns="1fr 1.2fr 0.9fr 1.2fr" /> : (expanded ? daily : daily.slice(0, 6)).map((d, i) => (
-            <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 1.2fr 0.9fr 1.2fr', gap: 4, padding: '8px 4px', fontSize: 13, borderTop: '1px solid #F6F8FA' }}>
-              <span style={{ color: '#4E5968' }}>{d.date.slice(5).replace('-', '.')}</span>
-              <span style={{ textAlign: 'right', fontWeight: 700, color: INK }}>{d.closePrice.toLocaleString()}</span>
-              <span style={{ textAlign: 'right', fontWeight: 700, color: tone(d.changeRate) }}>{signPct(d.changeRate)}</span>
-              <span style={{ textAlign: 'right', color: SUB }}>{Math.round(d.volume / 10000).toLocaleString()}만</span>
+            <div key={i} className="grid grid-cols-[1fr_1.2fr_0.9fr_1.2fr] gap-1 px-1 py-2 text-[13px] border-t border-slate-100 dark:border-slate-800">
+              <span className="text-slate-600 dark:text-slate-400">{d.date.slice(5).replace('-', '.')}</span>
+              <span className="text-right font-bold text-slate-900 dark:text-slate-100">{d.closePrice.toLocaleString()}</span>
+              <span className={`text-right font-bold ${priceToneClass(d.changeRate)}`}>{signPct(d.changeRate)}</span>
+              <span className={`text-right ${META}`}>{Math.round(d.volume / 10000).toLocaleString()}만</span>
             </div>
           ))}
-          {!dailyLoading && daily.length > 6 && <button onClick={() => setExpanded(v => !v)} style={moreBtn}>{expanded ? '접기' : '더보기'}</button>}
+          {!dailyLoading && daily.length > 6 && <button type="button" onClick={() => setExpanded(v => !v)} className={MORE_BTN}>{expanded ? '접기' : '더보기'}</button>}
         </div>
       )}
     </Card>
@@ -909,9 +990,8 @@ function TickTape({ stock }) {
 
 function OrderBook({ stock, selectedPrice, onPick }) {
   const { lastOrderBook } = useStore();
-  const [book, setBook] = useState(null); // null = 로딩 중, { asks, bids } = 로드 완료
+  const [book, setBook] = useState(null);
 
-  // 호가 초기 로드 (종목 변경 시 1회)
   useEffect(() => {
     let cancelled = false;
     setBook(null);
@@ -921,13 +1001,11 @@ function OrderBook({ stock, selectedPrice, onPick }) {
     return () => { cancelled = true; };
   }, [stock.code]);
 
-  // ORDERBOOK 이벤트 수신 시 asks/bids 전체 교체 (merge 아님)
   useEffect(() => {
     if (!lastOrderBook) return;
     setBook(prev => ({ ...(prev || {}), asks: lastOrderBook.asks, bids: lastOrderBook.bids }));
   }, [lastOrderBook]);
 
-  // asks[0]/bids[0] = 최우선호가(현재가에 가장 가까움) → asks는 화면 표시상 역순(먼 호가가 위, 최우선호가가 현재가 바로 위)
   const { asks, bids, maxQ } = useMemo(() => {
     const asks = (book?.asks || []).map(a => ({ price: a.price, qty: a.quantity })).reverse();
     const bids = (book?.bids || []).map(b => ({ price: b.price, qty: b.quantity }));
@@ -936,35 +1014,46 @@ function OrderBook({ stock, selectedPrice, onPick }) {
   }, [book]);
 
   const OBRow = ({ lvl, side }) => {
-    const col = side === 'ask' ? DOWN : UP;
+    const col = side === 'ask' ? CHART_DOWN : CHART_UP;
+    const colClass = side === 'ask' ? PRICE_DOWN : PRICE_UP;
     const barPct = (lvl.qty / maxQ) * 100;
     const sel = selectedPrice != null && lvl.price === selectedPrice;
     return (
-      <div onClick={() => onPick && onPick(lvl.price)} title="클릭해서 주문가로 설정"
-        style={{ display: 'grid', gridTemplateColumns: '1fr 96px 1fr', alignItems: 'center', height: 30, cursor: onPick ? 'pointer' : 'default',
-          borderRadius: 6, outline: sel ? `2px solid ${col}` : 'none', background: sel ? col + '0E' : 'transparent' }}>
-        <div style={{ position: 'relative', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', paddingRight: 8 }}>
+      <div
+        onClick={() => onPick && onPick(lvl.price)}
+        title="클릭해서 주문가로 설정"
+        className={`grid grid-cols-[1fr_96px_1fr] items-center h-[30px] rounded-md ${onPick ? 'cursor-pointer' : 'cursor-default'}`}
+        style={{
+          outline: sel ? `2px solid ${col}` : 'none',
+          background: sel ? col + '0E' : 'transparent',
+        }}
+      >
+        <div className="relative h-full flex items-center justify-end pr-2">
           {side === 'ask' && <>
-            <div style={{ position: 'absolute', right: 0, top: 4, bottom: 4, width: barPct + '%', background: DOWN + '14', borderRadius: 4 }} />
-            <span style={{ position: 'relative', fontSize: 12, color: '#4E5968', fontWeight: 600 }}>{lvl.qty.toLocaleString()}</span>
+            <div className="absolute right-0 top-1 bottom-1 rounded" style={{ width: barPct + '%', background: CHART_DOWN + '14' }} />
+            <span className="relative text-xs text-slate-600 dark:text-slate-400 font-semibold">{lvl.qty.toLocaleString()}</span>
           </>}
         </div>
-        <div style={{ textAlign: 'center', fontSize: 14, fontWeight: sel ? 800 : 700, color: col }}>{wonShort(lvl.price)}</div>
-        <div style={{ position: 'relative', height: '100%', display: 'flex', alignItems: 'center', paddingLeft: 8 }}>
+        <div className={`text-center text-sm ${sel ? 'font-extrabold' : 'font-bold'} ${colClass}`}>{wonShort(lvl.price)}</div>
+        <div className="relative h-full flex items-center pl-2">
           {side === 'bid' && <>
-            <div style={{ position: 'absolute', left: 0, top: 4, bottom: 4, width: barPct + '%', background: UP + '14', borderRadius: 4 }} />
-            <span style={{ position: 'relative', fontSize: 12, color: '#4E5968', fontWeight: 600 }}>{lvl.qty.toLocaleString()}</span>
+            <div className="absolute left-0 top-1 bottom-1 rounded" style={{ width: barPct + '%', background: CHART_UP + '14' }} />
+            <span className="relative text-xs text-slate-600 dark:text-slate-400 font-semibold">{lvl.qty.toLocaleString()}</span>
           </>}
         </div>
       </div>
     );
   };
+
+  const priceCol = chartColor(stock.pct);
+  const priceClass = priceToneClass(stock.pct);
+
   return (
-    <Card style={{ padding: 18 }}>
-      <PanelTitle right={<span style={{ fontSize: 12, color: SUB, whiteSpace: 'nowrap' }}>클릭→주문가 설정</span>}>호가</PanelTitle>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 96px 1fr', gap: 8, marginBottom: 8, padding: '0 4px', fontSize: 11, fontWeight: 800, color: SUB }}>
-        <span style={{ textAlign: 'right' }}>매도잔량</span>
-        <span style={{ textAlign: 'center' }}>호가</span>
+    <Card className="p-[18px]">
+      <PanelHeader right={<span className={`text-xs ${META} whitespace-nowrap`}>클릭→주문가 설정</span>}>호가</PanelHeader>
+      <div className={`grid grid-cols-[1fr_96px_1fr] gap-2 mb-2 px-1 text-[11px] font-extrabold ${META}`}>
+        <span className="text-right">매도잔량</span>
+        <span className="text-center">호가</span>
         <span>매수잔량</span>
       </div>
       {!book ? (
@@ -972,12 +1061,18 @@ function OrderBook({ stock, selectedPrice, onPick }) {
       ) : (
         <>
           {asks.map((a, i) => <OBRow key={'a' + i} lvl={a} side="ask" />)}
-          <div onClick={() => onPick && onPick(stock.price)} title="클릭해서 주문가로 설정"
-            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, height: 38, margin: '4px 0', background: selectedPrice === stock.price ? tone(stock.pct) + '12' : '#F9FAFB', borderRadius: 10,
-              cursor: onPick ? 'pointer' : 'default', outline: selectedPrice === stock.price ? `2px solid ${tone(stock.pct)}` : 'none' }}>
-            <span style={{ fontSize: 11, fontWeight: 800, color: SUB, background: '#fff', border: '1px solid #E5E8EB', borderRadius: 6, padding: '2px 6px' }}>현재가</span>
-            <span style={{ fontSize: 16, fontWeight: 800, color: tone(stock.pct) }}>{wonShort(stock.price)}</span>
-            <span style={{ fontSize: 13, fontWeight: 700, color: tone(stock.pct) }}>{signPct(stock.pct)}</span>
+          <div
+            onClick={() => onPick && onPick(stock.price)}
+            title="클릭해서 주문가로 설정"
+            className={`flex items-center justify-center gap-2 h-[38px] my-1 rounded-[10px] ${onPick ? 'cursor-pointer' : 'cursor-default'} ${selectedPrice === stock.price ? '' : 'bg-slate-50 dark:bg-slate-800/50'}`}
+            style={{
+              background: selectedPrice === stock.price ? priceCol + '12' : undefined,
+              outline: selectedPrice === stock.price ? `2px solid ${priceCol}` : 'none',
+            }}
+          >
+            <span className={`text-[11px] font-extrabold ${META} bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-md px-1.5 py-0.5`}>현재가</span>
+            <span className={`text-base font-extrabold ${priceClass}`}>{wonShort(stock.price)}</span>
+            <span className={`text-[13px] font-bold ${priceClass}`}>{signPct(stock.pct)}</span>
           </div>
           {bids.map((b, i) => <OBRow key={'b' + i} lvl={b} side="bid" />)}
         </>
@@ -1029,16 +1124,18 @@ function Community({ stock, bare }) {
 
   const inner = (
     <>
-      <div style={{ display: 'flex', gap: 10, marginBottom: 22 }}>
+      <div className="flex gap-2.5 mb-[22px]">
         <button
+          type="button"
           onClick={() => routerNavigate('/community/write')}
-          style={{ ...primaryBtn, height: 46, padding: '0 22px', whiteSpace: 'nowrap' }}
+          className={`${BTN_PRIMARY} h-[46px] px-[22px] whitespace-nowrap`}
         >
           커뮤니티에 질문하기
         </button>
         <button
+          type="button"
           onClick={() => routerNavigate('/community')}
-          style={{ height: 46, padding: '0 18px', borderRadius: 12, border: '1px solid #E5E8EB', background: '#fff', color: '#4E5968', fontSize: 14, fontWeight: 800, cursor: 'pointer', whiteSpace: 'nowrap' }}
+          className={`${BTN_SECONDARY} h-[46px] px-[18px] rounded-xl text-sm font-extrabold whitespace-nowrap`}
         >
           전체 글 보기
         </button>
@@ -1046,25 +1143,27 @@ function Community({ stock, bare }) {
       {status === 'loading' ? (
         <SkeletonText lines={3} widths={['64%', '92%', '78%']} height={14} gap={12} />
       ) : status === 'error' ? (
-        <div style={{ fontSize: 14, color: SUB, textAlign: 'center', padding: '24px 0' }}>커뮤니티 글을 불러올 수 없어요.</div>
-      ) : posts.length === 0 ? <div style={{ fontSize: 14, color: SUB, textAlign: 'center', padding: '24px 0' }}>아직 등록된 글이 없어요.</div> : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <div className={`text-sm ${META} text-center py-6`}>커뮤니티 글을 불러올 수 없어요.</div>
+      ) : posts.length === 0 ? (
+        <div className={`text-sm ${META} text-center py-6`}>아직 등록된 글이 없어요.</div>
+      ) : (
+        <div className="flex flex-col gap-4">
           {posts.map(post => (
-            <div key={post.id} onClick={() => routerNavigate(`/community/${post.id}`)} style={{ borderTop: '1px solid #F2F4F6', paddingTop: 16, cursor: 'pointer' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-                <div style={{ width: 32, height: 32, borderRadius: '50%', background: BRAND, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 13 }}>{(post.authorNickname || '익').charAt(0)}</div>
-                <span style={{ fontSize: 14, fontWeight: 700, color: INK }}>{post.authorNickname || '익명'}</span>
-                <span style={{ fontSize: 12, color: SUB }}>{timeAgo(new Date(post.createdAt).getTime())}</span>
-                {post.isResolved && <span style={{ fontSize: 11, fontWeight: 800, color: '#1FA463', background: '#EAF8F0', padding: '3px 7px', borderRadius: 6 }}>해결됨</span>}
+            <div key={post.id} onClick={() => routerNavigate(`/community/${post.id}`)} className="border-t border-slate-100 dark:border-slate-800 pt-4 cursor-pointer">
+              <div className="flex items-center gap-2.5 mb-2">
+                <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-[13px]">{(post.authorNickname || '익').charAt(0)}</div>
+                <span className="text-sm font-bold text-slate-900 dark:text-slate-100">{post.authorNickname || '익명'}</span>
+                <span className={`text-xs ${META}`}>{timeAgo(new Date(post.createdAt).getTime())}</span>
+                {post.isResolved && <span className="text-[11px] font-extrabold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 px-[7px] py-[3px] rounded-md">해결됨</span>}
               </div>
-              <div style={{ fontSize: 15, fontWeight: 800, lineHeight: 1.5, color: INK, marginBottom: 5 }}>{post.title}</div>
-              <div style={{ fontSize: 14, lineHeight: 1.6, color: '#4E5968', marginBottom: 10, overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{post.content}</div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 13, fontWeight: 700, color: SUB }}>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={SUB} strokeWidth="2"><path d="M21 12a8 8 0 0 1-11.5 7.2L4 20l1-4.5A8 8 0 1 1 21 12z" strokeLinejoin="round" /></svg>
+              <div className="text-[15px] font-extrabold leading-snug text-slate-900 dark:text-slate-100 mb-1">{post.title}</div>
+              <div className="text-sm leading-relaxed text-slate-600 dark:text-slate-400 mb-2.5 overflow-hidden text-ellipsis line-clamp-2">{post.content}</div>
+              <div className="flex items-center gap-4">
+                <span className={`flex items-center gap-1.5 text-[13px] font-bold ${META}`}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12a8 8 0 0 1-11.5 7.2L4 20l1-4.5A8 8 0 1 1 21 12z" strokeLinejoin="round" /></svg>
                   답변 {post.answerCount ?? 0}
                 </span>
-                <span style={{ fontSize: 13, fontWeight: 700, color: SUB }}>조회 {post.views ?? 0}</span>
+                <span className={`text-[13px] font-bold ${META}`}>조회 {post.views ?? 0}</span>
               </div>
             </div>
           ))}
@@ -1074,8 +1173,8 @@ function Community({ stock, bare }) {
   );
   if (bare) return inner;
   return (
-    <Card style={{ marginTop: 20 }}>
-      <PanelTitle right={<span style={{ fontSize: 13, color: SUB, whiteSpace: 'nowrap' }}>{posts.length}개 글</span>}>커뮤니티 · {displayStockName(stock)}</PanelTitle>
+    <Card className="mt-5">
+      <PanelHeader right={<span className={`text-[13px] ${META} whitespace-nowrap`}>{posts.length}개 글</span>}>커뮤니티 · {displayStockName(stock)}</PanelHeader>
       {inner}
     </Card>
   );
