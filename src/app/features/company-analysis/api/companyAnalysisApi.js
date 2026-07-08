@@ -5,6 +5,27 @@ export function fetchCompanies() {
   return request('/api/v1/companies');
 }
 
+/** @returns {Promise<{ corpCode: string, name: string, ticker: string, market?: string | null, analyzed: boolean }[]>} */
+export function searchCompanies(keyword) {
+  const query = encodeURIComponent(keyword.trim());
+  return request(`/api/v1/companies/search?keyword=${query}`);
+}
+
+/** @returns {Promise<import('../../../../mocks/companyAnalysis/types').MonitoredCompanyList>} */
+export function fetchMonitoredCompanies() {
+  return request('/api/v1/companies/monitored');
+}
+
+/** @returns {Promise<import('../../../../mocks/companyAnalysis/types').MonitoredCompany>} */
+export function addMonitoredCompany(corpCode) {
+  return request(`/api/v1/companies/monitored/${encodeURIComponent(corpCode)}`, { method: 'POST' });
+}
+
+/** @returns {Promise<void>} */
+export function removeMonitoredCompany(corpCode) {
+  return request(`/api/v1/companies/monitored/${encodeURIComponent(corpCode)}`, { method: 'DELETE' });
+}
+
 /**
  * corp_code가 존재하지 않으면 apiClient의 request()가 { status: 404 }를 던진다.
  * @returns {Promise<import('../../../../mocks/companyAnalysis/types').CompanyDetail>}

@@ -51,6 +51,24 @@ export function formatFilingDate(isoDate) {
   return isoDate.replaceAll('-', '.');
 }
 
+/** ISO date or YYYYMMDD → relative label for monitored cards. */
+export function formatRelativeFilingAge(dateInput, locale = 'ko') {
+  if (!dateInput) return null;
+  const normalized = String(dateInput).length === 8 && !String(dateInput).includes('-')
+    ? `${dateInput.slice(0, 4)}-${dateInput.slice(4, 6)}-${dateInput.slice(6, 8)}`
+    : dateInput;
+  const filed = new Date(normalized);
+  if (Number.isNaN(filed.getTime())) return null;
+  const days = Math.floor((Date.now() - filed.getTime()) / (1000 * 60 * 60 * 24));
+  if (days <= 0) {
+    return locale === 'en' ? 'Today' : '오늘';
+  }
+  if (days === 1) {
+    return locale === 'en' ? '1 day ago' : '1일 전';
+  }
+  return locale === 'en' ? `${days} days ago` : `${days}일 전`;
+}
+
 /**
  * Formats one series point's value for a FinancialMetric (see mocks/companyAnalysis/types.js) —
  * shared by the trend charts and the trend table so both render the same number the same way.

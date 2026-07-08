@@ -13,9 +13,10 @@ const SEVERITY_RANK = { high: 0, medium: 1, low: 2 };
  */
 export function ReasoningChainFeed({ findings, selectedHopSourceRef, onSelectHop }) {
   const { t } = useLocale();
+  const safeFindings = findings ?? [];
   const ranked = useMemo(
-    () => [...findings].sort((a, b) => SEVERITY_RANK[a.severity] - SEVERITY_RANK[b.severity]),
-    [findings],
+    () => [...safeFindings].sort((a, b) => SEVERITY_RANK[a.severity] - SEVERITY_RANK[b.severity]),
+    [safeFindings],
   );
 
   return (

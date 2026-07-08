@@ -77,8 +77,9 @@ export function baselineLabel(filing) {
  * @param {import('../../../../mocks/companyAnalysis/types').SectionDiffEntry[]} diffs
  */
 export function groupDiffsBySection(diffs) {
+  const safeDiffs = diffs ?? [];
   return DIFF_SECTION_CONFIG.map((config) => {
-    const sectionEntries = diffs.filter((d) => d.sectionLabel === config.sectionLabel);
+    const sectionEntries = safeDiffs.filter((d) => d.sectionLabel === config.sectionLabel);
     const blocks = Object.entries(config.goals).map(([comparisonType, goal]) => ({
       comparisonType,
       goal,

@@ -22,8 +22,9 @@ const slideVariants = {
  *   mdnaHistory: import('../../../../mocks/companyAnalysis/types').MdnaHistoryEntry[],
  * }} props
  */
-export function BusinessEvolutionTimeline({ profile, mdnaHistory }) {
+export function BusinessEvolutionTimeline({ profile, mdnaHistory = [] }) {
   const { t } = useLocale();
+  const safeProfile = profile ?? { businessDescription: '', shareStructure: '', governanceNotes: '' };
   const [selectedIdx, setSelectedIdx] = useState(mdnaHistory.length - 1);
   const [windowStart, setWindowStart] = useState(Math.max(0, mdnaHistory.length - PAGE_SIZE));
   const [slideDir, setSlideDir] = useState(0);
@@ -42,7 +43,7 @@ export function BusinessEvolutionTimeline({ profile, mdnaHistory }) {
     return (
       <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6">
         <h2 className="mb-2 text-sm font-medium text-slate-900 dark:text-slate-100">{t('company.panels.businessContent')}</h2>
-        <p className="text-base leading-relaxed text-slate-700 dark:text-slate-300">{profile.businessDescription}</p>
+        <p className="text-base leading-relaxed text-slate-700 dark:text-slate-300">{safeProfile.businessDescription}</p>
       </div>
     );
   }

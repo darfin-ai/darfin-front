@@ -7,5 +7,6 @@
  * @param {import('../../../../mocks/companyAnalysis/types').CompanyOverview | null | undefined} overview
  */
 export function isAiReady(overview) {
-  return overview?.aiInsightsReady !== false;
+  if (overview == null) return false;
+  return overview.aiInsightsReady !== false;
 }

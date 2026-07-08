@@ -292,6 +292,21 @@
  */
 
 /**
+ * @typedef {Object} MonitoredCompany
+ * @property {string} corpCode
+ * @property {string} name
+ * @property {string} ticker
+ * @property {string} addedAt ISO local date-time
+ */
+
+/**
+ * @typedef {Object} MonitoredCompanyList
+ * @property {MonitoredCompany[]} items
+ * @property {number} count
+ * @property {number} limit
+ */
+
+/**
  * @typedef {Object} CompanyDetail
  * @property {Company} company
  * @property {ScoreComponent[]} scores
@@ -303,6 +318,7 @@
  * @property {MdnaHistoryEntry[]} mdnaHistory
  * @property {RecentFiling[]} [recentFilings]
  * @property {CompanyOverview} [overview]
+ * @property {boolean} [preview] stock-only preview before onboard
  */
 
 export const SCORE_COMPONENT_LABELS = {
