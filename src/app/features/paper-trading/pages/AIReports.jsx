@@ -384,6 +384,7 @@ export function AIReports() {
   const [generating, setGenerating] = useState(false);
   const [reportsLoaded, setReportsLoaded] = useState(false);
   const userKey = getDarfinUserId() || getDarfinUser()?.email || '';
+  const hasAnalysisData = state.holdings.length > 0 || state.trades.length > 0;
 
   useEffect(() => {
     setReportsLoaded(false);
@@ -406,7 +407,7 @@ export function AIReports() {
   if (!state.isLoggedIn) return <PageShell title="AI 분석"><LoginGate /></PageShell>;
 
   const generate = async () => {
-    if (state.holdings.length === 0 && state.trades.length === 0) return;
+    if (!hasAnalysisData) return;
     setGenerating(true);
     try {
       try {
@@ -446,8 +447,8 @@ export function AIReports() {
 
   return (
     <PageShell title="AI 분석 리포트" sub="Darfin AI가 행동 패턴 · 리스크 · 수익률 · 투자 성향을 분석해 맞춤 해석을 붙여요"
-      right={<button onClick={generate} disabled={generating} style={{ ...primaryBtn, height: 46, opacity: generating ? 0.6 : 1, display: 'flex', alignItems: 'center', gap: 8, whiteSpace: 'nowrap' }}>
-        <span>✦</span>{generating ? '분석 중…' : '리포트 생성'}</button>}>
+      right={<button onClick={generate} disabled={generating || !hasAnalysisData} style={{ ...primaryBtn, height: 46, opacity: generating || !hasAnalysisData ? 0.6 : 1, cursor: generating || !hasAnalysisData ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: 8, whiteSpace: 'nowrap' }}>
+        <span>✦</span>{generating ? '분석 중…' : hasAnalysisData ? '리포트 생성' : '거래 후 생성'}</button>}>
 
       <Card style={{ marginBottom: 20, background: 'linear-gradient(135deg,#F4F8FF,#fff)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
@@ -473,8 +474,8 @@ export function AIReports() {
       )}
 
       {state.aiReports.length === 0 && !generating ? (
-        <Empty text={state.holdings.length === 0 && state.trades.length === 0 ? '거래 이력이 부족해 분석이 제한돼요. 먼저 종목을 매매해보세요.' : "'리포트 생성'을 눌러 첫 통합 분석 리포트를 받아보세요."}
-          cta={state.holdings.length === 0 && state.trades.length === 0 ? '종목 둘러보기' : null} onCta={() => navigate('home')} />
+        <Empty text={!hasAnalysisData ? '거래 이력이 부족해 분석이 제한돼요. 먼저 종목을 매매해보세요.' : "'리포트 생성'을 눌러 첫 통합 분석 리포트를 받아보세요."}
+          cta={!hasAnalysisData ? '종목 둘러보기' : null} onCta={() => navigate('home')} />
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
           {state.aiReports[0] && <ReportCard report={state.aiReports[0]} />}

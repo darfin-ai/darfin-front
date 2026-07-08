@@ -7,7 +7,7 @@ import { Portfolio, Watchlist, Funds, Trades } from './pages/Invest.jsx';
 import { AIReports } from './pages/AIReports.jsx';
 
 function SubNav() {
-  const { state, navigate, setRankTab } = useStore(); // setRankTab 추가
+  const { state, navigate, setRankTab, goToLogin } = useStore(); // setRankTab 추가
   const route = state.route.name;
   const tabs = [
     { key: 'home', label: '홈' },
@@ -23,12 +23,16 @@ function SubNav() {
       // 홈 탭을 새로 누르면 백엔드 순위 API도 기본 '거래대금' 탭 데이터로 초기화 시킴
       setRankTab('tradeValue');
     }
+    if (!state.isLoggedIn && ['portfolio', 'watchlist', 'funds', 'ai'].includes(key)) {
+      goToLogin();
+      return;
+    }
     navigate(key);
   };
 
   return (
     <div style={{ borderBottom: '1px solid #EEF1F4', background: '#fff' }}>
-      <div style={{ maxWidth: 1480, margin: '0 auto', padding: '0 28px', display: 'flex', alignItems: 'center', gap: 0 }}>
+      <div className="container" style={{ display: 'flex', alignItems: 'center', gap: 0 }}>
         {tabs.map(t => (
           <button key={t.key} onClick={() => handleTabClick(t.key)} style={{ position: 'relative', padding: '16px 8px', marginRight: 28,
             border: 'none', background: 'none', cursor: 'pointer', fontSize: 16, fontWeight: 700, whiteSpace: 'nowrap',

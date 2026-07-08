@@ -152,6 +152,11 @@ const heroBtn = (solid) => ({ flex: 1, height: 44, borderRadius: 12, border: 'no
   background: solid ? '#fff' : 'rgba(255,255,255,0.16)', color: solid ? BRAND : '#fff' });
 
 const RANK_COLS = '28px 28px 40px minmax(108px, 1fr) 100px 76px 100px 72px';
+const HOME_LAYOUT = {
+  maxWidth: 1480,
+  marginLeft: 'max(0px, calc((100vw - 1200px) / 2 + clamp(1.25rem, 4vw, 2.5rem) - 28px))',
+  marginRight: 'auto',
+};
 
 function StockRowSkeleton() {
   return (
@@ -600,7 +605,6 @@ function WatchRail() {
   return (
     <aside style={{ width: 320, flexShrink: 0 }}>
       <div style={{ position: 'sticky', top: 84 }}>
-        <div style={{ fontSize: 22, fontWeight: 800, color: INK, marginBottom: 16 }}>관심</div>
         <Card style={{ padding: 0 }}>
           <div style={{ padding: '18px 18px 8px' }}>
             <div style={{ fontSize: 17, fontWeight: 800, color: INK }}>관심 주식 TOP 10</div>
@@ -692,7 +696,7 @@ function MarketTicker() {
       background: 'rgba(255,255,255,0.96)', backdropFilter: 'blur(10px)', borderTop: '1px solid #EEF1F4',
       transform: show ? 'translateY(0)' : 'translateY(100%)', transition: 'transform 0.28s cubic-bezier(0.2,0.8,0.2,1)',
       boxShadow: '0 -4px 20px rgba(0,0,0,0.05)' }}>
-      <div style={{ maxWidth: 1480, margin: '0 auto', padding: '0 28px', height: 52, display: 'flex', alignItems: 'center', gap: 8 }}>
+      <div style={{ ...HOME_LAYOUT, padding: '0 28px', height: 52, display: 'flex', alignItems: 'center', gap: 8 }}>
         {items.map((it, i) => {
           const col = tone(it.pct);
           return (
@@ -711,7 +715,7 @@ function MarketTicker() {
 export function Home() {
   return (
     <>
-      <div style={{ maxWidth: 1480, margin: '0 auto', padding: '28px 28px 100px', display: 'flex', gap: 40 }}>
+      <div style={{ ...HOME_LAYOUT, padding: '28px 28px 100px', display: 'flex', gap: 24 }}>
         <div style={{ flex: 1, minWidth: 0 }}><HomeMain /></div>
         <WatchRail />
       </div>
