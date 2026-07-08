@@ -30,6 +30,7 @@ import { useLocale } from "@/app/shared/i18n";
 import { getDateFnsLocale } from "@/app/shared/i18n/localeFormat";
 import { searchDisclosures } from "../api/disclosureApi";
 import { RiskBadge } from "../components/RiskBadge";
+import { TodayDisclosures } from "../components/TodayDisclosures";
 import {
   CARD,
   LABEL,
@@ -307,6 +308,23 @@ export function DisclosureSearch() {
     performSearch({ companyName, page: 1, key: null, direction: "desc" });
   };
 
+  // 검색창을 비우면 이전 검색 결과를 그대로 붙들고 있지 않고 "오늘 올라온 공시"로
+  // 되돌아간다 — results가 null이어야 TodayDisclosures가 다시 렌더링된다.
+  const handleSearchTermChange = (event) => {
+    const value = event.target.value;
+    setSearchTerm(value);
+
+    if (!value.trim()) {
+      setResults(null);
+      setCollectMessage(null);
+      setSearchError(null);
+      setLastSearchedTerm(null);
+      setCurrentPage(1);
+      setSortKey(null);
+      setSortDirection("desc");
+    }
+  };
+
   const presetLabels = t("disclosure.search.datePresets");
   const dateSummary =
     datePreset === "custom" && dateRange?.from && dateRange?.to
@@ -386,7 +404,7 @@ export function DisclosureSearch() {
             <input
               type="text"
               value={searchTerm}
-              onChange={(event) => setSearchTerm(event.target.value)}
+              onChange={handleSearchTermChange}
               placeholder={t("disclosure.search.companyPlaceholder")}
               aria-label={t("disclosure.search.companyLabel")}
               className="w-full min-w-0 flex-1 border-none bg-transparent text-base text-slate-900 dark:text-slate-100 outline-none placeholder:text-slate-400 dark:placeholder:text-slate-500"
@@ -559,6 +577,8 @@ export function DisclosureSearch() {
       )}
 
       {searchError && <div className={ALERT_ERROR}>{searchError}</div>}
+
+      {!results && !searchError && <TodayDisclosures />}
 
       {results && !searchError && (
         <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">

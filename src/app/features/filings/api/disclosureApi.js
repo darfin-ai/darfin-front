@@ -219,6 +219,34 @@ export async function generateAnalysis({ rceptNo, corpName, dartFullText }) {
   });
 }
 
+/**
+ * "오늘 올라온 공시" 피드 — 회사 지정 없이 오늘 접수된 전체 공시 중 최신순 상위 N건.
+ * GET /api/disclosures/today?limit=6
+ * 서버가 폴링 시점에 stock/disclosure에 자동 UPSERT하므로, 반환된 rceptNo는
+ * 바로 상세 페이지(/disclosure/:rceptNo)로 진입 가능하다.
+ *
+ * @param {number} limit
+ * @returns {Promise<Array<{
+ *   rceptNo: string,
+ *   title: string,
+ *   filedAt: string,
+ *   typeCode: string,
+ *   typeName: string,
+ *   companyName: string,
+ *   filerName: string,
+ *   detectedAt: string
+ * }>>}
+ */
+export async function getTodayDisclosures(limit = 6) {
+  const response = await fetch(`${API_BASE_URL}/api/disclosures/today?limit=${limit}`);
+
+  if (!response.ok) {
+    throw new Error(`오늘의 공시를 불러오지 못했습니다 (HTTP ${response.status})`);
+  }
+
+  return response.json();
+}
+
 function toDateOnly(date) {
   const y = date.getFullYear();
   const m = String(date.getMonth() + 1).padStart(2, "0");
