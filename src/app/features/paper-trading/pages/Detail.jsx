@@ -8,7 +8,7 @@ import {
 import {
   UP, DOWN, SUB, INK, BRAND,
   won, wonShort, signPct, signNum, tone, timeAgo,
-  Avatar, Card, Heart, Modal, primaryBtn, iconBtn, CandleChart, Stub,
+  Avatar, Card, Heart, Modal, primaryBtn, iconBtn, CandleChart, Stub, Skeleton, SkeletonText, displayStockName,
 } from '../components/ui.jsx';
 
 const PERIODS = [
@@ -110,29 +110,158 @@ function PanelTitle({ children, right }) {
   );
 }
 
+function ChartSkeleton({ height = 360 }) {
+  return (
+    <div style={{ height, position: 'relative', padding: '18px 8px 38px' }}>
+      <div style={{ position: 'absolute', inset: '18px 8px 60px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+        {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} height={1} radius={1} />)}
+      </div>
+      <div style={{ position: 'absolute', left: 12, right: 72, bottom: 76, height: height - 126, display: 'flex', alignItems: 'flex-end', gap: 5 }}>
+        {Array.from({ length: 44 }).map((_, i) => (
+          <Skeleton key={i} width="100%" height={36 + ((i * 19) % 170)} radius={3} style={{ flex: 1 }} />
+        ))}
+      </div>
+      <div style={{ position: 'absolute', left: 12, right: 72, bottom: 24, display: 'flex', alignItems: 'flex-end', gap: 5 }}>
+        {Array.from({ length: 44 }).map((_, i) => (
+          <Skeleton key={i} width="100%" height={10 + ((i * 11) % 34)} radius={2} style={{ flex: 1 }} />
+        ))}
+      </div>
+      <Skeleton width={56} height={22} radius={6} style={{ position: 'absolute', right: 4, top: 72 }} />
+    </div>
+  );
+}
+
+function OrderBookSkeleton() {
+  return (
+    <>
+      {Array.from({ length: 5 }).map((_, i) => (
+        <div key={'a' + i} style={{ display: 'grid', gridTemplateColumns: '1fr 96px 1fr', alignItems: 'center', height: 30 }}>
+          <Skeleton width={`${38 + i * 9}%`} height={16} radius={4} style={{ justifySelf: 'end' }} />
+          <Skeleton width={58} height={16} style={{ justifySelf: 'center' }} />
+          <span />
+        </div>
+      ))}
+      <Skeleton height={38} radius={10} style={{ margin: '4px 0' }} />
+      {Array.from({ length: 5 }).map((_, i) => (
+        <div key={'b' + i} style={{ display: 'grid', gridTemplateColumns: '1fr 96px 1fr', alignItems: 'center', height: 30 }}>
+          <span />
+          <Skeleton width={58} height={16} style={{ justifySelf: 'center' }} />
+          <Skeleton width={`${78 - i * 8}%`} height={16} radius={4} />
+        </div>
+      ))}
+    </>
+  );
+}
+
+function QuoteRowsSkeleton({ count = 6, columns = '1.2fr 0.9fr 0.9fr 1fr' }) {
+  return Array.from({ length: count }).map((_, i) => (
+    <div key={i} style={{ display: 'grid', gridTemplateColumns: columns, gap: 4, padding: '8px 4px', borderTop: '1px solid #F6F8FA' }}>
+      <Skeleton width={68} height={13} />
+      <Skeleton width={44} height={13} style={{ justifySelf: 'end' }} />
+      <Skeleton width={54} height={13} style={{ justifySelf: 'end' }} />
+      <Skeleton width={58} height={13} style={{ justifySelf: 'end' }} />
+    </div>
+  ));
+}
+
+function formatTradeTime(value) {
+  if (!value) return '방금 전';
+  const date = typeof value === 'number' ? new Date(value) : new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value);
+  return date.toLocaleString('ko-KR', {
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+function OrderResultModal({ result, onClose }) {
+  const isBuy = result.side === 'BUY';
+  const accent = isBuy ? UP : DOWN;
+  const holding = result.holding;
+  const balance = result.balance;
+  const realizedPnl = result.realizedPnl ?? 0;
+
+  return (
+    <Modal onClose={onClose} width={500}>
+      <div style={{ padding: 30 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 22 }}>
+          <div style={{ width: 54, height: 54, borderRadius: 18, background: accent + '14', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={accent} strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M5 12l5 5L20 7" />
+            </svg>
+          </div>
+          <div>
+            <div style={{ fontSize: 22, fontWeight: 900, color: INK, marginBottom: 4 }}>{isBuy ? '매수' : '매도'} 체결 완료</div>
+            <div style={{ fontSize: 13, color: SUB }}>{formatTradeTime(result.tradedAt)} · {result.orderType === 'MARKET' ? '시장가' : '지정가'} 주문</div>
+          </div>
+        </div>
+
+        <div style={{ border: '1px solid #EEF1F4', borderRadius: 16, padding: 18, marginBottom: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+            <Avatar stock={result.stock} size={42} />
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontSize: 17, fontWeight: 900, color: INK, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{result.stockName}</div>
+              <div style={{ fontSize: 12, color: SUB }}>{result.stockCode}</div>
+            </div>
+            <span style={{ marginLeft: 'auto', fontSize: 13, fontWeight: 900, color: accent, background: accent + '12', padding: '6px 10px', borderRadius: 8 }}>
+              {isBuy ? '매수' : '매도'}
+            </span>
+          </div>
+          <Row label="체결가" value={won(result.price)} bold />
+          <Row label="체결 수량" value={`${result.quantity.toLocaleString()}주`} />
+          <Row label="총 체결 금액" value={won(result.totalAmount)} bold color={INK} />
+          {!isBuy && (
+            <Row label="실현 손익" value={`${signNum(realizedPnl)}원`} color={tone(realizedPnl)} bold />
+          )}
+        </div>
+
+        <div style={{ background: '#F9FAFB', borderRadius: 16, padding: 18, marginBottom: 22 }}>
+          <div style={{ fontSize: 15, fontWeight: 900, color: INK, marginBottom: 12 }}>주문 후 내 자산</div>
+          <Row label="주문 가능 현금" value={balance?.availableBalance == null ? '-' : won(balance.availableBalance)} bold />
+          <Row label="해당 종목 보유" value={holding?.quantity == null ? '-' : `${holding.quantity.toLocaleString()}주`} />
+        </div>
+
+        <button onClick={onClose} style={{ ...primaryBtn, width: '100%', height: 52, fontSize: 16, fontWeight: 900 }}>
+          확인
+        </button>
+      </div>
+    </Modal>
+  );
+}
+
 function OrderPanel({ stock, price, setPrice, priceType, setPriceType }) {
   const { refreshPortfolio } = useStore();
   const ts = tickSize(stock.price);
   const [tab, setTab] = useState('BUY'); // 'BUY' | 'SELL' | 'HOLDING'
   const [balance, setBalance] = useState(null); // API 1: { availableBalance }
   const [holding, setHolding] = useState(null); // API 2: { quantity, avgBuyPrice, valuationPnl, valuationPnlRate, ... }
+  const [accountLoading, setAccountLoading] = useState(true);
   const [qty, setQty] = useState(0);
   const [submitting, setSubmitting] = useState(false);
-  const [toast, setToast] = useState(null); // { ok, text }
+  const [errorToast, setErrorToast] = useState(null);
+  const [orderResult, setOrderResult] = useState(null);
 
   const isBuy = tab === 'BUY';
   const isSell = tab === 'SELL';
 
   // 탭 전환/종목 변경 시마다 잔액·보유 현황 재조회
   const refresh = () => {
-    fetchPaperTradingBalance().then(setBalance).catch(() => setBalance(null));
-    fetchPaperTradingHolding(stock.code).then(setHolding).catch(() => setHolding(null));
+    setAccountLoading(true);
+    Promise.allSettled([
+      fetchPaperTradingBalance().then(setBalance).catch(() => setBalance(null)),
+      fetchPaperTradingHolding(stock.code).then(setHolding).catch(() => setHolding(null)),
+    ]).finally(() => setAccountLoading(false));
   };
   // stock.code가 빠르게 바뀌면(연속 탐색) 이전 종목 응답이 늦게 도착해 새 종목 값을 덮어쓸 수 있어 취소 가드 필요
   useEffect(() => {
     let cancelled = false;
-    fetchPaperTradingBalance().then(data => { if (!cancelled) setBalance(data); }).catch(() => { if (!cancelled) setBalance(null); });
-    fetchPaperTradingHolding(stock.code).then(data => { if (!cancelled) setHolding(data); }).catch(() => { if (!cancelled) setHolding(null); });
+    setAccountLoading(true);
+    Promise.allSettled([
+      fetchPaperTradingBalance().then(data => { if (!cancelled) setBalance(data); }).catch(() => { if (!cancelled) setBalance(null); }),
+      fetchPaperTradingHolding(stock.code).then(data => { if (!cancelled) setHolding(data); }).catch(() => { if (!cancelled) setHolding(null); }),
+    ]).finally(() => { if (!cancelled) setAccountLoading(false); });
     return () => { cancelled = true; };
   }, [tab, stock.code]);
   useEffect(() => { setQty(0); }, [tab, stock.code]);
@@ -151,25 +280,50 @@ function OrderPanel({ stock, price, setPrice, priceType, setPriceType }) {
   const submit = async () => {
     if (!canSubmit) return;
     setSubmitting(true);
-    setToast(null);
+    setErrorToast(null);
     const body = {
       stockCode: stock.code,
       orderType: priceType === 'market' ? 'MARKET' : 'LIMIT',
       price: priceType === 'market' ? null : effPrice,
       quantity: qty,
     };
+    const submittedSide = isBuy ? 'BUY' : 'SELL';
+    const submittedPrice = effPrice;
+    const submittedTotal = total;
     try {
       const order = isBuy ? await placeBuyOrder(body) : await placeSellOrder(body);
-      setToast({ ok: true, text: `${order.stockName} ${order.quantity}주 ${isBuy ? '매수' : '매도'} 체결 완료` });
       setQty(0);
-      refresh();
-      refreshPortfolio(); // "내 자산" 페이지의 잔액·보유(state.holdings/funds)도 즉시 갱신
+      setAccountLoading(true);
+      const [balanceRes, holdingRes] = await Promise.allSettled([
+        fetchPaperTradingBalance(),
+        fetchPaperTradingHolding(stock.code),
+        refreshPortfolio(), // "내 자산" 페이지의 잔액·보유(state.holdings/funds)도 즉시 갱신
+      ]);
+      const nextBalance = balanceRes.status === 'fulfilled' ? balanceRes.value : null;
+      const nextHolding = holdingRes.status === 'fulfilled' ? holdingRes.value : null;
+      setBalance(nextBalance);
+      setHolding(nextHolding);
+      setOrderResult({
+        order,
+        side: submittedSide,
+        orderType: body.orderType,
+        stock: { ...stock, name: order.stockName },
+        stockCode: order.stockCode || stock.code,
+        stockName: displayStockName({ ...stock, name: order.stockName }),
+        quantity: Number(order.quantity ?? body.quantity) || 0,
+        price: Number(order.price ?? submittedPrice) || 0,
+        totalAmount: Number(order.totalAmount ?? submittedTotal) || 0,
+        realizedPnl: order.realizedPnl,
+        tradedAt: order.tradedAt || Date.now(),
+        balance: nextBalance,
+        holding: nextHolding,
+      });
     } catch (e) {
-      setToast({ ok: false, text: e.response?.data?.message || `${isBuy ? '매수' : '매도'} 주문에 실패했어요.` });
+      setErrorToast(e.response?.data?.message || `${isBuy ? '매수' : '매도'} 주문에 실패했어요.`);
     } finally {
       setSubmitting(false);
+      setAccountLoading(false);
     }
-    setTimeout(() => setToast(null), 2600);
   };
 
   const accent = isBuy ? UP : DOWN;
@@ -191,7 +345,9 @@ function OrderPanel({ stock, price, setPrice, priceType, setPriceType }) {
       </div>
 
       {tab === 'HOLDING' ? (
-        ownedQty > 0 ? (
+        accountLoading ? (
+          <SkeletonText lines={3} widths={['100%', '88%', '96%']} height={18} gap={14} />
+        ) : ownedQty > 0 ? (
           <div>
             <Row label="보유 수량" value={holding.quantity + '주'} />
             <Row label="평균 매수가" value={won(holding.avgBuyPrice)} />
@@ -258,7 +414,9 @@ function OrderPanel({ stock, price, setPrice, priceType, setPriceType }) {
             </div>
           </div>
           <div style={{ textAlign: 'right', fontSize: 13, color: SUB, marginBottom: 16 }}>
-            {isBuy ? `주문 가능 금액 ${won(cash)}` : `보유 수량 ${ownedQty}주`}
+            {accountLoading ? (
+              <Skeleton width={150} height={13} style={{ marginLeft: 'auto' }} />
+            ) : isBuy ? `주문 가능 금액 ${won(cash)}` : `보유 수량 ${ownedQty}주`}
           </div>
 
           {!canSubmit && qty > 0 && (
@@ -275,16 +433,13 @@ function OrderPanel({ stock, price, setPrice, priceType, setPriceType }) {
         </>
       )}
 
-      {toast && (
-        <div style={{ marginTop: 14, display: 'flex', alignItems: 'center', gap: 8, background: toast.ok ? (isBuy ? '#FEF0F1' : '#EFF5FF') : '#FDEDED', borderRadius: 12, padding: '12px 14px' }}>
-          {toast.ok ? (
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={accent} strokeWidth="2.4"><path d="M5 12l5 5L20 7" strokeLinecap="round" strokeLinejoin="round" /></svg>
-          ) : (
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={errColor} strokeWidth="2.4"><path d="M12 8v5M12 16h.01M12 3l9 16H3l9-16z" strokeLinecap="round" strokeLinejoin="round" /></svg>
-          )}
-          <span style={{ fontSize: 14, fontWeight: 700, color: toast.ok ? accent : errColor }}>{toast.text}</span>
+      {errorToast && (
+        <div style={{ marginTop: 14, display: 'flex', alignItems: 'center', gap: 8, background: '#FDEDED', borderRadius: 12, padding: '12px 14px' }}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={errColor} strokeWidth="2.4"><path d="M12 8v5M12 16h.01M12 3l9 16H3l9-16z" strokeLinecap="round" strokeLinejoin="round" /></svg>
+          <span style={{ fontSize: 14, fontWeight: 700, color: errColor }}>{errorToast}</span>
         </div>
       )}
+      {orderResult && <OrderResultModal result={orderResult} onClose={() => setOrderResult(null)} />}
     </Card>
   );
 }
@@ -308,7 +463,7 @@ function DetailTabs({ stock, info }) {
       <div style={{ padding: 24 }}>
         {tab === 'info' && (
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '20px 24px' }}>
-            {info.map(([k, v], i) => (
+                {info.map(([k, v], i) => (
               <div key={i}>
                 <div style={{ fontSize: 13, color: SUB, marginBottom: 4 }}>{k}</div>
                 <div style={{ fontSize: 16, fontWeight: 700, color: INK }}>{v}</div>
@@ -501,7 +656,7 @@ export function Detail() {
   const watched = state.watchlist.includes(code);
 
   const infoLoading = stockInfo === undefined;
-  const infoField = (val, formatter) => infoLoading ? '...' : (val == null ? '-' : formatter(val));
+  const infoField = (val, formatter) => infoLoading ? <Skeleton width={92} height={18} /> : (val == null ? '-' : formatter(val));
   const info = [
     ['시가총액', infoField(stockInfo?.marketCap, formatMarketCap)],
     ['거래대금', (stock.value ?? 0).toLocaleString() + '억원'],
@@ -523,7 +678,7 @@ export function Detail() {
             <Avatar stock={stock} size={56} />
             <div style={{ flex: 1 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ fontSize: 24, fontWeight: 800, color: INK, whiteSpace: 'nowrap' }}>{stock.name}</span>
+                <span style={{ fontSize: 24, fontWeight: 800, color: INK, whiteSpace: 'nowrap' }}>{displayStockName(stock)}</span>
                 <span style={{ fontSize: 14, color: SUB }}>{stock.code}</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginTop: 4, flexWrap: 'wrap' }}>
@@ -559,9 +714,7 @@ export function Detail() {
                   </span>
                 </div>
                 {candlesLoading ? (
-                  <div style={{ height: 360, display: 'flex', alignItems: 'center', justifyContent: 'center', color: SUB, fontSize: 14 }}>
-                    차트 데이터 로딩 중…
-                  </div>
+                  <ChartSkeleton height={360} />
                 ) : (
                   <InteractiveChart allCandles={liveCandles} allDates={candleDates} currentPrice={stock.price}
                     w={596} h={360} showMA5={ma5} showMA20={ma20} volH={70} count={periodObj.n} resetKey={period + code} />
@@ -674,14 +827,17 @@ function TickTape({ stock }) {
   const [tab, setTab] = useState('real');
   const [expanded, setExpanded] = useState(false);
   const [ticks, setTicks] = useState([]);
+  const [ticksLoading, setTicksLoading] = useState(true);
 
   // 최근 체결 초기 로드 (종목 변경 시 1회)
   useEffect(() => {
     let cancelled = false;
     setTicks([]);
+    setTicksLoading(true);
     fetchExecutions(stock.code)
       .then(data => { if (!cancelled) setTicks((data || []).slice(0, 50)); })
-      .catch(() => { if (!cancelled) setTicks([]); });
+      .catch(() => { if (!cancelled) setTicks([]); })
+      .finally(() => { if (!cancelled) setTicksLoading(false); });
     return () => { cancelled = true; };
   }, [stock.code]);
 
@@ -692,6 +848,7 @@ function TickTape({ stock }) {
   }, [lastExecution]);
 
   const [daily, setDaily] = useState([]);
+  const [dailyLoading, setDailyLoading] = useState(false);
   const dailyLoadedCode = useRef(null);
 
   // 일별 탭 처음 열릴 때(종목당) 1회만 호출
@@ -699,9 +856,11 @@ function TickTape({ stock }) {
     if (tab !== 'daily' || dailyLoadedCode.current === stock.code) return;
     dailyLoadedCode.current = stock.code;
     setDaily([]);
+    setDailyLoading(true);
     fetchDailyPrices(stock.code)
       .then(data => setDaily(data || []))
-      .catch(() => setDaily([]));
+      .catch(() => setDaily([]))
+      .finally(() => setDailyLoading(false));
   }, [tab, stock.code]);
   const moreBtn = { width: '100%', marginTop: 10, height: 38, borderRadius: 10, border: '1px solid #EEF1F4', background: '#F9FAFB', color: '#4E5968', fontSize: 13, fontWeight: 700, cursor: 'pointer' };
   return (
@@ -718,7 +877,7 @@ function TickTape({ stock }) {
           <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.9fr 0.9fr 1fr', gap: 4, padding: '0 4px 8px', fontSize: 12, color: SUB, fontWeight: 600 }}>
             <span>체결가</span><span style={{ textAlign: 'right' }}>체결량</span><span style={{ textAlign: 'right' }}>등락률</span><span style={{ textAlign: 'right' }}>시간</span>
           </div>
-          {(expanded ? ticks : ticks.slice(0, 6)).map((t, i) => (
+          {ticksLoading ? <QuoteRowsSkeleton /> : (expanded ? ticks : ticks.slice(0, 6)).map((t, i) => (
             <div key={i} style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.9fr 0.9fr 1fr', gap: 4, padding: '7px 4px', fontSize: 13, borderTop: '1px solid #F6F8FA' }}>
               <span style={{ fontWeight: 700, color: tone(t.changeRate) }}>{wonShort(t.price)}</span>
               <span style={{ textAlign: 'right', color: '#4E5968' }}>{t.quantity}</span>
@@ -726,14 +885,14 @@ function TickTape({ stock }) {
               <span style={{ textAlign: 'right', color: SUB }}>{t.time}</span>
             </div>
           ))}
-          <button onClick={() => setExpanded(v => !v)} style={moreBtn}>{expanded ? '접기' : `체결 더보기 (${ticks.length - 6})`}</button>
+          {!ticksLoading && <button onClick={() => setExpanded(v => !v)} style={moreBtn}>{expanded ? '접기' : `체결 더보기 (${Math.max(0, ticks.length - 6)})`}</button>}
         </div>
       ) : (
         <div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.2fr 0.9fr 1.2fr', gap: 4, padding: '0 4px 8px', fontSize: 12, color: SUB, fontWeight: 600 }}>
             <span>일자</span><span style={{ textAlign: 'right' }}>종가</span><span style={{ textAlign: 'right' }}>등락률</span><span style={{ textAlign: 'right' }}>거래량</span>
           </div>
-          {(expanded ? daily : daily.slice(0, 6)).map((d, i) => (
+          {dailyLoading ? <QuoteRowsSkeleton columns="1fr 1.2fr 0.9fr 1.2fr" /> : (expanded ? daily : daily.slice(0, 6)).map((d, i) => (
             <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 1.2fr 0.9fr 1.2fr', gap: 4, padding: '8px 4px', fontSize: 13, borderTop: '1px solid #F6F8FA' }}>
               <span style={{ color: '#4E5968' }}>{d.date.slice(5).replace('-', '.')}</span>
               <span style={{ textAlign: 'right', fontWeight: 700, color: INK }}>{d.closePrice.toLocaleString()}</span>
@@ -741,7 +900,7 @@ function TickTape({ stock }) {
               <span style={{ textAlign: 'right', color: SUB }}>{Math.round(d.volume / 10000).toLocaleString()}만</span>
             </div>
           ))}
-          {daily.length > 6 && <button onClick={() => setExpanded(v => !v)} style={moreBtn}>{expanded ? '접기' : '더보기'}</button>}
+          {!dailyLoading && daily.length > 6 && <button onClick={() => setExpanded(v => !v)} style={moreBtn}>{expanded ? '접기' : '더보기'}</button>}
         </div>
       )}
     </Card>
@@ -803,14 +962,20 @@ function OrderBook({ stock, selectedPrice, onPick }) {
   return (
     <Card style={{ padding: 18 }}>
       <PanelTitle right={<span style={{ fontSize: 12, color: SUB, whiteSpace: 'nowrap' }}>클릭→주문가 설정</span>}>호가</PanelTitle>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 96px 1fr', gap: 8, marginBottom: 8, padding: '0 4px', fontSize: 11, fontWeight: 800, color: SUB }}>
+        <span style={{ textAlign: 'right' }}>매도잔량</span>
+        <span style={{ textAlign: 'center' }}>호가</span>
+        <span>매수잔량</span>
+      </div>
       {!book ? (
-        <div style={{ padding: '24px 0', textAlign: 'center', color: SUB, fontSize: 14 }}>호가 정보를 불러오는 중…</div>
+        <OrderBookSkeleton />
       ) : (
         <>
           {asks.map((a, i) => <OBRow key={'a' + i} lvl={a} side="ask" />)}
           <div onClick={() => onPick && onPick(stock.price)} title="클릭해서 주문가로 설정"
             style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, height: 38, margin: '4px 0', background: selectedPrice === stock.price ? tone(stock.pct) + '12' : '#F9FAFB', borderRadius: 10,
               cursor: onPick ? 'pointer' : 'default', outline: selectedPrice === stock.price ? `2px solid ${tone(stock.pct)}` : 'none' }}>
+            <span style={{ fontSize: 11, fontWeight: 800, color: SUB, background: '#fff', border: '1px solid #E5E8EB', borderRadius: 6, padding: '2px 6px' }}>현재가</span>
             <span style={{ fontSize: 16, fontWeight: 800, color: tone(stock.pct) }}>{wonShort(stock.price)}</span>
             <span style={{ fontSize: 13, fontWeight: 700, color: tone(stock.pct) }}>{signPct(stock.pct)}</span>
           </div>
@@ -825,7 +990,7 @@ function Community({ stock, bare }) {
   const routerNavigate = useNavigate();
   const [posts, setPosts] = useState([]);
   const [status, setStatus] = useState('loading');
-  const stockName = stock?.name || stock?.short || stock?.code || '';
+  const stockName = stock ? displayStockName(stock, '') : '';
 
   useEffect(() => {
     if (!stock?.code) return;
@@ -879,7 +1044,7 @@ function Community({ stock, bare }) {
         </button>
       </div>
       {status === 'loading' ? (
-        <div style={{ fontSize: 14, color: SUB, textAlign: 'center', padding: '24px 0' }}>커뮤니티 글을 불러오는 중...</div>
+        <SkeletonText lines={3} widths={['64%', '92%', '78%']} height={14} gap={12} />
       ) : status === 'error' ? (
         <div style={{ fontSize: 14, color: SUB, textAlign: 'center', padding: '24px 0' }}>커뮤니티 글을 불러올 수 없어요.</div>
       ) : posts.length === 0 ? <div style={{ fontSize: 14, color: SUB, textAlign: 'center', padding: '24px 0' }}>아직 등록된 글이 없어요.</div> : (
@@ -910,7 +1075,7 @@ function Community({ stock, bare }) {
   if (bare) return inner;
   return (
     <Card style={{ marginTop: 20 }}>
-      <PanelTitle right={<span style={{ fontSize: 13, color: SUB, whiteSpace: 'nowrap' }}>{posts.length}개 글</span>}>커뮤니티 · {stock.name}</PanelTitle>
+      <PanelTitle right={<span style={{ fontSize: 13, color: SUB, whiteSpace: 'nowrap' }}>{posts.length}개 글</span>}>커뮤니티 · {displayStockName(stock)}</PanelTitle>
       {inner}
     </Card>
   );

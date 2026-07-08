@@ -99,6 +99,49 @@ const AI_COMMENTS = {
   '036930': '주요 고객사 증설 모멘텀으로 장비 발주가 늘어 강한 상승세를 보이고 있어요.',
 };
 
+const UNKNOWN_STOCK_NAME = '종목명 확인 중';
+const STOCK_NAME_FIELDS = [
+  'name', 'stockName', 'companyName', 'short', 'korName', 'koreanName',
+  'stckName', 'stock_name', 'prdtName', 'prdt_name', 'htsKorIsnm', 'hts_kor_isnm',
+];
+
+function isStockCode(value) {
+  return typeof value === 'string' && /^\d{6}$/.test(value.trim());
+}
+
+function usableStockName(value, code) {
+  if (typeof value !== 'string') return '';
+  const name = value.trim();
+  if (!name || name === code || isStockCode(name)) return '';
+  return name;
+}
+
+function pickStockName(source, code) {
+  if (!source || typeof source !== 'object') return '';
+  for (const field of STOCK_NAME_FIELDS) {
+    const name = usableStockName(source[field], code);
+    if (name) return name;
+  }
+  return '';
+}
+
+function normalizeStockName(source, code, previous) {
+  return pickStockName(source, code) || pickStockName(previous, code) || UNKNOWN_STOCK_NAME;
+}
+
+function normalizeStockRecord(source, previous = {}) {
+  const code = source?.code || source?.stockCode || previous?.code || '';
+  const name = normalizeStockName(source, code, previous);
+  return {
+    ...previous,
+    ...source,
+    code,
+    name,
+    stockName: name,
+    short: usableStockName(source?.short, code) || usableStockName(previous?.short, code) || name,
+  };
+}
+
 function defaultState() {
   return {
     route: { name: 'home', params: {} },
@@ -137,12 +180,23 @@ export function StoreProvider({ children, initialLoggedIn, onLogout }) {
   const [market, setMarket] = useState(MARKET);
   const [marketError, setMarketError] = useState(false);
   const [industries, setIndustries] = useState(INDUSTRIES);
+  const [kisLoading, setKisLoading] = useState({
+    ranks: true,
+    market: true,
+    sentiment: true,
+    industries: true,
+    watchlist: false,
+    portfolio: false,
+    summaries: false,
+  });
   const routerNavigate = useNavigate();
 
   // ── 홈 화면 왼쪽: 4개 탭(거래대금/거래량/급상승/급하락) 순위 ──
   const [rankTab, setRankTab] = useState('tradeValue'); // 'tradeValue' | 'volume' | 'topGainers' | 'topLosers'
   const [allRanks, setAllRanks] = useState({ tradeValue: [], volume: [], topGainers: [], topLosers: [] }); // 4개 탭 데이터 전부 보관
   const [priceMap, setPriceMap] = useState({}); // /topic/price/{code} 실시간 틱 { code: { price, pct, value, volume } }
+  const [stockNameCache, setStockNameCache] = useState({});
+  const stockNameCacheRef = useRef({});
 
   // ── 홈 화면 오른쪽: 관심종목 10개 실시간 시세 ──
   const [watchStocks, setWatchStocks] = useState([]);
@@ -186,6 +240,30 @@ export function StoreProvider({ children, initialLoggedIn, onLogout }) {
     if (list) setIndustries(list);
   }, []);
 
+  const rememberStockNames = useCallback((items) => {
+    const list = Array.isArray(items) ? items : [items].filter(Boolean);
+    if (list.length === 0) return;
+    setStockNameCache(prev => {
+      let changed = false;
+      const next = { ...prev };
+      list.forEach(item => {
+        const code = item?.code || item?.stockCode;
+        if (!code) return;
+        const normalized = normalizeStockRecord(item, prev[code]);
+        if (normalized.name === UNKNOWN_STOCK_NAME) return;
+        if (prev[code]?.name !== normalized.name || prev[code]?.short !== normalized.short) {
+          next[code] = normalized;
+          changed = true;
+        }
+      });
+      return changed ? next : prev;
+    });
+  }, []);
+
+  useEffect(() => {
+    stockNameCacheRef.current = stockNameCache;
+  }, [stockNameCache]);
+
   // 실제 로그인 상태(AuthContext/JWT)를 state.isLoggedIn에 반영 — 이전에는 이 prop이
   // 버려져서 로그인 여부와 무관하게 항상 로그인된 것처럼 보이는 버그가 있었다.
   useEffect(() => {
@@ -204,9 +282,11 @@ export function StoreProvider({ children, initialLoggedIn, onLogout }) {
   useEffect(() => {
     if (!initialLoggedIn) {
       setState(s => (s.watchlist.length ? { ...s, watchlist: [] } : s));
+      setKisLoading(prev => ({ ...prev, watchlist: false }));
       return;
     }
     let cancelled = false;
+    setKisLoading(prev => ({ ...prev, watchlist: true }));
     fetchWatchlist()
       .then(items => {
         if (cancelled) return;
@@ -214,15 +294,13 @@ export function StoreProvider({ children, initialLoggedIn, onLogout }) {
         const codes = list.map(item => typeof item === 'string' ? item : item.code).filter(Boolean);
         const namedStocks = list
           .filter(item => item && typeof item === 'object' && item.code)
-          .map(item => ({
-            code: item.code,
-            name: item.name || item.stockName || item.code,
-            short: item.name || item.stockName || item.code,
-          }));
+          .map(item => normalizeStockRecord(item));
+        rememberStockNames(namedStocks);
         setState(s => ({ ...s, watchlist: codes }));
         if (namedStocks.length > 0) setWatchStocks(namedStocks);
       })
-      .catch(e => console.warn('관심종목 조회 실패', e));
+      .catch(e => console.warn('관심종목 조회 실패', e))
+      .finally(() => { if (!cancelled) setKisLoading(prev => ({ ...prev, watchlist: false })); });
     return () => { cancelled = true; };
   }, [initialLoggedIn]);
 
@@ -241,8 +319,8 @@ export function StoreProvider({ children, initialLoggedIn, onLogout }) {
       },
       holdings: portfolio.holdings.map(h => ({
         code: h.code,
-        name: h.name || h.stockName || h.code,
-        short: h.name || h.stockName || h.code,
+        name: normalizeStockName(h, h.code),
+        short: normalizeStockName(h, h.code),
         qty: h.qty,
         avgPrice: h.avgPrice,
         currentPrice: h.currentPrice,
@@ -258,10 +336,16 @@ export function StoreProvider({ children, initialLoggedIn, onLogout }) {
   }, []);
 
   const refreshPortfolio = useCallback(() => {
+    setKisLoading(prev => ({ ...prev, portfolio: true }));
     return fetchPortfolio()
       .then(applyPortfolio)
-      .catch(e => console.warn('포트폴리오 조회 실패', e));
+      .catch(e => console.warn('포트폴리오 조회 실패', e))
+      .finally(() => setKisLoading(prev => ({ ...prev, portfolio: false })));
   }, [applyPortfolio]);
+
+  useEffect(() => {
+    rememberStockNames(state.holdings);
+  }, [rememberStockNames, state.holdings]);
 
   // 비로그인 시 holdings/trades 초기화, funds는 기본값 유지. 로그인 시 서버에서 로드.
   useEffect(() => {
@@ -277,12 +361,16 @@ export function StoreProvider({ children, initialLoggedIn, onLogout }) {
   useEffect(() => {
     const handleRank = (msg) => {
       if (!msg) return;
+      const normalizeRankList = (list) => (Array.isArray(list) ? list : [])
+        .map(item => normalizeStockRecord(item, stockNameCacheRef.current[item?.code]));
       setAllRanks({
-        tradeValue: msg.tradeValue,
-        volume: msg.volume,
-        topGainers: msg.topGainers,
-        topLosers: msg.topLosers,
+        tradeValue: normalizeRankList(msg.tradeValue),
+        volume: normalizeRankList(msg.volume),
+        topGainers: normalizeRankList(msg.topGainers),
+        topLosers: normalizeRankList(msg.topLosers),
       });
+      rememberStockNames([...(msg.tradeValue || []), ...(msg.volume || []), ...(msg.topGainers || []), ...(msg.topLosers || [])]);
+      setKisLoading(prev => ({ ...prev, ranks: false }));
       if (msg.marketOverview) {
         applyMarketIndices({
           kospi: msg.marketOverview.indices?.find(item => item.code === '0001'),
@@ -299,22 +387,56 @@ export function StoreProvider({ children, initialLoggedIn, onLogout }) {
     const unsubTopic = stompSubscribe('/topic/rank', handleRank);
 
     return () => { unsubSnapshot(); unsubTopic(); };
-  }, [applyMarketIndices, applyInvestorSentiment, applyIndustryRanks]); // 마운트 시 1회 구독
+  }, [applyMarketIndices, applyInvestorSentiment, applyIndustryRanks, rememberStockNames]); // 마운트 시 1회 구독
 
   const summaryCodes = useMemo(() => {
     return Array.from(new Set([...state.watchlist, ...state.holdings.map(h => h.code)]));
   }, [state.watchlist, state.holdings]);
 
+  const rankCodesNeedingNames = useMemo(() => {
+    return Array.from(new Set([
+      ...allRanks.tradeValue,
+      ...allRanks.volume,
+      ...allRanks.topGainers,
+      ...allRanks.topLosers,
+    ]
+      .filter(s => s?.code && (!pickStockName(s, s.code) || s.name === UNKNOWN_STOCK_NAME))
+      .map(s => s.code)));
+  }, [allRanks]);
+
   // 관심종목/보유종목 초기 스냅샷 — REST로 이름/로고/기준가 로드 (실시간 갱신은 아래 /topic/price/{code} 구독이 담당)
   useEffect(() => {
-    if (summaryCodes.length === 0) { setWatchStocks([]); return; }
+    if (summaryCodes.length === 0) {
+      setWatchStocks([]);
+      setKisLoading(prev => ({ ...prev, summaries: false }));
+      return;
+    }
     let cancelled = false;
 
+    setKisLoading(prev => ({ ...prev, summaries: true }));
     fetchStockSummaries(summaryCodes)
-      .then(stocks => { if (!cancelled) setWatchStocks(stocks); })
-      .catch(e => console.warn('관심/보유 종목 시세 조회 실패', e));
+      .then(stocks => {
+        if (cancelled) return;
+        const normalized = (stocks || []).map(stock => normalizeStockRecord(stock, stockNameCache[stock?.code]));
+        rememberStockNames(normalized);
+        setWatchStocks(normalized);
+      })
+      .catch(e => console.warn('관심/보유 종목 시세 조회 실패', e))
+      .finally(() => { if (!cancelled) setKisLoading(prev => ({ ...prev, summaries: false })); });
     return () => { cancelled = true; };
-  }, [summaryCodes]);
+  }, [rememberStockNames, stockNameCache, summaryCodes]);
+
+  useEffect(() => {
+    if (rankCodesNeedingNames.length === 0) return;
+    let cancelled = false;
+    fetchStockSummaries(rankCodesNeedingNames)
+      .then(stocks => {
+        if (cancelled) return;
+        rememberStockNames((stocks || []).map(stock => normalizeStockRecord(stock, stockNameCache[stock?.code])));
+      })
+      .catch(e => console.warn('순위 종목명 보강 조회 실패', e));
+    return () => { cancelled = true; };
+  }, [rankCodesNeedingNames, rememberStockNames, stockNameCache]);
 
   // 순위표(4탭) + 관심종목/보유종목 코드 전체에 대해 /topic/price/{code} 실시간 틱 구독을 동기화
   const priceTargetCodes = useMemo(() => {
@@ -369,6 +491,8 @@ export function StoreProvider({ children, initialLoggedIn, onLogout }) {
 
       if (industriesRes.status === 'fulfilled') applyIndustryRanks(industriesRes.value);
       else console.warn('산업 순위 조회 실패', industriesRes.reason);
+
+      setKisLoading(prev => ({ ...prev, market: false, sentiment: false, industries: false }));
     };
 
     loadMarket();
@@ -385,16 +509,22 @@ export function StoreProvider({ children, initialLoggedIn, onLogout }) {
     const base = allRanks[rankTab] ?? [];
     return base.map(s => {
       const live = priceMap[s.code]; // 실제 KIS 실시간 틱
-      if (!live) return s;
-      return {
-        ...s,
-        price: live.price,
-        pct: live.pct,
+      const cached = stockNameCache[s.code];
+      const baseStock = normalizeStockRecord(s, cached);
+      if (!live) return baseStock;
+      return normalizeStockRecord({
+        ...baseStock,
+        ...live,
+        code: s.code,
         value: live.value ?? s.value,
         volume: live.volume ?? s.volume,
-      };
+      }, cached);
     });
-  }, [allRanks, rankTab, priceMap]);
+  }, [allRanks, rankTab, priceMap, stockNameCache]);
+
+  const enrichedWatchStocks = useMemo(() => {
+    return watchStocks.map(stock => normalizeStockRecord(stock, stockNameCache[stock.code]));
+  }, [stockNameCache, watchStocks]);
  
   // ----- derived helpers -----
 
@@ -406,15 +536,16 @@ export function StoreProvider({ children, initialLoggedIn, onLogout }) {
       ...allRanks.volume,
       ...allRanks.topGainers,
       ...allRanks.topLosers,
-      ...watchStocks,
+      ...enrichedWatchStocks,
       ...state.holdings.map(h => ({
         code: h.code,
-        name: h.name || h.code,
-        short: h.short || h.name || h.code,
+        name: normalizeStockName(h, h.code, stockNameCache[h.code]),
+        short: normalizeStockName(h, h.code, stockNameCache[h.code]),
         price: h.currentPrice ?? h.avgPrice ?? 0,
         pct: 0,
       })),
       ...Object.entries(priceMap).map(([code, live]) => ({ code, price: live.price, pct: live.pct })),
+      ...Object.values(stockNameCache),
     ].forEach(s => {
       if (!s || !s.code) return;
       const live = priceMap[s.code];
@@ -423,25 +554,20 @@ export function StoreProvider({ children, initialLoggedIn, onLogout }) {
       const value = live?.value ?? s.value;
       const volume = live?.volume ?? s.volume;
       const changeAmt = Math.round(price - price / (1 + pct / 100));
-      const prev = m[s.code] || {};
+      const prev = m[s.code] || stockNameCache[s.code] || {};
       const isLiveOnly = Object.prototype.hasOwnProperty.call(priceMap, s.code)
         && s.price === priceMap[s.code]?.price
         && s.value == null
         && s.volume == null;
-      const name = [s.name, s.stockName, prev.name, prev.stockName, s.short, prev.short]
-        .find(v => typeof v === 'string' && v.trim() && v !== s.code) ?? s.code;
       const snapPrice = isLiveOnly
         ? (prev.snapPrice ?? prev.price ?? s.price ?? 0)
         : (s.price ?? prev.snapPrice ?? 0);
       const snapPct = isLiveOnly
         ? (prev.snapPct ?? 0)
         : (Number(s.pct ?? prev.snapPct ?? 0) || 0);
-      m[s.code] = {
+      m[s.code] = normalizeStockRecord({
         ...prev,
         ...s,
-        name,
-        stockName: name,
-        short: s.short ?? prev.short ?? name,
         price,
         pct,
         value,
@@ -449,10 +575,10 @@ export function StoreProvider({ children, initialLoggedIn, onLogout }) {
         changeAmt,
         snapPrice,
         snapPct,
-      };
+      }, prev);
     });
     return m;
-  }, [allRanks, watchStocks, state.holdings, priceMap]);
+  }, [allRanks, enrichedWatchStocks, state.holdings, priceMap, stockNameCache]);
  
   // 중복된 선언 축소 (하나만 남김)
   const getStock = useCallback((code) => stockMap[code], [stockMap]);
@@ -550,7 +676,7 @@ export function StoreProvider({ children, initialLoggedIn, onLogout }) {
   const value = {
     state, getStock, stocks, watchStocks, stockMap, rankTab, setRankTab,
     market, industries, schedule: SCHEDULE, aiComments: AI_COMMENTS,
-    marketError,
+    marketError, kisLoading,
     genCandles, genSpark, seedRand,
     navigate, goToLogin, toggleWatch, refreshPortfolio, chargeFunds, resetFunds, setInitialFunds, addAiReport, setAiReports,
     lastExecution, lastOrderBook, subscribeDetail,

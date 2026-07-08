@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useStore } from './store/store.jsx';
-import { INK, SUB, BRAND, won, signPct, tone, Avatar } from './components/ui.jsx';
+import { INK, SUB, BRAND, won, signPct, tone, Avatar, displayStockName } from './components/ui.jsx';
 import { Home } from './pages/Home.jsx';
 import { Detail } from './pages/Detail.jsx';
 import { Portfolio, Watchlist, Funds, Trades } from './pages/Invest.jsx';
@@ -55,7 +55,7 @@ function SubNavSearch() {
     const term = q.trim().toLowerCase();
     if (!term) return [];
     return stocks.filter(s => 
-      s.name.toLowerCase().includes(term) || 
+      displayStockName(s, '').toLowerCase().includes(term) || 
       s.code.includes(term) || 
       (s.sector && s.sector.toLowerCase().includes(term))
     ).slice(0, 7);
@@ -95,7 +95,7 @@ function SubNavSearch() {
                 style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 10px', borderRadius: 10, cursor: 'pointer', background: hi === i ? '#F4F8FF' : 'transparent' }}>
                 <Avatar stock={s} size={30} />
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: INK, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.name}</div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: INK, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{displayStockName(s)}</div>
                   <div style={{ fontSize: 11, color: SUB }}>{s.code} · {s.sector}</div>
                 </div>
                 <div style={{ textAlign: 'right' }}>

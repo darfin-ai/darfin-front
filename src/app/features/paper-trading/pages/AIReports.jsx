@@ -4,10 +4,16 @@ import { useStore } from '../store/store.jsx';
 import {
   UP, DOWN, SUB, INK, BRAND,
   signNum, tone, dateLabel,
-  Card, primaryBtn,
+  Card, primaryBtn, displayStockName,
   PageShell, Empty, LoginGate,
 } from '../components/ui.jsx';
-import { fetchStoredPortfolioReports, generatePortfolioAnalysis, getDarfinUser, getDarfinUserId } from '../lib/aiEngine.js';
+import {
+  downloadPortfolioReportPdf,
+  fetchStoredPortfolioReports,
+  generatePortfolioAnalysis,
+  getDarfinUser,
+  getDarfinUserId,
+} from '../lib/aiEngine.js';
 import { normalizeUserText, userDisplayName } from '../../../shared/lib/userText.js';
 
 const AXES = [
@@ -17,19 +23,12 @@ const AXES = [
   { n: '④', t: '투자 성향', d: '8개 유형 분류 · 건강도 점수 100점' },
 ];
 
-function Tag({ kind }) {
-  const map = { Info: ['#1B64DA', '#EFF5FF'], Advice: ['#C2740B', '#FFF6E6'] };
-  const [c, bg] = map[kind] || map.Info;
-  return <span style={{ fontSize: 11, fontWeight: 800, color: c, background: bg, padding: '3px 8px', borderRadius: 6, whiteSpace: 'nowrap' }}>{kind}</span>;
-}
-
-function ReportSection({ no, title, tags, children }) {
+function ReportSection({ no, title, children }) {
   return (
-    <div style={{ borderTop: '1px solid #F2F4F6', paddingTop: 20, marginTop: 20 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-        <span style={{ width: 22, height: 22, borderRadius: 7, background: '#F2F4F6', color: '#4E5968', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 800 }}>{no}</span>
-        <span style={{ fontSize: 16, fontWeight: 800, color: INK, whiteSpace: 'nowrap' }}>{title}</span>
-        <div style={{ display: 'flex', gap: 5, marginLeft: 'auto' }}>{tags.map(t => <Tag key={t} kind={t} />)}</div>
+    <div style={{ borderTop: '1px solid #F2F4F6', paddingTop: 24, marginTop: 24 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+        <span style={{ width: 26, height: 26, borderRadius: 8, background: '#F2F4F6', color: '#4E5968', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 900 }}>{no}</span>
+        <span style={{ fontSize: 19, fontWeight: 900, color: INK, whiteSpace: 'nowrap', lineHeight: 1.25 }}>{title}</span>
       </div>
       {children}
     </div>
@@ -39,17 +38,17 @@ function ReportSection({ no, title, tags, children }) {
 function MetricChip({ label, value, warn }) {
   return (
     <div style={{ flex: 1, minWidth: 0, background: warn ? '#FFF5F6' : '#F9FAFB', borderRadius: 12, padding: '12px 14px' }}>
-      <div style={{ fontSize: 12, color: SUB, marginBottom: 4, whiteSpace: 'nowrap' }}>{label}</div>
-      <div style={{ fontSize: 17, fontWeight: 800, color: warn ? UP : INK, whiteSpace: 'nowrap' }}>{value}</div>
+      <div style={{ fontSize: 12, color: SUB, marginBottom: 5, whiteSpace: 'nowrap', fontWeight: 700 }}>{label}</div>
+      <div style={{ fontSize: 18, fontWeight: 900, color: warn ? UP : INK, whiteSpace: 'nowrap', lineHeight: 1.2 }}>{value}</div>
     </div>
   );
 }
 
 function AdviceLine({ text }) {
   return (
-    <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', background: '#FFF8EC', borderRadius: 10, padding: '12px 14px', marginTop: 10 }}>
-      <span style={{ color: '#C2740B', fontWeight: 800, flexShrink: 0 }}>Advice</span>
-      <span style={{ fontSize: 14, color: '#5C4A20', lineHeight: 1.5 }}>{text}</span>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, background: '#FFF8EC', borderRadius: 12, padding: '13px 15px', marginTop: 12 }}>
+      <span style={{ color: '#C2740B', fontWeight: 900, flexShrink: 0, fontSize: 13 }}>개선 제안</span>
+      <span style={{ fontSize: 15, color: '#5C4A20', lineHeight: 1.65 }}>{text}</span>
     </div>
   );
 }
@@ -64,31 +63,51 @@ function EmphasisText({ text }) {
   });
 }
 
+const insightHoverable = {
+  transition: 'background 150ms ease, border-color 150ms ease, box-shadow 150ms ease',
+};
+
+function setInsightHover(e, active, bg = '#F8FBFF') {
+  e.currentTarget.style.background = active ? bg : 'transparent';
+  e.currentTarget.style.borderColor = active ? '#EAF1FF' : 'transparent';
+  e.currentTarget.style.boxShadow = active ? '0 4px 14px rgba(27,100,218,0.06)' : 'none';
+}
+
 function DarfinInsight({ text }) {
   const lines = String(text || '').split('\n').map(line => line.trim()).filter(Boolean);
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       {lines.map((line, i) => {
         if (line.startsWith('###')) {
           return (
-            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: i === 0 ? 0 : 6 }}>
-              <span style={{ width: 6, height: 18, borderRadius: 3, background: BRAND, flexShrink: 0 }} />
-              <span style={{ fontSize: 15, fontWeight: 900, color: INK }}>{line.replace(/^#+\s*/, '')}</span>
+            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 9, marginTop: i === 0 ? 0 : 10 }}>
+              <span style={{ width: 6, height: 22, borderRadius: 3, background: BRAND, flexShrink: 0 }} />
+              <span style={{ fontSize: 18, fontWeight: 900, color: INK, lineHeight: 1.35 }}>{line.replace(/^#+\s*/, '')}</span>
             </div>
           );
         }
         if (/^[-*]\s+/.test(line)) {
           return (
-            <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'flex-start', background: '#F8FBFF', border: '1px solid #EAF1FF', borderRadius: 10, padding: '11px 13px' }}>
-              <span style={{ width: 7, height: 7, borderRadius: '50%', background: BRAND, marginTop: 7, flexShrink: 0 }} />
-              <div style={{ fontSize: 14, color: '#364153', lineHeight: 1.65 }}>
+            <div
+              key={i}
+              onMouseEnter={(e) => setInsightHover(e, true)}
+              onMouseLeave={(e) => setInsightHover(e, false)}
+              style={{ ...insightHoverable, display: 'flex', gap: 11, alignItems: 'flex-start', background: 'transparent', border: '1px solid transparent', borderRadius: 12, padding: '11px 13px' }}
+            >
+              <span style={{ width: 7, height: 7, borderRadius: '50%', background: BRAND, marginTop: 9, flexShrink: 0 }} />
+              <div style={{ fontSize: 15, color: '#364153', lineHeight: 1.7 }}>
                 <EmphasisText text={line.replace(/^[-*]\s+/, '')} />
               </div>
             </div>
           );
         }
         return (
-          <div key={i} style={{ fontSize: 14, color: '#364153', lineHeight: 1.7, background: i === 1 ? '#FFFDF7' : 'transparent', borderLeft: i === 1 ? '3px solid #F5A623' : 'none', padding: i === 1 ? '10px 12px' : 0, borderRadius: i === 1 ? 8 : 0 }}>
+          <div
+            key={i}
+            onMouseEnter={(e) => setInsightHover(e, true, '#FFFDF7')}
+            onMouseLeave={(e) => setInsightHover(e, false)}
+            style={{ ...insightHoverable, fontSize: i === 0 ? 16 : 15, fontWeight: i === 0 ? 700 : 500, color: '#364153', lineHeight: 1.75, background: 'transparent', border: '1px solid transparent', borderLeft: '3px solid transparent', padding: '10px 12px', borderRadius: 10 }}
+          >
             <EmphasisText text={line} />
           </div>
         );
@@ -115,7 +134,7 @@ function HealthBar({ label, score, max }) {
 
 function ContribRow({ x, positive }) {
   const col = positive ? UP : DOWN;
-  const name = x.name || x.code || '-';
+  const name = displayStockName(x, '-');
   const sector = x.sector || '미분류';
   return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '9px 0' }}>
@@ -170,44 +189,13 @@ function normalizeReport(report) {
   };
 }
 
-function downloadReport(r) {
+async function downloadReport(r) {
   r = normalizeReport(r);
-  const esc = (s) => String(s).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
-  const richDarfin = (s) => esc(s)
-    .replace(/^###\s*(.+)$/gm, '<b>$1</b>')
-    .replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>')
-    .replace(/\n/g, '<br>');
-  const b = r.behavior, rk = r.risk, rt = r.returns;
-  const sectionRows = [
-    ['① 투자 성향 요약', `<b>${esc(r.label)}</b><br>${esc(r.labelReason)}`],
-    ...(r.geminiAnalysis ? [['Darfin AI 종합 해석', richDarfin(r.geminiAnalysis)]] : []),
-    ['② 포트폴리오 건강도', `${r.health.total} / 100 (${esc(r.health.grade)})<br>` + Object.entries(r.health.breakdown).map(([k, v]) => `${esc(k)} ${v}/25`).join(' · ') + `<br>${esc(r.health.comment)}`],
-    ['③ 행동 패턴', esc(b.text) + `<br><i>Advice: ${esc(b.advice)}</i>`],
-    ['④ 리스크 진단', esc(rk.text) + `<br><i>Advice: ${esc(rk.advice)}</i>`],
-    ['⑤ 수익률 요인', esc(rt.text) + `<br>수익 상위: ${rt.top3.map(x => esc(x.name) + ' ' + signNum(x.v)).join(', ') || '없음'}<br>손실 하위: ${rt.bottom3.map(x => esc(x.name) + ' ' + signNum(x.v)).join(', ') || '없음'}`],
-    ['⑥ 개선 Advice Top 3', r.adviceTop3.map((a, i) => `${i + 1}. <b>${esc(a.t)}</b> — ${esc(a.d)}`).join('<br>')],
-    ['⑦ 전략 제안', esc(r.strategy)],
-  ];
-  const html = `<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8"><title>Darfin AI 리포트</title>
-<style>body{font-family:-apple-system,'Apple SD Gothic Neo','Malgun Gothic',sans-serif;max-width:760px;margin:40px auto;padding:0 24px;color:#191F28;line-height:1.6}
-h1{font-size:24px;margin-bottom:4px}.meta{color:#8B95A1;font-size:13px;margin-bottom:20px}
-.badge{display:inline-block;background:#EFF5FF;color:#1B64DA;font-weight:800;padding:6px 14px;border-radius:8px;font-size:14px}
-.sec{border-top:1px solid #EEF1F4;padding:16px 0}.sec h2{font-size:16px;margin:0 0 8px}
-.note{background:#F9FAFB;border-radius:10px;padding:10px 14px;font-size:12px;color:#8B95A1;margin:16px 0}
-.t{color:#4E5968;font-size:14px}</style></head><body>
-<h1>✦ 포트폴리오 통합 분석 리포트</h1>
-<div class="meta">Darfin AI · ${dateLabel(r.ts || Date.now())} 생성 &nbsp; <span class="badge">${esc(r.label)}</span></div>
-<div class="note">※ ${esc(r.disclaimer)}</div>
-${sectionRows.map(([t, body]) => `<div class="sec"><h2>${esc(t)}</h2><div class="t">${body}</div></div>`).join('')}
-<div class="note">Darfin 모의투자 · 학습용 리포트</div>
-</body></html>`;
-  const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `Darfin_AI리포트_${dateLabel(r.ts || Date.now()).replace('.', '')}.html`;
-  document.body.appendChild(a); a.click(); document.body.removeChild(a);
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  try {
+    await downloadPortfolioReportPdf(r.remoteReportId);
+  } catch (error) {
+    alert(error?.message || 'PDF 다운로드에 실패했습니다.');
+  }
 }
 
 function ReportCard({ report: r }) {
@@ -250,20 +238,20 @@ function ReportCard({ report: r }) {
         </div>
       )}
 
-      <ReportSection no="1" title="투자 성향 요약" tags={['Info']}>
+      <ReportSection no="1" title="투자 성향 요약">
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
           <span style={{ fontSize: 22, fontWeight: 800, color: BRAND }}>{r.label}</span>
         </div>
-        <div style={{ fontSize: 14, color: '#4E5968', lineHeight: 1.6 }}>{r.labelReason}</div>
+        <div style={{ fontSize: 15, color: '#4E5968', lineHeight: 1.7 }}>{r.labelReason}</div>
       </ReportSection>
 
       {r.geminiAnalysis && (
-        <ReportSection no="AI" title="Darfin AI 종합 해석" tags={['Info', 'Advice']}>
+        <ReportSection no="AI" title="Darfin AI 종합 해석">
           <DarfinInsight text={r.geminiAnalysis} />
         </ReportSection>
       )}
 
-      <ReportSection no="2" title="포트폴리오 건강도" tags={['Info']}>
+      <ReportSection no="2" title="포트폴리오 건강도">
         <div style={{ display: 'flex', gap: 24, alignItems: 'center', flexWrap: 'wrap' }}>
           <div style={{ textAlign: 'center', minWidth: 120 }}>
             <div style={{ fontSize: 44, fontWeight: 800, color: gradeColor, lineHeight: 1 }}>{health.total}<span style={{ fontSize: 20, color: SUB }}> / 100</span></div>
@@ -273,10 +261,10 @@ function ReportCard({ report: r }) {
             {Object.entries(health.breakdown).map(([k, v]) => <HealthBar key={k} label={k} score={v} max={25} />)}
           </div>
         </div>
-        <div style={{ fontSize: 14, color: '#4E5968', lineHeight: 1.6, marginTop: 14 }}>{health.comment}</div>
+        <div style={{ fontSize: 15, color: '#4E5968', lineHeight: 1.7, marginTop: 16 }}>{health.comment}</div>
       </ReportSection>
 
-      <ReportSection no="3" title="행동 패턴 분석" tags={['Info', 'Advice']}>
+      <ReportSection no="3" title="행동 패턴 분석">
         {!b.limited && (
           <div style={{ display: 'flex', gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
             <MetricChip label="월 매매" value={(b.metrics.tradesPerMonth ?? 0).toFixed(1) + '회'} warn={(b.metrics.tradesPerMonth ?? 0) >= 6} />
@@ -286,23 +274,23 @@ function ReportCard({ report: r }) {
             <MetricChip label="추격 매수" value={(b.metrics.chaseBuyCount ?? 0) + '건'} warn={(b.metrics.chaseBuyCount ?? 0) >= 2} />
           </div>
         )}
-        <div style={{ fontSize: 14, color: '#4E5968', lineHeight: 1.6 }}>{b.text}</div>
+        <div style={{ fontSize: 15, color: '#4E5968', lineHeight: 1.75 }}>{b.text}</div>
         <AdviceLine text={b.advice} />
       </ReportSection>
 
-      <ReportSection no="4" title="리스크 진단" tags={['Info', 'Advice']}>
+      <ReportSection no="4" title="리스크 진단">
         <div style={{ display: 'flex', gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
           <MetricChip label="리스크 점수" value={(rk.riskScore ?? 0) + '점 · ' + (rk.riskGrade || '-')} warn={(rk.riskScore ?? 0) > 60} />
           <MetricChip label="업종 집중도" value={(rk.sectorConcentration ?? 0).toFixed(0) + '%'} warn={(rk.sectorConcentration ?? 0) > 40} />
           <MetricChip label="종목 집중도" value={(rk.topStockConcentration ?? 0).toFixed(0) + '%'} warn={(rk.topStockConcentration ?? 0) > 30} />
           <MetricChip label="손실 종목" value={(rk.lossStockRatio ?? 0).toFixed(0) + '%'} warn={(rk.lossStockRatio ?? 0) > 50} />
         </div>
-        <div style={{ fontSize: 14, color: '#4E5968', lineHeight: 1.6 }}>{rk.text}</div>
+        <div style={{ fontSize: 15, color: '#4E5968', lineHeight: 1.75 }}>{rk.text}</div>
         <AdviceLine text={rk.advice} />
       </ReportSection>
 
-      <ReportSection no="5" title="수익률 요인 분석" tags={['Info']}>
-        <div style={{ fontSize: 14, color: '#4E5968', lineHeight: 1.6, marginBottom: 16 }}>{rt.text}</div>
+      <ReportSection no="5" title="수익률 요인 분석">
+        <div style={{ fontSize: 15, color: '#4E5968', lineHeight: 1.75, marginBottom: 16 }}>{rt.text}</div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
           <div style={{ background: '#F9FAFB', borderRadius: 12, padding: '14px 16px' }}>
             <div style={{ fontSize: 13, fontWeight: 800, color: UP, marginBottom: 4 }}>수익 기여 상위</div>
@@ -324,22 +312,22 @@ function ReportCard({ report: r }) {
         )}
       </ReportSection>
 
-      <ReportSection no="6" title="개선 Advice Top 3" tags={['Advice']}>
+      <ReportSection no="6" title="개선 Advice Top 3">
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           {r.adviceTop3.map((a, i) => (
             <div key={i} style={{ display: 'flex', gap: 12, background: '#FFF8EC', borderRadius: 12, padding: '14px 16px' }}>
               <span style={{ width: 24, height: 24, borderRadius: '50%', background: '#C2740B', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 800, flexShrink: 0 }}>{i + 1}</span>
               <div>
-                <div style={{ fontSize: 15, fontWeight: 800, color: '#5C4A20' }}>{a.t}</div>
-                <div style={{ fontSize: 14, color: '#7A6534', lineHeight: 1.5, marginTop: 2 }}>{a.d}</div>
+                <div style={{ fontSize: 16, fontWeight: 900, color: '#5C4A20', lineHeight: 1.35 }}>{a.t}</div>
+                <div style={{ fontSize: 15, color: '#7A6534', lineHeight: 1.65, marginTop: 4 }}>{a.d}</div>
               </div>
             </div>
           ))}
         </div>
       </ReportSection>
 
-      <ReportSection no="7" title="전략 제안" tags={['Advice']}>
-        <div style={{ fontSize: 14, color: '#4E5968', lineHeight: 1.7 }}>{r.strategy}</div>
+      <ReportSection no="7" title="전략 제안">
+        <div style={{ fontSize: 15, color: '#4E5968', lineHeight: 1.75 }}>{r.strategy}</div>
       </ReportSection>
     </Card>
   );

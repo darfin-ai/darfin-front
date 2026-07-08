@@ -13,6 +13,18 @@ export const INK = '#191F28';
 export const BRAND = '#1B64DA';
 export const tone = (p) => (p > 0 ? UP : p < 0 ? DOWN : SUB);
 export const eokKMan = (eok) => eok >= 10000 ? (eok / 10000).toFixed(1) + '조원' : eok.toLocaleString() + '억원';
+export const UNKNOWN_STOCK_NAME = '종목명 확인 중';
+
+export function displayStockName(stock, fallback = UNKNOWN_STOCK_NAME) {
+  const code = stock?.code || stock?.stockCode || '';
+  const candidates = [stock?.short, stock?.name, stock?.stockName, stock?.companyName];
+  const name = candidates.find(value => {
+    if (typeof value !== 'string') return false;
+    const trimmed = value.trim();
+    return trimmed && trimmed !== code && !/^\d{6}$/.test(trimmed);
+  });
+  return name || fallback;
+}
 
 export function timeAgo(ts) {
   const d = Math.floor((Date.now() - ts) / 1000);
@@ -47,7 +59,7 @@ function avatarColor(code) {
 export function Avatar({ stock, size = 40 }) {
   const [imgFailed, setImgFailed] = useState(false);
   const code = stock?.code || '0';
-  const name = stock?.name || stock?.short || stock?.stockName || code;
+  const name = displayStockName(stock);
   const logoUrl = stock?.logoUrl || `https://file.alphasquare.co.kr/media/images/stock_logo/kr/${code}.png`;
   const ch = name.replace(/^(KODEX|SOL|TIGER|KBSTAR)\s*/, '').charAt(0);
   const bg = stock?.color || avatarColor(code);
@@ -321,6 +333,32 @@ export function Tab({ active, children, onClick }) {
 
 export function Card({ children, style }) {
   return <div style={{ background: '#fff', border: '1px solid #EEF1F4', borderRadius: 20, padding: 24, ...style }}>{children}</div>;
+}
+
+export function Skeleton({ width = '100%', height = 16, radius = 8, style }) {
+  return (
+    <span
+      className="darfin-skeleton"
+      aria-hidden="true"
+      style={{
+        display: 'block',
+        width,
+        height,
+        borderRadius: radius,
+        ...style,
+      }}
+    />
+  );
+}
+
+export function SkeletonText({ lines = 2, widths = ['100%', '72%'], height = 12, gap = 8 }) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap }}>
+      {Array.from({ length: lines }).map((_, i) => (
+        <Skeleton key={i} width={widths[i] || widths[widths.length - 1] || '100%'} height={height} />
+      ))}
+    </div>
+  );
 }
 
 export function Heart({ filled, onClick, size = 22 }) {

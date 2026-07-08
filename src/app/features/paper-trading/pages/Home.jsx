@@ -5,7 +5,7 @@ import { getQuestions } from '../../community/api/communityApi.js';
 import {
   UP, DOWN, SUB, INK, BRAND,
   won, wonShort, signPct, signNum, tone, timeAgo,
-  Avatar, Sparkline, CandleChart, Card, Pill, Tab, Heart,
+  Avatar, Sparkline, CandleChart, Card, Pill, Tab, Heart, Skeleton, SkeletonText, displayStockName,
 } from '../components/ui.jsx';
 
 // ===== Home dashboard (Toss layout, domestic only) =====
@@ -48,8 +48,9 @@ function MiniIndexCard({ idx }) {
   if (!idx) {
     return (
       <Card style={{ padding: '14px 18px', flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 14, fontWeight: 700, color: '#4E5968', marginBottom: 6 }}>시장 지표</div>
-        <div style={{ fontSize: 14, fontWeight: 700, color: SUB, height: 28, display: 'flex', alignItems: 'center' }}>KIS 데이터를 불러오는 중입니다</div>
+        <Skeleton width={72} height={14} style={{ marginBottom: 10 }} />
+        <Skeleton width="68%" height={26} style={{ marginBottom: 8 }} />
+        <Skeleton width={112} height={13} />
       </Card>
     );
   }
@@ -152,6 +153,25 @@ const heroBtn = (solid) => ({ flex: 1, height: 44, borderRadius: 12, border: 'no
 
 const RANK_COLS = '28px 28px 40px minmax(108px, 1fr) 100px 76px 100px 72px';
 
+function StockRowSkeleton() {
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: RANK_COLS, alignItems: 'center', gap: 8, padding: '10px 8px', borderRadius: 12 }}>
+      <Skeleton width={20} height={20} radius={10} style={{ justifySelf: 'center' }} />
+      <Skeleton width={16} height={14} style={{ justifySelf: 'center' }} />
+      <Skeleton width={34} height={34} radius={17} style={{ justifySelf: 'center' }} />
+      <Skeleton width="78%" height={16} />
+      <Skeleton width={82} height={16} style={{ justifySelf: 'end' }} />
+      <Skeleton width={58} height={24} radius={8} style={{ justifySelf: 'end' }} />
+      <Skeleton width={76} height={14} style={{ justifySelf: 'end' }} />
+      <Skeleton width={48} height={20} radius={6} style={{ justifySelf: 'end' }} />
+    </div>
+  );
+}
+
+function StockRowsSkeleton({ count = 10 }) {
+  return Array.from({ length: count }).map((_, i) => <StockRowSkeleton key={i} />);
+}
+
 function StockRow({ rank, stock, onClick, watched, onWatch, onHover, rankTab }) {
   const col = tone(stock.pct);
   const displayValue = (rankTab === 'volume' ? stock.volume : stock.value) || 0;
@@ -181,8 +201,8 @@ function StockRow({ rank, stock, onClick, watched, onWatch, onHover, rankTab }) 
       </div>
 
       {/* 종목명 */}
-      <span title={stock.name || stock.short || stock.code} style={{ fontSize: 15, fontWeight: 700, color: INK, minWidth: 108, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-        {stock.short || stock.name}
+      <span title={displayStockName(stock)} style={{ fontSize: 15, fontWeight: 700, color: INK, minWidth: 108, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        {displayStockName(stock)}
       </span>
 
       {/* 현재가 */}
@@ -216,7 +236,7 @@ function StockRow({ rank, stock, onClick, watched, onWatch, onHover, rankTab }) 
 }
 
 function HomeMain() {
-  const { state, market, marketError, stocks, industries, navigate, toggleWatch, rankTab, setRankTab } = useStore();
+  const { state, market, marketError, stocks, industries, navigate, toggleWatch, rankTab, setRankTab, kisLoading } = useStore();
   const [tab, setTab] = useState('chart');
 
   const [hoveredCode, setHoveredCode] = useState('');
@@ -300,14 +320,16 @@ function HomeMain() {
                   onHover={() => setHoveredCode(s.code)}
                   onClick={() => navigate('detail', { code: s.code })} />
               ))
+            ) : kisLoading.ranks ? (
+              <StockRowsSkeleton />
             ) : (
-              <div style={{ padding: '40px 0', textAlign: 'center', fontSize: 14, color: SUB }}>데이터를 불러오는 중입니다...</div>
+              <div style={{ padding: '40px 0', textAlign: 'center', fontSize: 14, color: SUB }}>순위 데이터를 불러올 수 없어요.</div>
             )}
           </div>
           
           <div style={{ position: 'sticky', top: 84, display: 'flex', flexDirection: 'column', gap: 16 }}>
             {/* 3. 당일 투자자 동향 연동 섹션 (TR_ID: HHPPG046600C1) */}
-            <InvestorTrendCard market={market} />
+            <InvestorTrendCard market={market} loading={kisLoading.sentiment} />
             {activeHovered && <StockPreviewCard stock={activeHovered} />}
           </div>
         </div>
@@ -322,7 +344,9 @@ function HomeMain() {
             <span style={{ fontSize: 11, fontWeight: 700, color: BRAND, background: '#EFF5FF', padding: '3px 8px', borderRadius: 6, marginLeft: 'auto', whiteSpace: 'nowrap' }}>실시간 업데이트</span>
           </div>
           <Card style={{ padding: 8 }}>
-            {industries && industries.length > 0 ? (
+            {kisLoading.industries ? (
+              <IndustrySkeleton />
+            ) : industries && industries.length > 0 ? (
               industries.map((ind, i) => (
                 <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 20px', borderBottom: i < industries.length - 1 ? '1px solid #F6F8FA' : 'none' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
@@ -344,6 +368,21 @@ function HomeMain() {
       )}
     </div>
   );
+}
+
+function IndustrySkeleton({ count = 5 }) {
+  return Array.from({ length: count }).map((_, i) => (
+    <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 20px', borderBottom: i < count - 1 ? '1px solid #F6F8FA' : 'none' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+        <Skeleton width={18} height={16} />
+        <Skeleton width={130 + i * 10} height={18} />
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+        <Skeleton width={72} height={14} />
+        <Skeleton width={54} height={18} />
+      </div>
+    </div>
+  ));
 }
 
 // 일봉 → 주봉 집계 (월요일 기준)
@@ -381,7 +420,7 @@ function StockPreviewCard({ stock: rawStock }) {
 
   const stock     = rawStock ? (getStock(rawStock.code) || rawStock) : null;
   const stockCode = stock?.code ?? null;
-  const stockName = stock?.name || stock?.short || stockCode || '';
+  const stockName = stock ? displayStockName(stock, '') : '';
 
   useEffect(() => {
     if (!stockCode) return;
@@ -460,7 +499,7 @@ function StockPreviewCard({ stock: rawStock }) {
         onClick={() => navigate('detail', { code: stock.code })}>
         <Avatar stock={stock} size={36} />
         <div style={{ minWidth: 0 }}>
-          <div style={{ fontSize: 15, fontWeight: 800, color: INK, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{stock.short || stock.name}</div>
+          <div style={{ fontSize: 15, fontWeight: 800, color: INK, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{displayStockName(stock)}</div>
           <div style={{ fontSize: 13, fontWeight: 700 }}>
             <span style={{ color: INK }}>{won(stock.price)}</span>
             <span style={{ color: col, marginLeft: 6 }}>{signNum(changeAmt)} ({signPct(stock.pct)})</span>
@@ -469,7 +508,7 @@ function StockPreviewCard({ stock: rawStock }) {
       </div>
       <div style={{ fontSize: 12, fontWeight: 700, color: SUB, marginBottom: 4 }}>주봉</div>
       {status === 'loading' && (
-        <div style={{ height: 170, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, color: SUB }}>불러오는 중...</div>
+        <ChartSkeleton height={170} />
       )}
       {status === 'error' && (
         <div style={{ height: 170, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, color: SUB }}>차트를 불러올 수 없어요</div>
@@ -483,7 +522,7 @@ function StockPreviewCard({ stock: rawStock }) {
           <span onClick={() => routerNavigate('/community')} style={{ fontSize: 12, color: SUB, cursor: 'pointer' }}>더보기 ›</span>
         </div>
         {communityStatus === 'loading' ? (
-          <div style={{ fontSize: 13, color: SUB, padding: '8px 0' }}>커뮤니티 글을 불러오는 중...</div>
+          <SkeletonText lines={2} widths={['76%', '58%']} height={13} />
         ) : communityStatus === 'error' ? (
           <div style={{ fontSize: 13, color: SUB, padding: '8px 0' }}>커뮤니티 글을 불러올 수 없어요.</div>
         ) : communityPosts.length === 0 ? (
@@ -506,8 +545,26 @@ function StockPreviewCard({ stock: rawStock }) {
 }
 
 // 3. 투자자 동향 (TR_ID: HHPPG046600C1) 반영 컴포넌트
-function InvestorTrendCard({ market }) {
-  if (!market || !market.invSentiment) return null;
+function InvestorTrendCard({ market, loading }) {
+  if (loading || !market || !market.invSentiment) {
+    return (
+      <Card>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
+          <Skeleton width={132} height={18} />
+          <Skeleton width={58} height={12} />
+        </div>
+        {Array.from({ length: 3 }).map((_, i) => (
+          <div key={i} style={{ marginBottom: i < 2 ? 18 : 0 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+              <Skeleton width={44} height={15} />
+              <Skeleton width={96} height={15} />
+            </div>
+            <Skeleton height={8} radius={4} />
+          </div>
+        ))}
+      </Card>
+    );
+  }
   const maxAbs = Math.max(...market.invSentiment.map(s => Math.abs(s.val || 0)), 1);
   return (
     <Card>
@@ -537,8 +594,9 @@ function InvestorTrendCard({ market }) {
 }
 
 function WatchRail() {
-  const { state, getStock, navigate, toggleWatch } = useStore();
+  const { state, getStock, navigate, toggleWatch, kisLoading } = useStore();
   const top = state.watchlist.map(getStock).filter(Boolean).slice(0, 10);
+  const loading = state.isLoggedIn && (kisLoading.watchlist || kisLoading.summaries) && state.watchlist.length > 0 && top.length === 0;
   return (
     <aside style={{ width: 320, flexShrink: 0 }}>
       <div style={{ position: 'sticky', top: 84 }}>
@@ -548,7 +606,9 @@ function WatchRail() {
             <div style={{ fontSize: 17, fontWeight: 800, color: INK }}>관심 주식 TOP 10</div>
             <div style={{ fontSize: 13, color: SUB, marginTop: 4 }}>관심 종목을 등록하면 상위 10개 종목이 표시됩니다.</div>
           </div>
-          {top.map((s) => {
+          {loading ? (
+            <WatchRailSkeleton />
+          ) : top.map((s) => {
             const changeAmt = s.changeAmt || 0;
             return (
               <div key={s.code} onClick={() => navigate('detail', { code: s.code })}
@@ -556,7 +616,7 @@ function WatchRail() {
                 onMouseEnter={e => e.currentTarget.style.background = '#F9FAFB'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
                 <Avatar stock={s} size={34} />
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 14, fontWeight: 700, color: INK, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.short || s.name}</div>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: INK, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{displayStockName(s)}</div>
                 </div>
                 <div style={{ textAlign: 'right', flexShrink: 0, whiteSpace: 'nowrap' }}>
                   <div style={{ fontSize: 14, fontWeight: 700, color: INK }}>{wonShort(s.price)}</div>
@@ -570,6 +630,42 @@ function WatchRail() {
         </Card>
       </div>
     </aside>
+  );
+}
+
+function WatchRailSkeleton({ count = 6 }) {
+  return Array.from({ length: count }).map((_, i) => (
+    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '11px 18px' }}>
+      <Skeleton width={34} height={34} radius={17} />
+      <div style={{ flex: 1 }}>
+        <Skeleton width="70%" height={14} />
+      </div>
+      <div style={{ width: 82, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
+        <Skeleton width={64} height={14} />
+        <Skeleton width={74} height={12} />
+      </div>
+      <Skeleton width={18} height={18} radius={9} />
+    </div>
+  ));
+}
+
+function ChartSkeleton({ height = 170 }) {
+  return (
+    <div style={{ height, position: 'relative', padding: '12px 8px 28px' }}>
+      <div style={{ position: 'absolute', inset: '12px 8px 28px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+        {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} height={1} radius={1} />)}
+      </div>
+      <div style={{ position: 'absolute', left: 12, right: 78, bottom: 42, height: height - 72, display: 'flex', alignItems: 'flex-end', gap: 6 }}>
+        {Array.from({ length: 24 }).map((_, i) => (
+          <Skeleton key={i} width="100%" height={Math.min(height - 78, 28 + ((i * 17) % 92))} radius={3} style={{ flex: 1 }} />
+        ))}
+      </div>
+      <div style={{ position: 'absolute', left: 12, right: 78, bottom: 12, display: 'flex', gap: 6 }}>
+        {Array.from({ length: 24 }).map((_, i) => (
+          <Skeleton key={i} width="100%" height={8 + ((i * 7) % 18)} radius={2} style={{ flex: 1 }} />
+        ))}
+      </div>
+    </div>
   );
 }
 

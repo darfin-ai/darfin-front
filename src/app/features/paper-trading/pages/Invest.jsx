@@ -4,7 +4,7 @@ import {
   UP, DOWN, SUB, INK, BRAND,
   won, wonShort, signPct, signNum, tone, dateLabel,
   Avatar, Donut, Card, Modal, ghostBtn, primaryBtn, iconBtn, Heart,
-  PageShell, Empty, Metric,
+  PageShell, Empty, Metric, Skeleton, SkeletonText, displayStockName,
 } from '../components/ui.jsx';
 // ===== 포트폴리오 · 관심종목 · 모의자금 · 체결내역 · AI분석 =====
 
@@ -16,7 +16,7 @@ function usePortfolio() {
       const s = getStock(h.code);
       const price = s ? s.price : h.currentPrice ?? h.avgPrice;
       const pct = s ? s.pct : 0;
-      const stock = s ? { ...s, price, pct } : { code: h.code, name: h.name || h.code, short: h.short || h.name || h.code, price, pct };
+      const stock = s ? { ...s, price, pct } : { code: h.code, name: displayStockName(h), short: displayStockName(h), price, pct };
       const cost = h.avgPrice * h.qty;
       const eval_ = price * h.qty;
       const pnl = eval_ - cost;
@@ -36,13 +36,14 @@ function usePortfolio() {
 const DONUT_COLORS = ['#1B64DA', '#F04452', '#F5A623', '#7C3AED', '#1FA463', '#FF7A45', '#00B8D9', '#8B95A1'];
 
 export function Portfolio() {
-  const { state, navigate } = useStore();
+  const { state, navigate, kisLoading } = useStore();
   const p = usePortfolio();
   const [subtab, setSubtab] = useState('holdings');
   if (!state.isLoggedIn) return <PageShell title="내 주식"><LoginGate /></PageShell>;
+  const loading = kisLoading.portfolio && state.holdings.length === 0 && state.trades.length === 0;
 
   const slices = [
-    ...p.rows.map((r, i) => ({ label: r.stock.short || r.stock.name, value: r.eval, color: DONUT_COLORS[i % DONUT_COLORS.length] })),
+    ...p.rows.map((r, i) => ({ label: displayStockName(r.stock), value: r.eval, color: DONUT_COLORS[i % DONUT_COLORS.length] })),
     { label: '현금', value: p.cash, color: '#C5CBD3' },
   ].sort((a, b) => b.value - a.value);
   const totalForPct = p.totalEval + p.cash || 1;
@@ -54,23 +55,38 @@ export function Portfolio() {
         {/* summary */}
         <Card>
           <div style={{ fontSize: 14, color: SUB, marginBottom: 6 }}>총 자산</div>
-          <div style={{ fontSize: 36, fontWeight: 800, color: INK, letterSpacing: '-0.02em' }}>{won(p.assets)}</div>
+          {loading ? <Skeleton width={220} height={40} style={{ margin: '8px 0' }} /> : <div style={{ fontSize: 36, fontWeight: 800, color: INK, letterSpacing: '-0.02em' }}>{won(p.assets)}</div>}
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}>
-            <span style={{ fontSize: 17, fontWeight: 800, color: tone(p.totalPnl) }}>
-              {signNum(p.totalPnl)}원 ({signPct(p.totalPnlPct)})
-            </span>
-            <span style={{ fontSize: 13, color: SUB }}>평가손익</span>
+            {loading ? (
+              <Skeleton width={170} height={18} />
+            ) : (
+              <>
+                <span style={{ fontSize: 17, fontWeight: 800, color: tone(p.totalPnl) }}>
+                  {signNum(p.totalPnl)}원 ({signPct(p.totalPnlPct)})
+                </span>
+                <span style={{ fontSize: 13, color: SUB }}>평가손익</span>
+              </>
+            )}
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16, marginTop: 24, paddingTop: 24, borderTop: '1px solid #F2F4F6' }}>
-            <Metric label="매수 금액" value={won(p.totalCost)} />
-            <Metric label="평가 금액" value={won(p.totalEval)} />
-            <Metric label="주문 가능 현금" value={won(p.cash)} />
+            {loading ? <MetricSkeleton count={3} /> : (
+              <>
+                <Metric label="매수 금액" value={won(p.totalCost)} />
+                <Metric label="평가 금액" value={won(p.totalEval)} />
+                <Metric label="주문 가능 현금" value={won(p.cash)} />
+              </>
+            )}
           </div>
         </Card>
         {/* donut */}
         <Card>
           <div style={{ fontSize: 16, fontWeight: 800, color: INK, marginBottom: 14 }}>종목별 비중</div>
-          {slices.length > 1 ? (
+          {loading ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
+              <Skeleton width={140} height={140} radius={70} />
+              <div style={{ flex: 1 }}><SkeletonText lines={5} widths={['90%', '78%', '84%', '68%', '72%']} height={13} gap={11} /></div>
+            </div>
+          ) : slices.length > 1 ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
               <div style={{ position: 'relative' }}>
                 <Donut slices={slices} size={140} thickness={26} />
@@ -101,7 +117,7 @@ export function Portfolio() {
         ))}
       </div>
 
-      {subtab === 'trades' ? <TradesTable /> : (
+      {loading ? <HoldingsTableSkeleton /> : subtab === 'trades' ? <TradesTable /> : (
       <>
       {/* holdings list */}
       {p.rows.length === 0 ? <Empty text="보유 중인 주식이 없어요. 종목을 매수해보세요." cta="종목 둘러보기" onCta={() => navigate('home')} /> : (
@@ -117,7 +133,7 @@ export function Portfolio() {
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
                 <Avatar stock={r.stock} size={38} />
                 <div style={{ minWidth: 0 }}>
-                  <div style={{ fontSize: 15, fontWeight: 700, color: INK, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.stock.short || r.stock.name}</div>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: INK, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{displayStockName(r.stock)}</div>
                   <div style={{ fontSize: 13, color: tone(r.stock.pct) }}>{won(r.stock.price)} {signPct(r.stock.pct)}</div>
                 </div>
               </div>
@@ -143,17 +159,18 @@ function LoginGate() {
 
 // ---------- 관심 종목 ----------
 export function Watchlist() {
-  const { state, getStock, navigate, toggleWatch } = useStore();
+  const { state, getStock, navigate, toggleWatch, kisLoading } = useStore();
   const [sort, setSort] = useState('added'); // added | pct | name
   const rows = useMemo(() => {
     let arr = state.watchlist.map((code, i) => ({ stock: getStock(code), order: i })).filter(r => r.stock);
     if (sort === 'pct') arr.sort((a, b) => b.stock.pct - a.stock.pct);
-    else if (sort === 'name') arr.sort((a, b) => a.stock.name.localeCompare(b.stock.name, 'ko'));
+    else if (sort === 'name') arr.sort((a, b) => displayStockName(a.stock).localeCompare(displayStockName(b.stock), 'ko'));
     else arr.sort((a, b) => a.order - b.order);
     return arr;
   }, [state.watchlist, sort, getStock]);
 
   if (!state.isLoggedIn) return <PageShell title="관심 종목"><LoginGate /></PageShell>;
+  const loading = (kisLoading.watchlist || kisLoading.summaries) && state.watchlist.length > 0 && rows.length === 0;
 
   return (
     <PageShell title="관심 종목" sub={`${state.watchlist.length} / 30 종목 · 현재가·등락률은 오늘 14:09 기준`}
@@ -164,7 +181,7 @@ export function Watchlist() {
               background: sort === k ? '#fff' : 'transparent', color: sort === k ? INK : '#8B95A1', boxShadow: sort === k ? '0 1px 3px rgba(0,0,0,0.08)' : 'none' }}>{l}</button>
           ))}
         </div>}>
-      {rows.length === 0 ? <Empty text="관심 종목이 없어요. 종목 옆 하트를 눌러 담아보세요." cta="종목 둘러보기" onCta={() => navigate('home')} /> : (
+      {loading ? <WatchlistSkeleton /> : rows.length === 0 ? <Empty text="관심 종목이 없어요. 종목 옆 하트를 눌러 담아보세요." cta="종목 둘러보기" onCta={() => navigate('home')} /> : (
         <Card style={{ padding: 8 }}>
           {rows.map(({ stock: s }) => (
             <div key={s.code} onClick={() => navigate('detail', { code: s.code })}
@@ -174,7 +191,7 @@ export function Watchlist() {
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
                 <Avatar stock={s} size={38} />
                 <div style={{ minWidth: 0 }}>
-                  <div style={{ fontSize: 15, fontWeight: 700, color: INK, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.short || s.name}</div>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: INK, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{displayStockName(s)}</div>
                   <div style={{ fontSize: 12, color: SUB }}>{s.sector}</div>
                 </div>
               </div>
@@ -191,6 +208,56 @@ export function Watchlist() {
         </Card>
       )}
     </PageShell>
+  );
+}
+
+function MetricSkeleton({ count = 3 }) {
+  return Array.from({ length: count }).map((_, i) => (
+    <div key={i}>
+      <Skeleton width={70} height={13} style={{ marginBottom: 8 }} />
+      <Skeleton width={104} height={18} />
+    </div>
+  ));
+}
+
+function HoldingsTableSkeleton({ count = 5 }) {
+  return (
+    <Card style={{ padding: 8 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1.6fr 1fr 1fr 1.1fr 1.1fr', gap: 8, padding: '12px 16px' }}>
+        {['42%', '58%', '64%', '62%', '60%'].map((w, i) => <Skeleton key={i} width={w} height={13} style={{ justifySelf: i === 0 ? 'start' : 'end' }} />)}
+      </div>
+      {Array.from({ length: count }).map((_, i) => (
+        <div key={i} style={{ display: 'grid', gridTemplateColumns: '1.6fr 1fr 1fr 1.1fr 1.1fr', gap: 8, padding: '14px 16px', alignItems: 'center' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <Skeleton width={38} height={38} radius={19} />
+            <div style={{ flex: 1 }}><SkeletonText lines={2} widths={['58%', '42%']} height={13} gap={7} /></div>
+          </div>
+          <Skeleton width={44} height={15} style={{ justifySelf: 'end' }} />
+          <Skeleton width={72} height={15} style={{ justifySelf: 'end' }} />
+          <Skeleton width={86} height={15} style={{ justifySelf: 'end' }} />
+          <div style={{ justifySelf: 'end', width: 82 }}><SkeletonText lines={2} widths={['100%', '76%']} height={13} gap={6} /></div>
+        </div>
+      ))}
+    </Card>
+  );
+}
+
+function WatchlistSkeleton({ count = 6 }) {
+  return (
+    <Card style={{ padding: 8 }}>
+      {Array.from({ length: count }).map((_, i) => (
+        <div key={i} style={{ display: 'grid', gridTemplateColumns: '40px 1.6fr 1.2fr 1.4fr 44px', gap: 8, padding: '14px 12px', alignItems: 'center' }}>
+          <Skeleton width={20} height={20} radius={10} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <Skeleton width={38} height={38} radius={19} />
+            <div style={{ flex: 1 }}><SkeletonText lines={2} widths={['62%', '42%']} height={13} gap={7} /></div>
+          </div>
+          <Skeleton width={82} height={16} style={{ justifySelf: 'end' }} />
+          <div style={{ justifySelf: 'end', width: 86 }}><SkeletonText lines={2} widths={['100%', '68%']} height={13} gap={6} /></div>
+          <Skeleton width={34} height={34} radius={10} />
+        </div>
+      ))}
+    </Card>
   );
 }
 
@@ -360,7 +427,7 @@ function TradesTable() {
                 <span style={{ fontSize: 14, color: '#4E5968' }}>{dateLabel(t.ts)}</span>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
                   <Avatar stock={s} size={32} />
-                  <span style={{ fontSize: 15, fontWeight: 700, color: INK, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.short || s.name}</span>
+                  <span style={{ fontSize: 15, fontWeight: 700, color: INK, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{displayStockName(s)}</span>
                 </div>
                 <div style={{ textAlign: 'right' }}>
                   <span style={{ fontSize: 13, fontWeight: 800, padding: '4px 10px', borderRadius: 8, color: isBuy ? UP : DOWN, background: isBuy ? '#FEF0F1' : '#EFF5FF' }}>{isBuy ? '매수' : '매도'}</span>

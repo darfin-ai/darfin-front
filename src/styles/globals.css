@@ -19,6 +19,7 @@
 .custom-scrollbar {
   scrollbar-width: thin;
 }
+<<<<<<< Updated upstream
 
 /* Keep-all wraps Korean at word boundaries; no-op for non-CJK text */
 body {
@@ -44,4 +45,19 @@ body {
 
 .container-lg {
   max-width: 80rem; /* 1280px — wide layouts */
+=======
+@keyframes darfin-skeleton-shimmer {
+  0% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: -100% 0;
+  }
+}
+
+.darfin-skeleton {
+  background: linear-gradient(90deg, #f2f4f6 0%, #e9eef5 42%, #f7f9fb 58%, #f2f4f6 100%);
+  background-size: 220% 100%;
+  animation: darfin-skeleton-shimmer 1.25s ease-in-out infinite;
+>>>>>>> Stashed changes
 }
