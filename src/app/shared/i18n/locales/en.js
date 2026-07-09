@@ -98,7 +98,7 @@ export const en = {
       signupNote: "No credit card · Company, disclosure, and community features are free",
       trustedDataFrom: "Trusted data from",
       dartLogoAlt: "DART — Financial Supervisory Service electronic disclosure system",
-      previewFeatures: "Preview features",
+      scrollToDemo: "Scroll to demo",
     },
     demo: {
       analyzing: "Analyzing",

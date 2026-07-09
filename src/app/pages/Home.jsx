@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, Link } from "react-router";
 import { motion, AnimatePresence, useReducedMotion, useInView } from "motion/react";
-import { ChevronRight, ArrowRight, Lightbulb, TrendingUp, Landmark, AlertTriangle, ShieldCheck, Check } from "lucide-react";
+import { ChevronRight, ChevronDown, ArrowRight, Lightbulb, TrendingUp, Landmark, AlertTriangle, ShieldCheck, Check } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useAuth } from "../features/auth";
 import { useLocale } from "../shared/i18n";
@@ -20,8 +20,9 @@ const SECTION_DESC = "text-base text-slate-500 dark:text-slate-400 leading-relax
 
 const BTN_PRIMARY = `inline-flex w-fit items-center justify-center gap-2 h-10 px-5 ${CTA_PRIMARY} text-white text-sm font-medium rounded-md transition-colors`;
 const BTN_SECONDARY = "inline-flex w-fit items-center justify-center gap-2 h-10 px-5 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 text-sm font-medium rounded-md transition-colors";
+const BTN_HERO_PRIMARY = `inline-flex w-full sm:w-fit items-center justify-center gap-2 h-11 sm:h-10 px-6 sm:px-5 ${CTA_PRIMARY} text-white text-sm font-medium rounded-full sm:rounded-md transition-colors shadow-lg shadow-blue-600/15 sm:shadow-none`;
+const BTN_HERO_SECONDARY = "inline-flex w-full sm:w-fit items-center justify-center gap-2 h-11 sm:h-10 px-6 sm:px-5 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 text-sm font-medium rounded-full sm:rounded-md transition-colors";
 const LINK_ACTION = "inline-flex items-center gap-1 text-sm font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors";
-const LINK_SUBTLE = "inline-flex items-center gap-1 text-xs text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition-colors";
 const CARD = "rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900";
 
 /* Matches CompanyQuickLinks.jsx exactly, so avatar badges look identical to the real /company page. */
@@ -38,6 +39,28 @@ const AVATAR_PALETTE = [
 function avatarLabel(company) {
   const source = company.shortName ?? company.name;
   return source.length <= 2 ? source : source.slice(0, 2);
+}
+
+/** Desktop: hover. Touch: play when mockup scrolls into view. */
+function useMockupActive({ amount = 0.4, once = true } = {}) {
+  const ref = useRef(null);
+  const inView = useInView(ref, { once, amount });
+  const [hovered, setHovered] = useState(false);
+  const [isTouch, setIsTouch] = useState(false);
+
+  useEffect(() => {
+    setIsTouch(window.matchMedia("(hover: none)").matches);
+  }, []);
+
+  const active = isTouch ? inView : hovered;
+  const hoverHandlers = isTouch
+    ? {}
+    : {
+        onMouseEnter: () => setHovered(true),
+        onMouseLeave: () => setHovered(false),
+      };
+
+  return { ref, active, isTouch, hoverHandlers };
 }
 
 
@@ -58,41 +81,43 @@ function HeroCta() {
 
   if (isLoggedIn) {
     return (
-      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-        <button
-          type="button"
-          onClick={() => navigate("/company")}
-          className={BTN_PRIMARY}
-        >
-          {t("landing.hero.ctaCompany")} <ArrowRight size={16} />
-        </button>
-        <Link
-          to="/trading"
-          className={BTN_SECONDARY}
-        >
-          {t("landing.hero.ctaTrading")}
-        </Link>
+      <div className="w-full max-w-[17.5rem] sm:max-w-none mx-auto lg:mx-0">
+        <div className="flex flex-col sm:flex-row items-center lg:items-start gap-3">
+          <button
+            type="button"
+            onClick={() => navigate("/company")}
+            className={BTN_HERO_PRIMARY}
+          >
+            {t("landing.hero.ctaCompany")} <ArrowRight size={16} />
+          </button>
+          <Link
+            to="/trading"
+            className={BTN_HERO_SECONDARY}
+          >
+            {t("landing.hero.ctaTrading")}
+          </Link>
+        </div>
       </div>
     );
   }
 
   return (
-    <div>
-      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+    <div className="w-full max-w-[17.5rem] sm:max-w-none mx-auto lg:mx-0">
+      <div className="flex flex-col sm:flex-row items-center lg:items-start gap-3">
         <Link
           to="/signup"
-          className={BTN_PRIMARY}
+          className={BTN_HERO_PRIMARY}
         >
           {t("landing.hero.ctaSignup")} <ArrowRight size={16} />
         </Link>
         <Link
           to="/login"
-          className={BTN_SECONDARY}
+          className={BTN_HERO_SECONDARY}
         >
           {t("landing.hero.ctaLogin")}
         </Link>
       </div>
-      <p className="mt-3 text-xs text-slate-400 dark:text-slate-500">
+      <p className="mt-5 text-xs text-center lg:text-left text-slate-400 dark:text-slate-500 leading-relaxed">
         {t("landing.hero.signupNote")}
       </p>
     </div>
@@ -166,7 +191,6 @@ function HeroDemo({ active = false }) {
   const [highlightVisible, setHighlightVisible] = useState(true);
   const [streamedLength, setStreamedLength] = useState(summaryText.length);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [isTouchDevice, setIsTouchDevice] = useState(false);
   const timersRef = useRef([]);
 
   const highlight = demo.highlight ?? "";
@@ -233,10 +257,7 @@ function HeroDemo({ active = false }) {
     });
   }, [clearTimers, demo.hops, reduceMotion, showEndState, summaryText.length]);
 
-  useEffect(() => {
-    setIsTouchDevice(window.matchMedia("(hover: none)").matches);
-    return clearTimers;
-  }, [clearTimers]);
+  useEffect(() => () => clearTimers(), [clearTimers]);
 
   useEffect(() => {
     if (reduceMotion) {
@@ -253,7 +274,7 @@ function HeroDemo({ active = false }) {
 
   return (
     <div className={`${CARD} overflow-hidden shadow-sm dark:shadow-none`}>
-      <div className="px-5 py-3.5 flex items-center justify-between border-b border-slate-100 dark:border-slate-800">
+      <div className="px-5 py-4 flex items-center justify-between border-b border-slate-100 dark:border-slate-800">
         <div>
           <span className="text-sm font-medium text-slate-900 dark:text-slate-100">{demo.companyName}</span>
           <span className="ml-1.5 text-xs text-slate-500 dark:text-slate-400 tabular-nums">{demo.ticker}</span>
@@ -267,7 +288,7 @@ function HeroDemo({ active = false }) {
         </span>
       </div>
 
-      <div className="p-1 mx-5 mt-4 flex lg:hidden bg-slate-100/80 dark:bg-slate-800/80 rounded-lg">
+      <div className="p-1 mx-5 mt-5 flex lg:hidden bg-slate-100/80 dark:bg-slate-800/80 rounded-lg">
         <button
           onClick={() => setTab("before")}
           className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-colors ${tab === "before" ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-sm" : "text-slate-500 dark:text-slate-400"}`}
@@ -282,12 +303,8 @@ function HeroDemo({ active = false }) {
         </button>
       </div>
 
-      {!isPlaying && !active && isTouchDevice && (
-        <p className="lg:hidden mx-5 mb-3 text-xs text-center text-slate-400 dark:text-slate-500">{t("landing.demo.tapReplay")}</p>
-      )}
-
       <div className={`grid grid-cols-1 lg:grid-cols-2 lg:divide-x lg:divide-slate-100 dark:lg:divide-slate-800 ${HERO_DEMO_BODY_HEIGHT}`}>
-        <div className={`${tab === "before" ? "flex" : "hidden"} lg:flex flex-col h-full min-h-0 px-5 py-4 overflow-hidden`}>
+        <div className={`${tab === "before" ? "flex" : "hidden"} lg:flex flex-col h-full min-h-0 px-5 py-5 overflow-hidden`}>
           <div className="shrink-0 text-xs font-medium text-slate-400 dark:text-slate-500 mb-2">
             {demo.sectionLabel}
           </div>
@@ -343,7 +360,7 @@ function HeroDemo({ active = false }) {
           </div>
         </div>
 
-        <div className={`${tab === "after" ? "block" : "hidden"} lg:block h-full min-h-0 px-5 py-3`}>
+        <div className={`${tab === "after" ? "block" : "hidden"} lg:block h-full min-h-0 px-5 py-4`}>
           <motion.div
             initial={false}
             animate={{ opacity: showSummary ? 1 : 0 }}
@@ -351,7 +368,7 @@ function HeroDemo({ active = false }) {
             className="h-full min-h-0 flex flex-col"
             aria-hidden={!showSummary}
           >
-            <div className="flex gap-2 rounded-md border border-blue-100 dark:border-blue-900/50 bg-blue-50/60 dark:bg-blue-950/30 px-3 py-2 mb-2 shrink-0">
+            <div className="flex gap-2.5 rounded-md border border-blue-100 dark:border-blue-900/50 bg-blue-50/60 dark:bg-blue-950/30 px-3.5 py-2.5 mb-3 shrink-0">
               <Lightbulb size={14} className="mt-0.5 shrink-0 text-blue-500 dark:text-blue-400" />
               <div className="text-[11px] leading-snug text-slate-700 dark:text-slate-300 min-h-[3.5rem]">
                 <div className="font-medium text-blue-700 dark:text-blue-300">{t("landing.demo.aiSummary")}</div>
@@ -374,7 +391,7 @@ function HeroDemo({ active = false }) {
                     initial={isPlaying ? { opacity: 0, y: -12 } : false}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.4, ease: "easeOut" }}
-                    className="py-1 text-[11px] text-slate-500 dark:text-slate-400 leading-snug"
+                    className="py-2.5 text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed"
                   >
                     <div className="font-medium text-slate-600 dark:text-slate-300">{h.sectionLabel}</div>
                     <div className="mt-0.5">{h.excerpt}</div>
@@ -947,67 +964,70 @@ const DART_LOGO_URL = "https://dart.fss.or.kr/";
 function HeroDataTrust() {
   const { t } = useLocale();
   return (
-    <a
-      href={DART_LOGO_URL}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="inline-flex items-center gap-3 mb-5 group"
-    >
-      <span className="text-[10px] sm:text-[11px] font-medium uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
-        {t("landing.hero.trustedDataFrom")}
-      </span>
-      <img
-        src="/images/dart-logo.png"
-        alt={t("landing.hero.dartLogoAlt")}
-        className="h-5 sm:h-6 w-auto opacity-90 transition-opacity group-hover:opacity-100 dark:opacity-95"
-        width={90}
-        height={24}
-      />
-    </a>
+    <div className="flex justify-center lg:justify-start w-full mb-8 lg:mb-5">
+      <a
+        href={DART_LOGO_URL}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="inline-flex items-center gap-3 group"
+      >
+        <span className="text-[10px] sm:text-[11px] font-medium uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
+          {t("landing.hero.trustedDataFrom")}
+        </span>
+        <img
+          src="/images/dart-logo.png"
+          alt={t("landing.hero.dartLogoAlt")}
+          className="h-5 sm:h-6 w-auto opacity-90 transition-opacity group-hover:opacity-100 dark:opacity-95"
+          width={90}
+          height={24}
+        />
+      </a>
+    </div>
   );
 }
 
 function HeroSection() {
   const { t } = useLocale();
   const reduceMotion = useReducedMotion();
-  const [active, setActive] = useState(false);
-  const [isTouchDevice, setIsTouchDevice] = useState(false);
-
-  useEffect(() => {
-    setIsTouchDevice(window.matchMedia("(hover: none)").matches);
-  }, []);
+  const { ref: demoRef, active, hoverHandlers } = useMockupActive({ amount: 0.45 });
 
   return (
     <div
-      className="grid grid-cols-1 lg:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)] gap-10 lg:gap-16 items-center"
-      onMouseEnter={() => { if (!isTouchDevice) setActive(true); }}
-      onMouseLeave={() => { if (!isTouchDevice) setActive(false); }}
+      className="flex flex-col lg:grid lg:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)] lg:gap-16 lg:items-center"
+      {...hoverHandlers}
     >
       <motion.div
-        className="max-w-[44rem]"
+        className="min-h-[calc(100dvh-4rem)] lg:min-h-0 w-full max-w-none lg:max-w-[44rem] text-center lg:text-left flex flex-col justify-center items-center lg:items-start"
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.35, ease: "easeOut" }}
       >
         <HeroDataTrust />
-        <h1 className="text-4xl sm:text-5xl lg:text-[3.5rem] font-semibold tracking-tight text-slate-900 dark:text-slate-100 leading-[1.15] mb-4">
+        <h1 className="text-[2.125rem] sm:text-5xl lg:text-[3.5rem] font-semibold tracking-tight text-slate-900 dark:text-slate-100 leading-[1.12] mb-6 lg:mb-4">
           {t("landing.hero.titleLine1")}<br />
           <span className="bg-gradient-to-r from-blue-600 to-cyan-500 dark:from-blue-400 dark:to-cyan-300 bg-clip-text text-transparent">
             {t("landing.hero.titleLine2")}
           </span>
         </h1>
-        <p className="text-base text-slate-500 dark:text-slate-400 leading-relaxed mb-8 max-w-[36rem]">
+        <p className="text-base sm:text-lg text-slate-500 dark:text-slate-400 leading-relaxed mb-10 lg:mb-8 max-w-[20rem] sm:max-w-[28rem] lg:max-w-[36rem] mx-auto lg:mx-0">
           {t("landing.hero.subtitle")}
         </p>
 
         <HeroCta />
 
-        <a href="#features" className={`mt-6 ${LINK_SUBTLE}`}>
-          {t("landing.hero.previewFeatures")} <ArrowRight size={14} />
+        <a
+          href="#hero-demo"
+          aria-label={t("landing.hero.scrollToDemo")}
+          className="mt-10 lg:hidden text-slate-300 dark:text-slate-600 hover:text-slate-400 dark:hover:text-slate-500 transition-colors"
+        >
+          <ChevronDown size={24} strokeWidth={1.5} className="motion-safe:animate-bounce" />
         </a>
       </motion.div>
 
       <motion.div
+        id="hero-demo"
+        ref={demoRef}
+        className="w-full mx-auto lg:mx-0 pt-10 pb-4 sm:pt-12 sm:pb-6 lg:pt-0 lg:pb-0 scroll-mt-20"
         initial={{ opacity: 0, y: 16 }}
         animate={{
           opacity: 1,
@@ -1021,10 +1041,6 @@ function HeroSection() {
           rotate: { type: "spring", stiffness: 260, damping: 22 },
           scale: { type: "spring", stiffness: 260, damping: 22 },
         }}
-        onClick={() => {
-          if (!isTouchDevice || reduceMotion) return;
-          setActive((v) => !v);
-        }}
       >
         <HeroDemo active={active} />
       </motion.div>
@@ -1033,15 +1049,14 @@ function HeroSection() {
 }
 
 function WalkthroughRow({ item, index, Mockup, link }) {
-  const [hovered, setHovered] = useState(false);
+  const { ref: mockupRef, active, hoverHandlers } = useMockupActive({ amount: 0.5 });
   const reduceMotion = useReducedMotion();
   const textOnRight = index % 2 === 1;
 
   return (
     <div
-      className="grid grid-cols-1 lg:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)] gap-10 lg:gap-16 items-center"
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
+      className="grid grid-cols-1 lg:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)] gap-14 lg:gap-16 items-center"
+      {...hoverHandlers}
     >
       <motion.div
         initial={{ opacity: 0, y: 16 }}
@@ -1051,9 +1066,9 @@ function WalkthroughRow({ item, index, Mockup, link }) {
         className={textOnRight ? "lg:order-2" : ""}
       >
         <div className={EYEBROW}>0{index + 1} · {item.eyebrow}</div>
-        <h3 className="text-2xl font-semibold text-slate-900 dark:text-slate-100 mb-2">{item.title}</h3>
-        <p className={`${SECTION_DESC} mb-5`}>{item.desc}</p>
-        <ul className="space-y-2 mb-6">
+        <h3 className="text-2xl font-semibold text-slate-900 dark:text-slate-100 mb-3">{item.title}</h3>
+        <p className={`${SECTION_DESC} mb-6`}>{item.desc}</p>
+        <ul className="space-y-3 mb-8">
           {item.bullets.map((b) => (
             <li key={b} className="flex items-start gap-2 text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
               <Check size={15} className="mt-0.5 text-blue-500 dark:text-blue-400 shrink-0" />
@@ -1067,13 +1082,13 @@ function WalkthroughRow({ item, index, Mockup, link }) {
       </motion.div>
 
       <motion.div
+        ref={mockupRef}
         initial={{ opacity: 0, y: 16 }}
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true }}
-        transition={{ duration: 0.35, delay: 0.1, ease: "easeOut" }}
         className={textOnRight ? "lg:order-1" : ""}
         animate={
-          hovered && !reduceMotion
+          active && !reduceMotion
             ? index === 2
               ? { y: -6, rotate: WALKTHROUGH_MOCKUP_TILTS[index] ?? 0 }
               : { y: -6, rotate: WALKTHROUGH_MOCKUP_TILTS[index] ?? 0, scale: 1.015 }
@@ -1081,7 +1096,7 @@ function WalkthroughRow({ item, index, Mockup, link }) {
         }
         transition={{ type: "spring", stiffness: 260, damping: 22 }}
       >
-        <Mockup active={hovered} />
+        <Mockup active={active} />
       </motion.div>
     </div>
   );
@@ -1103,7 +1118,7 @@ export function Home() {
     <div className="flex flex-col flex-1">
       {/* ── Hero ─────────────────────────────────────────── */}
       <section className="relative overflow-hidden">
-        <div className="container pt-10 sm:pt-12 pb-14 sm:pb-16">
+        <div className="container max-lg:px-5 lg:pt-12 lg:pb-16">
           <HeroSection />
         </div>
       </section>
@@ -1162,7 +1177,7 @@ export function Home() {
             <p className={SECTION_DESC}>{t("landing.walkthrough.subtitle")}</p>
           </motion.div>
 
-          <div className="space-y-16 lg:space-y-20">
+          <div className="space-y-20 lg:space-y-24">
             {walkthroughItems.map((item, i) => {
               const Mockup = WALKTHROUGH_MOCKUPS[i];
               return (

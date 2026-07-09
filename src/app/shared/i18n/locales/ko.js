@@ -97,7 +97,7 @@ export const ko = {
       signupNote: "신용카드 없이 가입 · 기업 분석·공시 분석·커뮤니티 무료 이용",
       trustedDataFrom: "공식 데이터 제공",
       dartLogoAlt: "금융감독원 전자공시시스템 DART",
-      previewFeatures: "기능 미리보기",
+      scrollToDemo: "데모 보기",
     },
     demo: {
       analyzing: "AI 분석 중",
