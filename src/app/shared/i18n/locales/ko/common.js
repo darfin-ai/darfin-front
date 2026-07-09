@@ -1,4 +1,5 @@
 export const common = {
+  documentTitle: "Darfin — 공시, 제대로",
   loading: "불러오는 중...",
   save: "저장",
   saving: "저장 중...",

@@ -48,6 +48,10 @@ export function Layout() {
   const routeKey = location.pathname.split("/")[1] || "home";
 
   useEffect(() => {
+    document.title = t("common.documentTitle");
+  }, [t]);
+
+  useEffect(() => {
     setIsMobileMenuOpen(false);
     setFeaturesOpen(false);
     clearFeaturesCloseTimer();

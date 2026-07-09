@@ -1,4 +1,5 @@
 export const common = {
+  documentTitle: "Darfin — DART, distilled",
   loading: "Loading...",
   save: "Save",
   saving: "Saving...",
