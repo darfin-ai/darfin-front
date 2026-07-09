@@ -12,8 +12,3 @@ export function hopTypeLabel(t, type) {
 export function severityLabel(t, severity) {
   return t(`company.labels.severity.${severity}`);
 }
-
-/** @param {(path: string, vars?: Record<string, string | number>) => string} t */
-export function diffAnalysisLabel(t, type) {
-  return t(`company.labels.diffAnalysis.${type}`);
-}

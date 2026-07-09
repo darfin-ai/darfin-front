@@ -30,6 +30,10 @@ export function TrendChartCard({ metric, index = 0 }) {
   const previous = series[series.length - 2];
   const pctChange = previous && previous.value !== 0 ? ((latest.value - previous.value) / Math.abs(previous.value)) * 100 : null;
 
+  const targetTicks = 7;
+  const xTickInterval = series.length <= targetTicks ? 0 : Math.ceil(series.length / targetTicks) - 1;
+  const showDots = series.length <= 40;
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 12 }}
@@ -58,6 +62,7 @@ export function TrendChartCard({ metric, index = 0 }) {
               tick={{ fontSize: 11, fill: colors.tick }}
               axisLine={{ stroke: colors.axis }}
               tickLine={false}
+              interval={xTickInterval}
             />
             <YAxis hide domain={['dataMin', 'dataMax']} />
             <Tooltip content={<TrendTooltip metric={metric} locale={locale} />} cursor={{ stroke: colors.cursor }} />
@@ -66,7 +71,7 @@ export function TrendChartCard({ metric, index = 0 }) {
               dataKey="value"
               stroke={colors.line}
               strokeWidth={2}
-              dot={{ r: 2.5, fill: colors.line, strokeWidth: 0 }}
+              dot={showDots ? { r: 2.5, fill: colors.line, strokeWidth: 0 } : false}
               activeDot={{ r: 4 }}
               isAnimationActive
               animationDuration={900}

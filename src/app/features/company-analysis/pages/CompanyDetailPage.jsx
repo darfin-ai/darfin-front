@@ -6,7 +6,6 @@ import { IdentityStrip } from '../components/IdentityStrip';
 import { SimilarCompaniesPanel } from '../components/SimilarCompaniesPanel';
 import { FinancialTrendCharts } from '../components/FinancialTrendCharts';
 import { ReasoningChainFeed } from '../components/ReasoningChainFeed';
-import { SectionDiffList } from '../components/SectionDiffList';
 import { VerificationRail } from '../components/VerificationRail';
 import { BusinessEvolutionTimeline } from '../components/BusinessEvolutionTimeline';
 import { RecentFilingsPanel } from '../components/RecentFilingsPanel';
@@ -14,14 +13,25 @@ import { BusinessSegmentPanel } from '../components/BusinessSegmentPanel';
 import { ProductRevenuePanel } from '../components/ProductRevenuePanel';
 import { CustomerRegionPanel } from '../components/CustomerRegionPanel';
 import { KeyRisksPanel } from '../components/KeyRisksPanel';
-import { ShareholderPanel } from '../components/ShareholderPanel';
-import { DividendPanel } from '../components/DividendPanel';
+import { DartOverviewHeroStrip } from '../components/dart/DartOverviewHeroStrip';
+import { DartGroupEyebrow } from '../components/dart/DartSectionHeader';
+import { DartSectionNav } from '../components/dart/DartSectionNav';
+import { MajorShareholderPanel } from '../components/dart/MajorShareholderPanel';
+import { ShareholderChangePanel } from '../components/dart/ShareholderChangePanel';
+import { StockCompositionPanel } from '../components/dart/StockCompositionPanel';
+import { CapitalChangePanel } from '../components/dart/CapitalChangePanel';
+import { DartDividendPanel } from '../components/dart/DartDividendPanel';
+import { TreasuryStockPanel } from '../components/dart/TreasuryStockPanel';
+import { EmployeePanel } from '../components/dart/EmployeePanel';
+import { ExecutivePanel } from '../components/dart/ExecutivePanel';
+import { AuditOpinionPanel } from '../components/dart/AuditOpinionPanel';
 import { MonitoringActionBanner } from '../components/MonitoringActionBanner';
 import { AddMonitoringDialog } from '../components/AddMonitoringDialog';
 import { MonitorLimitDialog } from '../components/MonitorLimitDialog';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '../../../shared/components/ui/tabs';
 import { Skeleton } from '../../../shared/components/ui/skeleton';
 import { isAiReady } from '../lib/aiStatus';
+import { hasDartOverviewData } from '../components/dart/dartDerive';
 import { latestValue } from '../lib/scoring';
 import { useMonitoredCompanies } from '../lib/useMonitoredCompanies';
 
@@ -163,8 +173,15 @@ export function CompanyDetailPage() {
     );
   }
 
-  const { company, financials, financialsSeparate, findings, diffs, profile, mdnaHistory, recentFilings } = detail;
+  const { company, financials, financialsSeparate, findings, profile, mdnaHistory, recentFilings, dartOverview } = detail;
   const isPreview = detail.preview === true;
+  const showDartOverview = hasDartOverviewData(dartOverview);
+  const activeGroups = [
+    (dartOverview?.majorShareholders?.rows?.length || dartOverview?.majorShareholderChanges?.rows?.length) && 'dart-group-governance',
+    (dartOverview?.stockTotals?.rows?.length || dartOverview?.capitalChanges?.rows?.length) && 'dart-group-capital',
+    (dartOverview?.dividends?.rows?.length || dartOverview?.treasuryStock?.rows?.length) && 'dart-group-returns',
+    (dartOverview?.employees?.rows?.length || dartOverview?.executives?.rows?.length || dartOverview?.auditOpinions?.rows?.length) && 'dart-group-snapshot',
+  ].filter(Boolean);
   const waitedOut = pollCount >= MAX_POLLS && !isAiReady(detail.overview);
   const overview = waitedOut && detail.overview
     ? { ...detail.overview, aiInsightsReady: true }
@@ -193,19 +210,68 @@ export function CompanyDetailPage() {
         {onboardError && (
           <p className="mb-4 text-sm text-red-500 dark:text-red-400">{onboardError}</p>
         )}
-        {waitedOut && (
-          <p className="mb-4 rounded-md border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/40 px-3 py-2 text-xs text-amber-700 dark:text-amber-300">
-            {t('company.detail.aiDelay')}
-          </p>
-        )}
         <Tabs defaultValue="overview">
           <TabsList className="mb-6 w-auto gap-1 bg-slate-100/80 dark:bg-slate-800/80 p-1">
             <TabsTrigger value="overview">{t('company.detail.tabOverview')}</TabsTrigger>
+            <TabsTrigger value="ai">{t('company.detail.tabAiAnalysis')}</TabsTrigger>
             <TabsTrigger value="financials">{t('company.detail.tabFinancials')}</TabsTrigger>
-            <TabsTrigger value="diffs">{t('company.detail.tabDiffs')}</TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview">
+            <div className="space-y-8">
+              {showDartOverview && <DartSectionNav activeGroups={activeGroups} />}
+              {showDartOverview ? (
+                <>
+                  <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[1fr_280px]">
+                    <DartOverviewHeroStrip dartOverview={dartOverview} />
+                    {!isPreview && <RecentFilingsPanel filings={recentFilings} />}
+                  </div>
+
+                  <div id="dart-group-governance">
+                    <DartGroupEyebrow>{t('company.dart.groups.governance')}</DartGroupEyebrow>
+                    <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-2">
+                      <MajorShareholderPanel
+                        section={dartOverview.majorShareholders}
+                        minoritySection={dartOverview.minorityShareholders}
+                      />
+                      <ShareholderChangePanel section={dartOverview.majorShareholderChanges} />
+                    </div>
+                  </div>
+
+                  <div id="dart-group-capital">
+                    <DartGroupEyebrow>{t('company.dart.groups.capital')}</DartGroupEyebrow>
+                    <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-2">
+                      <StockCompositionPanel section={dartOverview.stockTotals} />
+                      <CapitalChangePanel section={dartOverview.capitalChanges} />
+                    </div>
+                  </div>
+
+                  <div id="dart-group-returns">
+                    <DartGroupEyebrow>{t('company.dart.groups.returns')}</DartGroupEyebrow>
+                    <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-2">
+                      <DartDividendPanel section={dartOverview.dividends} meta={dartOverview.meta} />
+                      <TreasuryStockPanel section={dartOverview.treasuryStock} />
+                    </div>
+                  </div>
+
+                  <div id="dart-group-snapshot">
+                    <DartGroupEyebrow>{t('company.dart.groups.snapshot')}</DartGroupEyebrow>
+                    <EmployeePanel section={dartOverview.employees} />
+                    <div className="mt-6 grid grid-cols-1 items-start gap-6 lg:grid-cols-[1fr_360px]">
+                      <ExecutivePanel section={dartOverview.executives} />
+                      <AuditOpinionPanel section={dartOverview.auditOpinions} />
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <p className="rounded-md border border-dashed border-slate-200 dark:border-slate-700 px-4 py-8 text-center text-sm text-slate-400 dark:text-slate-500">
+                  {t('company.dart.noData')}
+                </p>
+              )}
+            </div>
+          </TabsContent>
+
+          <TabsContent value="ai">
             <div className="space-y-8">
               {isPreview ? (
                 <p className="rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900/50 px-4 py-6 text-center text-sm text-slate-500 dark:text-slate-400">
@@ -213,47 +279,45 @@ export function CompanyDetailPage() {
                 </p>
               ) : (
                 <>
-              <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[1fr_280px]">
-                <BusinessEvolutionTimeline profile={profile} mdnaHistory={mdnaHistory ?? []} />
-                <RecentFilingsPanel filings={recentFilings} />
-              </div>
-
-              {overview && (
-                <>
-                  <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-                    <ShareholderPanel overview={overview} />
-                    <DividendPanel overview={overview} />
-                  </div>
-                  <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-                    <BusinessSegmentPanel overview={overview} profile={profile} />
-                    <ProductRevenuePanel overview={overview} />
-                  </div>
-                  <CustomerRegionPanel overview={overview} />
-                  <KeyRisksPanel overview={overview} />
-                </>
-              )}
-
-              <div className={`grid grid-cols-1 gap-6 ${selection ? 'lg:grid-cols-[1fr_320px]' : ''}`}>
-                <div className="min-w-0 space-y-8">
-                  {findingsReady ? (
-                    <ReasoningChainFeed
-                      findings={findings}
-                      selectedHopSourceRef={selection?.hop.sourceRef ?? null}
-                      onSelectHop={(finding, hop) => setSelection({ finding, hop })}
-                    />
-                  ) : (
-                    <FindingsSkeleton />
+                  {waitedOut && (
+                    <p className="rounded-md border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/40 px-3 py-2 text-xs text-amber-700 dark:text-amber-300">
+                      {t('company.detail.aiDelay')}
+                    </p>
                   )}
-                </div>
+                  <BusinessEvolutionTimeline profile={profile} mdnaHistory={mdnaHistory ?? []} />
 
-                {selection && (
-                  <aside className="space-y-4 lg:sticky lg:top-32 lg:self-start">
-                    <VerificationRail selection={selection} />
-                  </aside>
-                )}
-              </div>
+                  {overview && (
+                    <>
+                      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+                        <BusinessSegmentPanel overview={overview} profile={profile} />
+                        <ProductRevenuePanel overview={overview} />
+                      </div>
+                      <CustomerRegionPanel overview={overview} />
+                      <KeyRisksPanel overview={overview} />
+                    </>
+                  )}
 
-              <SimilarCompaniesPanel rows={similarRows} sector={company.sector} />
+                  <div className={`grid grid-cols-1 gap-6 ${selection ? 'lg:grid-cols-[1fr_320px]' : ''}`}>
+                    <div className="min-w-0 space-y-8">
+                      {findingsReady ? (
+                        <ReasoningChainFeed
+                          findings={findings}
+                          selectedHopSourceRef={selection?.hop.sourceRef ?? null}
+                          onSelectHop={(finding, hop) => setSelection({ finding, hop })}
+                        />
+                      ) : (
+                        <FindingsSkeleton />
+                      )}
+                    </div>
+
+                    {selection && (
+                      <aside className="space-y-4 lg:sticky lg:top-32 lg:self-start">
+                        <VerificationRail selection={selection} />
+                      </aside>
+                    )}
+                  </div>
+
+                  <SimilarCompaniesPanel rows={similarRows} sector={company.sector} />
                 </>
               )}
             </div>
@@ -261,10 +325,6 @@ export function CompanyDetailPage() {
 
           <TabsContent value="financials">
             <FinancialTrendCharts financials={financials} financialsSeparate={financialsSeparate} />
-          </TabsContent>
-
-          <TabsContent value="diffs">
-            <SectionDiffList diffs={diffs} recentFilings={recentFilings} />
           </TabsContent>
         </Tabs>
       </div>

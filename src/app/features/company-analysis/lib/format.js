@@ -28,6 +28,22 @@ export function formatPercent(value, digits = 1) {
   return `${sign}${value.toFixed(digits)}%`;
 }
 
+/**
+ * Share counts: comma-grouped + unit; ≥1억주 compacts to "X.X억 주".
+ * @param {number} value @param {'ko'|'en'} [locale]
+ */
+export function formatShares(value, locale = 'ko') {
+  if (value == null || Number.isNaN(value)) return '-';
+  const abs = Math.abs(value);
+  const sign = value < 0 ? '-' : '';
+  if (locale === 'en') {
+    if (abs >= HUNDRED_MILLION) return `${sign}${(abs / 1_000_000).toFixed(0)}M shares`;
+    return `${sign}${abs.toLocaleString('en-US')} shares`;
+  }
+  if (abs >= HUNDRED_MILLION) return `${sign}${(abs / HUNDRED_MILLION).toFixed(1)}억 주`;
+  return `${sign}${abs.toLocaleString('ko-KR')}주`;
+}
+
 /** "2026Q1" -> "26Q1" (compact, for chart axes) */
 export function formatQuarterAxis(quarter) {
   const match = /^(\d{4})Q(\d)$/.exec(quarter);
@@ -76,31 +92,4 @@ export function formatRelativeFilingAge(dateInput, locale = 'ko') {
  */
 export function formatFinancialMetricValue(metric, value, locale = 'ko') {
   return metric.unit === '%' ? formatPercent(value) : formatKrwCompact(value, locale);
-}
-
-/**
- * Formats a single value from a NumericDeltaMetric (see mocks/companyAnalysis/types.js)
- * according to its unit — 'count' is a plain integer plus an optional Korean suffix.
- * @param {'KRW'|'%'|'count'} unit @param {number} value @param {string} [unitLabel] @param {'ko'|'en'} [locale]
- */
-export function formatMetricValue(unit, value, unitLabel = '', locale = 'ko') {
-  if (value == null || Number.isNaN(value)) return '-';
-  if (unit === 'KRW') return formatKrwCompact(value, locale);
-  if (unit === '%') return `${value.toFixed(1)}%`;
-  return `${value.toLocaleString(locale === 'en' ? 'en-US' : 'ko-KR')}${unitLabel}`;
-}
-
-/**
- * Formats a current-vs-baseline delta for a NumericDeltaMetric. Percent-unit
- * deltas are expressed in percentage points ("p") rather than run through
- * formatPercent's relative-change semantics, since a swing from e.g. 30% to
- * 35% is a 5%p move, not a 16.7% one.
- * @param {'KRW'|'%'|'count'} unit @param {number} delta @param {string} [unitLabel] @param {'ko'|'en'} [locale]
- */
-export function formatMetricDelta(unit, delta, unitLabel = '', locale = 'ko') {
-  if (delta == null || Number.isNaN(delta)) return '-';
-  const sign = delta > 0 ? '+' : '';
-  if (unit === 'KRW') return `${sign}${formatKrwCompact(delta, locale)}`;
-  if (unit === '%') return `${sign}${delta.toFixed(1)}%p`;
-  return `${sign}${delta.toLocaleString(locale === 'en' ? 'en-US' : 'ko-KR')}${unitLabel}`;
 }

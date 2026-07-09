@@ -1,5 +1,22 @@
 import { request } from '../../../shared/api/apiClient';
 
+/** Spring이 dartOverview를 아직 안 내려줄 때 Python read API로 보충 (DEV) */
+const COMPANY_ANALYSIS_API =
+  import.meta.env.VITE_COMPANY_ANALYSIS_API_URL || 'http://127.0.0.1:8003';
+
+async function fetchDartOverviewFallback(corpCode) {
+  if (!import.meta.env.DEV) return null;
+  try {
+    const res = await fetch(
+      `${COMPANY_ANALYSIS_API}/dart/overview/${encodeURIComponent(corpCode)}`,
+    );
+    if (!res.ok) return null;
+    return res.json();
+  } catch {
+    return null;
+  }
+}
+
 /** @returns {Promise<{ company: import('../../../../mocks/companyAnalysis/types').Company, scores: import('../../../../mocks/companyAnalysis/types').ScoreComponent[] }[]>} */
 export function fetchCompanies() {
   return request('/api/v1/companies');
@@ -30,6 +47,24 @@ export function removeMonitoredCompany(corpCode) {
  * corp_code가 존재하지 않으면 apiClient의 request()가 { status: 404 }를 던진다.
  * @returns {Promise<import('../../../../mocks/companyAnalysis/types').CompanyDetail>}
  */
-export function fetchCompanyDetail(corpCode) {
-  return request(`/api/v1/companies/${encodeURIComponent(corpCode)}`);
+export async function fetchCompanyDetail(corpCode) {
+  try {
+    const detail = await request(`/api/v1/companies/${encodeURIComponent(corpCode)}`);
+    if (!detail.dartOverview) {
+      const fallback = await fetchDartOverviewFallback(corpCode);
+      if (fallback) detail.dartOverview = fallback;
+    }
+    return detail;
+  } catch (err) {
+    // DEV 한정: 픽스처 corpCode는 백엔드 없이도 UI 확인 가능
+    if (import.meta.env.DEV) {
+      const [{ mockDevCompanyDetailFor }, { mockDevFinancialDetailFor }] = await Promise.all([
+        import('../../../../mocks/companyAnalysis/dartOverview'),
+        import('../../../../mocks/companyAnalysis/financialTrends'),
+      ]);
+      const mock = (await mockDevFinancialDetailFor(corpCode)) ?? mockDevCompanyDetailFor(corpCode);
+      if (mock) return mock;
+    }
+    throw err;
+  }
 }
