@@ -131,7 +131,7 @@ export function InvestHero() {
             <span style={{ color: 'rgba(255,255,255,0.72)' }}>보유 종목</span>
             <span style={{ fontWeight: 800 }}>{state.holdings.length}종목</span>
           </div>
-          <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
+          <div style={{ display: 'flex', gap: 8, marginTop: 6, flexWrap: 'wrap' }}>
             <button onClick={() => navigate('portfolio')} style={heroBtn(true)}>내 주식</button>
             <button onClick={() => navigate('ai')} style={heroBtn(false)}>✦ AI 리포트</button>
           </div>
@@ -268,7 +268,7 @@ function HomeMain() {
 
       {/* market status */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
           <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#1FA463' }} />
           <span style={{ fontSize: 15, fontWeight: 700, color: INK }}>{market?.status?.label || '장 운영중'}</span>
           <span style={{ fontSize: 14, color: SUB }}>{market?.status?.hours || '09:00 ~ 15:30'}</span>
@@ -279,7 +279,7 @@ function HomeMain() {
       </div>
 
       {/* 1. 코스피/코스닥 지수 연동 섹션 (TR_ID: FHPUP02100000) */}
-      <div style={{ display: 'flex', gap: 12, marginBottom: 32 }}>
+      <div className="darfin-trading-index-grid" style={{ display: 'flex', gap: 12, marginBottom: 32 }}>
         <MiniIndexCard idx={market?.kospi} />
         <MiniIndexCard idx={market?.kosdaq} />
         <MiniIndexCard idx={market?.usd} />
@@ -292,7 +292,7 @@ function HomeMain() {
       </div>
 
       {tab === 'chart' && (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 392px', gap: 24, alignItems: 'start' }}>
+        <div className="darfin-trading-chart-layout" style={{ display: 'grid', gridTemplateColumns: '1fr 392px', gap: 24, alignItems: 'start' }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
               <Pill active={rankTab === 'tradeValue'} onClick={() => setRankTab('tradeValue')}>거래대금</Pill>
@@ -305,34 +305,38 @@ function HomeMain() {
               </div>
             </div>
             
-            <div style={{ display: 'grid', gridTemplateColumns: RANK_COLS, gap: 8, padding: '0 8px 10px', fontSize: 12, color: SUB, fontWeight: 600 }}>
-              <span />
-              <span style={{ textAlign: 'center' }}>순위</span>
-              <span />
-              <span>종목</span>
-              <span style={{ textAlign: 'right' }}>현재가</span>
-              <span style={{ textAlign: 'right' }}>등락률</span>
-              <span style={{ textAlign: 'right' }}>
-                {rankTab === 'tradeValue' ? '거래대금' : rankTab === 'volume' ? '거래량' : '당일변동'}
-              </span>
-              <span style={{ textAlign: 'right' }}>업종</span>
+            <div className="darfin-trading-rank-scroller">
+              <div className="darfin-trading-rank-table">
+                <div style={{ display: 'grid', gridTemplateColumns: RANK_COLS, gap: 8, padding: '0 8px 10px', fontSize: 12, color: SUB, fontWeight: 600 }}>
+                  <span />
+                  <span style={{ textAlign: 'center' }}>순위</span>
+                  <span />
+                  <span>종목</span>
+                  <span style={{ textAlign: 'right' }}>현재가</span>
+                  <span style={{ textAlign: 'right' }}>등락률</span>
+                  <span style={{ textAlign: 'right' }}>
+                    {rankTab === 'tradeValue' ? '거래대금' : rankTab === 'volume' ? '거래량' : '당일변동'}
+                  </span>
+                  <span style={{ textAlign: 'right' }}>업종</span>
+                </div>
+
+                {displayStocks.length > 0 ? (
+                  displayStocks.map((s, i) => (
+                    <StockRow key={s.code} rank={i + 1} stock={s} rankTab={rankTab}
+                      watched={state.watchlist.includes(s.code)} onWatch={() => toggleWatch(s.code)}
+                      onHover={() => setHoveredCode(s.code)}
+                      onClick={() => navigate('detail', { code: s.code })} />
+                  ))
+                ) : kisLoading.ranks ? (
+                  <StockRowsSkeleton />
+                ) : (
+                  <div style={{ padding: '40px 0', textAlign: 'center', fontSize: 14, color: SUB }}>순위 데이터를 불러올 수 없어요.</div>
+                )}
+              </div>
             </div>
-            
-            {displayStocks.length > 0 ? (
-              displayStocks.map((s, i) => (
-                <StockRow key={s.code} rank={i + 1} stock={s} rankTab={rankTab}
-                  watched={state.watchlist.includes(s.code)} onWatch={() => toggleWatch(s.code)}
-                  onHover={() => setHoveredCode(s.code)}
-                  onClick={() => navigate('detail', { code: s.code })} />
-              ))
-            ) : kisLoading.ranks ? (
-              <StockRowsSkeleton />
-            ) : (
-              <div style={{ padding: '40px 0', textAlign: 'center', fontSize: 14, color: SUB }}>순위 데이터를 불러올 수 없어요.</div>
-            )}
           </div>
           
-          <div style={{ position: 'sticky', top: 84, display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div className="darfin-trading-side-stack" style={{ position: 'sticky', top: 84, display: 'flex', flexDirection: 'column', gap: 16 }}>
             {/* 3. 당일 투자자 동향 연동 섹션 (TR_ID: HHPPG046600C1) */}
             <InvestorTrendCard market={market} loading={kisLoading.sentiment} />
             {activeHovered && <StockPreviewCard stock={activeHovered} />}
@@ -499,7 +503,7 @@ function StockPreviewCard({ stock: rawStock }) {
   const changeAmt = stock.changeAmt || 0;
 
   return (
-    <Card style={{ padding: 18 }}>
+    <Card className="darfin-trading-preview-card" style={{ padding: 18 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14, cursor: 'pointer' }}
         onClick={() => navigate('detail', { code: stock.code })}>
         <Avatar stock={stock} size={36} />
@@ -603,8 +607,8 @@ function WatchRail() {
   const top = state.watchlist.map(getStock).filter(Boolean).slice(0, 10);
   const loading = state.isLoggedIn && (kisLoading.watchlist || kisLoading.summaries) && state.watchlist.length > 0 && top.length === 0;
   return (
-    <aside style={{ width: 320, flexShrink: 0 }}>
-      <div style={{ position: 'sticky', top: 84 }}>
+    <aside className="darfin-trading-watch-rail" style={{ width: 320, flexShrink: 0 }}>
+      <div className="darfin-trading-watch-sticky" style={{ position: 'sticky', top: 84 }}>
         <Card style={{ padding: 0 }}>
           <div style={{ padding: '18px 18px 8px' }}>
             <div style={{ fontSize: 17, fontWeight: 800, color: INK }}>관심 주식 TOP 10</div>
@@ -715,7 +719,7 @@ function MarketTicker() {
 export function Home() {
   return (
     <>
-      <div style={{ ...HOME_LAYOUT, padding: '28px 28px 100px', display: 'flex', gap: 24 }}>
+      <div className="darfin-trading-home-shell" style={{ ...HOME_LAYOUT, padding: '28px 28px 100px', display: 'flex', gap: 24 }}>
         <div style={{ flex: 1, minWidth: 0 }}><HomeMain /></div>
         <WatchRail />
       </div>

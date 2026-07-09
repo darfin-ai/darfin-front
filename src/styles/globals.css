@@ -60,3 +60,101 @@ body {
   background-size: 220% 100%;
   animation: darfin-skeleton-shimmer 1.25s ease-in-out infinite;
 }
+
+.darfin-trading-rank-scroller {
+  max-width: 100%;
+}
+
+.darfin-trading-rank-table {
+  width: 100%;
+}
+
+.darfin-trading-preview-card svg {
+  max-width: 100%;
+  height: auto;
+}
+
+@media (max-width: 1180px) {
+  .darfin-trading-subnav-search {
+    margin-left: auto !important;
+    margin-right: 0 !important;
+    max-width: 18rem;
+  }
+}
+
+@media (max-width: 1380px) {
+  .darfin-trading-chart-layout {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .darfin-trading-side-stack {
+    position: static !important;
+  }
+}
+
+@media (max-width: 1180px) {
+  .darfin-trading-home-shell {
+    flex-direction: column !important;
+    gap: 20px !important;
+    width: 100%;
+    max-width: 100% !important;
+    margin-inline: 0 !important;
+    padding: 24px clamp(1rem, 4vw, 1.5rem) 88px !important;
+    box-sizing: border-box;
+  }
+
+  .darfin-trading-watch-rail {
+    width: 100% !important;
+  }
+
+  .darfin-trading-watch-sticky,
+  .darfin-trading-side-stack {
+    position: static !important;
+  }
+
+  .darfin-trading-index-grid {
+    flex-wrap: wrap !important;
+  }
+
+  .darfin-trading-index-grid > * {
+    flex: 1 1 180px !important;
+  }
+}
+
+@media (max-width: 760px) {
+  .darfin-trading-subnav-inner {
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .darfin-trading-subnav-inner::-webkit-scrollbar {
+    display: none;
+  }
+
+  .darfin-trading-subnav-tab {
+    margin-right: 22px !important;
+    padding-block: 14px !important;
+    font-size: 14px !important;
+    flex: 0 0 auto;
+  }
+
+  .darfin-trading-subnav-search {
+    display: none !important;
+  }
+
+  .darfin-trading-rank-scroller {
+    overflow-x: auto;
+    padding-bottom: 8px;
+    scrollbar-width: thin;
+  }
+
+  .darfin-trading-rank-table {
+    min-width: 620px;
+  }
+}
+
+@media (max-width: 560px) {
+  .darfin-trading-index-grid > * {
+    flex-basis: 100% !important;
+  }
+}

@@ -22,11 +22,7 @@ import {
   INPUT,
   SUBNAV,
   SUBNAV_INNER,
-  chartColor,
   priceToneClass,
-  CHART_UP,
-  CHART_DOWN,
-  CHART_FLAT,
   avatarGradient,
 } from '../../../shared/lib/uiRecipes';
 
@@ -41,7 +37,6 @@ export {
   PRICE_UP,
   PRICE_DOWN,
   priceToneClass,
-  chartColor,
   CONTAINER,
   INPUT,
   SUBNAV,
@@ -54,13 +49,23 @@ export {
   SEGMENT_IDLE,
 };
 
-/** @deprecated Use priceToneClass() for className or chartColor() for SVG — legacy hex aliases */
-export const UP = CHART_UP;
-export const DOWN = CHART_DOWN;
-export const SUB = CHART_FLAT;
-export const INK = '#0f172a';
-export const BRAND = '#2563eb';
-/** @deprecated Use priceToneClass() */
+// Trading surface tokens from DESIGN.md §2.
+export const INK = '#191F28';
+export const SUB = '#8B95A1';
+export const BRAND = '#1B64DA';
+export const UP = '#F04452';
+export const DOWN = '#3182F6';
+export const CHART_UP = UP;
+export const CHART_DOWN = DOWN;
+export const CHART_FLAT = SUB;
+
+export function chartColor(pct) {
+  if (pct > 0) return UP;
+  if (pct < 0) return DOWN;
+  return SUB;
+}
+
+/** @deprecated Use chartColor() */
 export const tone = chartColor;
 
 // ===== Formatters =====
@@ -423,23 +428,60 @@ export function Donut({ slices, size = 180, thickness = 30 }) {
   );
 }
 
-/** @deprecated Use BTN_GHOST className */
-export const ghostBtn = BTN_SECONDARY;
-/** @deprecated Use BTN_PRIMARY className */
-export const primaryBtn = BTN_PRIMARY;
-/** @deprecated Use BTN_GHOST with size overrides */
-export const iconBtn = 'relative w-10 h-10 rounded-lg border-none bg-transparent cursor-pointer flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors';
+/** @deprecated Prefer a real button component when touching this surface. */
+export const ghostBtn = {
+  height: 40,
+  padding: '0 16px',
+  borderRadius: 12,
+  border: '1px solid #E5E8EB',
+  background: '#fff',
+  color: '#4E5968',
+  fontSize: 14,
+  fontWeight: 700,
+  cursor: 'pointer',
+};
+/** @deprecated Prefer a real button component when touching this surface. */
+export const primaryBtn = {
+  height: 40,
+  padding: '0 18px',
+  borderRadius: 12,
+  border: 'none',
+  background: BRAND,
+  color: '#fff',
+  fontSize: 14,
+  fontWeight: 800,
+  cursor: 'pointer',
+};
+/** @deprecated Prefer a real icon button component when touching this surface. */
+export const iconBtn = {
+  width: 40,
+  height: 40,
+  borderRadius: 10,
+  border: 'none',
+  background: 'transparent',
+  color: SUB,
+  cursor: 'pointer',
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+};
 
 export function Pill({ active, children, onClick, color }) {
   return (
     <button
       onClick={onClick}
-      className={`h-9 px-4 rounded-full border-none cursor-pointer text-sm font-medium whitespace-nowrap transition-colors ${
-        active
-          ? color ? '' : 'bg-blue-600 text-white'
-          : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
-      }`}
-      style={active && color ? { background: color, color: '#fff' } : undefined}
+      style={{
+        height: 36,
+        padding: '0 16px',
+        borderRadius: 999,
+        border: 'none',
+        cursor: 'pointer',
+        fontSize: 14,
+        fontWeight: 700,
+        whiteSpace: 'nowrap',
+        background: active ? (color || BRAND) : '#F2F4F6',
+        color: active ? '#fff' : '#4E5968',
+      }}
     >
       {children}
     </button>
@@ -448,16 +490,38 @@ export function Pill({ active, children, onClick, color }) {
 
 export function Tab({ active, children, onClick }) {
   return (
-    <button onClick={onClick} className={active ? TAB_ACTIVE : TAB_IDLE}>
+    <button
+      onClick={onClick}
+      style={{
+        position: 'relative',
+        padding: '16px 8px',
+        border: 'none',
+        background: 'none',
+        cursor: 'pointer',
+        fontSize: 15,
+        fontWeight: 700,
+        color: active ? INK : SUB,
+        whiteSpace: 'nowrap',
+      }}
+    >
       {children}
-      {active && <span className={TAB_INDICATOR} />}
+      {active && <span style={{ position: 'absolute', left: 0, right: 0, bottom: -1, height: 3, background: BRAND, borderRadius: 2 }} />}
     </button>
   );
 }
 
 export function Card({ children, className = '', style }) {
   return (
-    <div className={`${CARD} p-6 ${className}`} style={style}>
+    <div
+      className={className}
+      style={{
+        background: '#fff',
+        border: '1px solid #EEF1F4',
+        borderRadius: 20,
+        padding: 24,
+        ...style,
+      }}
+    >
       {children}
     </div>
   );
@@ -493,12 +557,12 @@ export function Heart({ filled, onClick, size = 22 }) {
   return (
     <button
       onClick={(e) => { e.stopPropagation(); onClick?.(); }}
-      className={`${iconBtn} shrink-0`}
-      style={{ width: size + 12, height: size + 12 }}
+      style={{ ...iconBtn, width: size + 12, height: size + 12, flexShrink: 0 }}
     >
       <HeartIcon
         size={size}
-        className={filled ? 'fill-red-500 text-red-500' : 'text-slate-300 dark:text-slate-600'}
+        fill={filled ? UP : 'none'}
+        color={filled ? UP : '#C5CBD3'}
       />
     </button>
   );

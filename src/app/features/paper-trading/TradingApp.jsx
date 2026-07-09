@@ -32,16 +32,16 @@ function SubNav() {
 
   return (
     <div style={{ borderBottom: '1px solid #EEF1F4', background: '#fff' }}>
-      <div className="container" style={{ display: 'flex', alignItems: 'center', gap: 0 }}>
+      <div className="container darfin-trading-subnav-inner" style={{ display: 'flex', alignItems: 'center', gap: 0 }}>
         {tabs.map(t => (
-          <button key={t.key} onClick={() => handleTabClick(t.key)} style={{ position: 'relative', padding: '16px 8px', marginRight: 28,
+          <button key={t.key} onClick={() => handleTabClick(t.key)} className="darfin-trading-subnav-tab" style={{ position: 'relative', padding: '16px 8px', marginRight: 28,
             border: 'none', background: 'none', cursor: 'pointer', fontSize: 16, fontWeight: 700, whiteSpace: 'nowrap',
             color: cur === t.key ? INK : '#B0B8C1' }}>
             {t.label}
             {cur === t.key && <span style={{ position: 'absolute', left: 0, right: 0, bottom: -1, height: 3, background: INK, borderRadius: 2 }} />}
           </button>
         ))}
-        <div style={{ marginLeft: 60, flex: 1, marginRight: 360 }}>
+        <div className="darfin-trading-subnav-search" style={{ marginLeft: 60, flex: 1, marginRight: 360 }}>
           <SubNavSearch />
         </div>
       </div>
