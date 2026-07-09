@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Link, useNavigate, useLocation, useOutlet } from "react-router";
 import { motion, AnimatePresence, useReducedMotion } from "motion/react";
 import { BookOpen, BarChart2, TrendingUp, MessageSquare, UserCircle, LogOut, Menu, X, ChevronDown, CreditCard } from "lucide-react";
@@ -23,6 +23,25 @@ export function Layout() {
   const { isLoggedIn, logout } = useAuth();
   const { t } = useLocale();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [featuresOpen, setFeaturesOpen] = useState(false);
+  const featuresCloseTimer = useRef(null);
+
+  const clearFeaturesCloseTimer = useCallback(() => {
+    if (featuresCloseTimer.current) {
+      clearTimeout(featuresCloseTimer.current);
+      featuresCloseTimer.current = null;
+    }
+  }, []);
+
+  const openFeaturesMenu = useCallback(() => {
+    clearFeaturesCloseTimer();
+    setFeaturesOpen(true);
+  }, [clearFeaturesCloseTimer]);
+
+  const scheduleCloseFeaturesMenu = useCallback(() => {
+    clearFeaturesCloseTimer();
+    featuresCloseTimer.current = setTimeout(() => setFeaturesOpen(false), 120);
+  }, [clearFeaturesCloseTimer]);
   // Top-level section only (e.g. "company", "disclosure") — sub-navigation within the same
   // section (company/:id, disclosure/:id) shouldn't retrigger the transition, only switching
   // between visually-similar sections should, so users get a clear "you moved" cue.
@@ -30,7 +49,11 @@ export function Layout() {
 
   useEffect(() => {
     setIsMobileMenuOpen(false);
-  }, [location.pathname]);
+    setFeaturesOpen(false);
+    clearFeaturesCloseTimer();
+  }, [location.pathname, clearFeaturesCloseTimer]);
+
+  useEffect(() => () => clearFeaturesCloseTimer(), [clearFeaturesCloseTimer]);
 
   const handleServiceClick = (e, path) => {
     if (!isLoggedIn && path !== "/trading") {
@@ -95,12 +118,21 @@ export function Layout() {
                 ))
               ) : (
                 <>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger className="group text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 data-[state=open]:text-blue-600 dark:data-[state=open]:text-blue-400 transition-colors flex items-center gap-1 px-1.5 py-1 rounded-md whitespace-nowrap outline-none">
+                  <DropdownMenu modal={false} open={featuresOpen} onOpenChange={setFeaturesOpen}>
+                    <DropdownMenuTrigger
+                      className="group text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 data-[state=open]:text-blue-600 dark:data-[state=open]:text-blue-400 transition-colors flex items-center gap-1 px-1.5 py-1 rounded-md whitespace-nowrap outline-none"
+                      onMouseEnter={openFeaturesMenu}
+                      onMouseLeave={scheduleCloseFeaturesMenu}
+                    >
                       {t("nav.features")}
                       <ChevronDown size={14} className="transition-transform duration-200 group-data-[state=open]:rotate-180" />
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="start" sideOffset={10}>
+                    <DropdownMenuContent
+                      align="start"
+                      sideOffset={10}
+                      onMouseEnter={openFeaturesMenu}
+                      onMouseLeave={scheduleCloseFeaturesMenu}
+                    >
                       {navItems.map(({ to, icon, label }) => (
                         <DropdownMenuItem key={to} asChild>
                           <Link
@@ -128,7 +160,7 @@ export function Layout() {
               <ThemeToggle />
 
               {isLoggedIn && (
-                <DropdownMenu>
+                <DropdownMenu modal={false}>
                   <DropdownMenuTrigger
                     className="text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 data-[state=open]:text-blue-600 dark:data-[state=open]:text-blue-400 transition-colors flex items-center gap-1.5 p-1 rounded-md outline-none"
                     title={t("nav.mypage")}
