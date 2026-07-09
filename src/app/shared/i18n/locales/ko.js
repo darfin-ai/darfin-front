@@ -87,9 +87,9 @@ export const ko = {
   },
   landing: {
     hero: {
-      titleLine1: "개인 투자자를 위한",
-      titleLine2: "공시·기업분석 AI",
-      subtitle: "수백 페이지 분기보고서, 무엇이 바뀌었는지 찾느라 시간 쓰지 마세요. DART 원문 근거로 핵심만 골라드립니다.",
+      titleLine1: "KOSPI·KOSDAQ",
+      titleLine2: "기업분석 AI",
+      subtitle: "DART 공시와 기업 정보를 AI가 분석하여 중요한 변화와 핵심 내용을 빠르게 확인하세요.",
       ctaSignup: "무료로 시작하기",
       ctaLogin: "로그인",
       ctaCompany: "기업 분석 시작하기",
@@ -157,7 +157,7 @@ export const ko = {
           bullets: [
             "개요: 사업·주주·리스크·배당 한눈에",
             "재무 추이: 매출·이익·현금흐름 차트",
-            "공시 변경: 분기별 원문 자동 비교",
+            "AI 분석: 사업 변화·리스크·핵심 포인트",
           ],
           cta: "기업 분석 시작하기",
         },
@@ -191,7 +191,7 @@ export const ko = {
       aiScore: "AI 종합 스코어",
       tabOverview: "개요",
       tabFinancials: "재무 추이",
-      tabChanges: "공시 변경",
+      tabAiAnalysis: "AI 분석",
       aiSummaryText:
         "DS 부문 매출 비중이 61%로 급등 — HBM 수요 확대가 영업이익률을 8.45%→42.75%로 끌어올림.",
       tradingChrome: "모의투자 · 삼성전자",
@@ -239,7 +239,7 @@ export const ko = {
             author: "공시덕후",
             initial: "공",
             time: "12분 전",
-            body: "최근 공시 변경 항목에 HBM 관련 투자 계획이 추가됐는데, 이것도 참고해보세요.",
+            body: "AI 분석에서 HBM 관련 투자 계획이 새로 짚혔는데, 이것도 참고해보세요.",
           },
         ],
       },

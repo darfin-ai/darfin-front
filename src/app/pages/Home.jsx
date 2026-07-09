@@ -491,7 +491,7 @@ function CompanyMockup({ active = false }) {
       <div className="flex gap-1 mb-6 bg-slate-100/80 dark:bg-slate-800/80 rounded-lg p-1 text-xs font-medium">
         <span className="flex-1 text-center py-1.5 bg-white dark:bg-slate-900 rounded-md text-slate-900 dark:text-slate-100 shadow-sm">{t("landing.mockups.tabOverview")}</span>
         <span className="flex-1 text-center py-1.5 text-slate-400 dark:text-slate-500">{t("landing.mockups.tabFinancials")}</span>
-        <span className="flex-1 text-center py-1.5 text-slate-400 dark:text-slate-500">{t("landing.mockups.tabChanges")}</span>
+        <span className="flex-1 text-center py-1.5 text-slate-400 dark:text-slate-500">{t("landing.mockups.tabAiAnalysis")}</span>
       </div>
       <div className="flex items-start justify-between mb-6 px-1 flex-1">
         {["2024 Q1", "2025 Q1", "2026 Q1"].map((q, i) => (

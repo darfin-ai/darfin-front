@@ -96,60 +96,6 @@
  */
 
 /**
- * @typedef {'added'|'modified'|'removed'} SectionDiffChangeType
- */
-
-/**
- * Which baseline filing a diff entry is measured against.
- *   QoQ — immediately preceding filing (for a Q1 report, that's the prior
- *         year's 사업보고서, since quarterly reports don't exist for Q4)
- *   YoY — same-quarter filing one year earlier
- * @typedef {'QoQ'|'YoY'} DiffComparisonType
- */
-
-/**
- * The kind of comparison a filing section supports — drives which parts of
- * a SectionDiffEntry are populated and how SectionDiffGroup renders it.
- * @typedef {'structural'|'text'|'numeric'|'text_numeric'|'headcount'|'ownership'|'event'} DiffAnalysisType
- */
-
-/**
- * One line item inside a numeric-flavored diff entry (재무상태표/손익계산서/
- * 현금흐름표/주석/임원 및 직원/주주현황). `unit` drives formatting:
- * 'KRW' and '%' reuse the same formatters as the financial trend charts;
- * 'count' is a plain integer with an optional Korean suffix (명/주/건/개).
- * @typedef {Object} NumericDeltaMetric
- * @property {string} label
- * @property {number} current
- * @property {number} baseline
- * @property {'KRW'|'%'|'count'} unit
- * @property {string} [unitLabel]  suffix for 'count', e.g. "명"
- */
-
-/**
- * A single detected change for one filing section, measured against one
- * baseline. Which fields are populated depends on the section's
- * DiffAnalysisType — text/structural/event sections use before/after,
- * numeric/headcount/ownership sections use metrics, and 주석 (text_numeric)
- * can use both at once.
- * @typedef {Object} SectionDiffEntry
- * @property {string} sectionLabel     must match a DIFF_SECTION_CONFIG entry, see lib/comparison.js
- * @property {string} [sourceLabel]    granular DART breadcrumb (e.g. "II. 사업의 내용 > 2. 주요 제품 및 서비스 > DS 부문")
- *   shown in the "원문 보기" dialog in place of sectionLabel — the canonical
- *   sectionLabel is what groups entries into DIFF_SECTION_CONFIG's rows, but
- *   that label is often coarser than where the change actually lives in the filing.
- * @property {DiffComparisonType} comparisonType
- * @property {SectionDiffChangeType} [changeType]  omitted for pure numeric entries with no single narrative framing
- * @property {string} [before]
- * @property {string} [after]
- * @property {NumericDeltaMetric[]} [metrics]
- * @property {string} sourceRef  filing id / section anchor for the "원문 보기" link —
- *   added beyond the original spec shape because "every claim needs a visible
- *   path to its source" is a hard requirement that the base interface didn't
- *   actually give diffs a field for.
- */
-
-/**
  * @typedef {Object} CompanyProfile
  * @property {string} businessDescription
  * @property {string} shareStructure
@@ -285,10 +231,195 @@
  * @property {string} [regionInsight]
  * @property {FilingExcerptRef} [regionSourceRef]
  * @property {KeyRisk[]} risks
- * @property {ShareholderSlice[]} [shareholders]
+ * @property {ShareholderSlice[]} [shareholders]   @deprecated 개요 탭은 DartOverview.majorShareholders 사용
  * @property {string} [shareholderInsight]
  * @property {FilingExcerptRef} [shareholderSourceRef]
- * @property {DividendInfo} [dividend]
+ * @property {DividendInfo} [dividend]             @deprecated 개요 탭은 DartOverview.dividends 사용
+ */
+
+/* ------------------------------------------------------------------ *
+ * DART 정기공시 구조화 데이터 (dartOverview)
+ * 각 섹션은 DART OpenAPI 보고서 엔드포인트 1개와 1:1 대응한다.
+ * 필드명은 DART 응답 필드의 camelCase, 수치 문자열은 number로 파싱,
+ * "-"는 null. 섹션이 null이면 해당 엔드포인트에 데이터가 없다는 뜻.
+ * ------------------------------------------------------------------ */
+
+/**
+ * @typedef {Object} DartSectionMeta
+ * @property {string} bsnsYear   사업연도, 예: "2025"
+ * @property {'11011'|'11012'|'11013'|'11014'} reprtCode  사업/반기/1분기/3분기보고서
+ * @property {string} rceptNo    접수번호 (공시 원문 링크용)
+ */
+
+/**
+ * alotMatter (배당에 관한 사항) row. se 예: "주당액면가액(원)",
+ * "(연결)당기순이익(백만원)", "주당 현금배당금(원)", "(연결)현금배당성향(%)",
+ * "현금배당수익률(%)". 금액류는 실제 원 단위로 스케일 완료된 값.
+ * @typedef {Object} DartDividendRow
+ * @property {string} se
+ * @property {string|null} stockKnd   "보통주" | "우선주" | null
+ * @property {number|null} thstrm    당기
+ * @property {number|null} frmtrm    전기
+ * @property {number|null} lwfr      전전기
+ */
+
+/**
+ * hyslrSttus (최대주주 및 특수관계인 현황) row. 합계 row는 nm === "계".
+ * @typedef {Object} DartMajorShareholderRow
+ * @property {string} nm
+ * @property {string} relate    "본인" | "친인척" | "계열회사" 등
+ * @property {string} stockKnd
+ * @property {number|null} bsisPosesnStockCo    기초 주식수
+ * @property {number|null} bsisQotaRt           기초 지분율 %
+ * @property {number|null} trmendPosesnStockCo  기말 주식수
+ * @property {number|null} trmendQotaRt         기말 지분율 %
+ */
+
+/**
+ * hyslrChgSttus (최대주주 변동현황) row
+ * @typedef {Object} DartMajorShareholderChangeRow
+ * @property {string} changeOn   변동일 ISO date
+ * @property {string} mxmmShrholdrNm
+ * @property {number|null} posesnStockCo
+ * @property {number|null} qotaRt
+ * @property {string} changeCause
+ */
+
+/**
+ * mrhlSttus (소액주주 현황) row
+ * @typedef {Object} DartMinorityShareholderRow
+ * @property {number|null} shrholdrCo     소액주주수
+ * @property {number|null} shrholdrTotCo  전체 주주수
+ * @property {number|null} shrholdrRate   소액주주 비율 %
+ * @property {number|null} holdStockCo    보유 주식수
+ * @property {number|null} stockTotCo     총발행 주식수
+ * @property {number|null} holdStockRate  보유주식 비율 %
+ */
+
+/**
+ * empSttus (직원 현황) row — (사업부문 × 성별)당 1개
+ * @typedef {Object} DartEmployeeRow
+ * @property {string} foBbm            사업부문
+ * @property {string} sexdstn          "남" | "여"
+ * @property {number|null} rgllbrCo    정규직
+ * @property {number|null} cnttkCo     계약직
+ * @property {number|null} sm          합계
+ * @property {string|null} avrgCnwkSdytrn   평균 근속연수 (예: "12.5")
+ * @property {number|null} fyerSalaryTotamt 연간급여총액 (실제 원)
+ * @property {number|null} janSalaryAm      1인평균급여액 (실제 원)
+ */
+
+/**
+ * tesstkAcqsDspsSttus (자기주식 취득 및 처분 현황) row
+ * @typedef {Object} DartTreasuryStockRow
+ * @property {string} acqsMth1   대분류, 예: "배당가능이익 범위 내 취득"
+ * @property {string} acqsMth2   중분류, 예: "직접취득"
+ * @property {string} acqsMth3   소분류
+ * @property {string} stockKnd
+ * @property {number|null} bsisQy         기초
+ * @property {number|null} changeQyAcqs   취득
+ * @property {number|null} changeQyDsps   처분
+ * @property {number|null} changeQyIncnr  소각
+ * @property {number|null} trmendQy       기말
+ */
+
+/**
+ * irdsSttus (증자·감자 현황) row
+ * @typedef {Object} DartCapitalChangeRow
+ * @property {string} isuDcrsDe     일자 ISO date
+ * @property {string} isuDcrsStle   "유상증자(제3자배정)" | "무상증자" | "감자" 등
+ * @property {string} isuDcrsStockKnd
+ * @property {number|null} isuDcrsQy
+ * @property {number|null} isuDcrsMstvdivFvalAmount  주당 액면가액 (원)
+ * @property {number|null} isuDcrsMstvdivAmount      주당 발행(감자)가액 (원)
+ */
+
+/**
+ * stockTotqySttus (주식 총수 현황) row — se당 1개
+ * @typedef {Object} DartStockTotalRow
+ * @property {string} se   "보통주" | "우선주" | "합계"
+ * @property {number|null} isuStockTotqy  발행할 주식총수
+ * @property {number|null} istcTotqy      발행주식총수 (현재)
+ * @property {number|null} redc           감자 등 감소 주식수
+ * @property {number|null} tesstkCo       자기주식수
+ * @property {number|null} distbStockCo   유통주식수
+ */
+
+/**
+ * exctvSttus (임원 현황) row
+ * @typedef {Object} DartExecutiveRow
+ * @property {string} nm
+ * @property {string} sexdstn
+ * @property {string} birthYm       "1968.03"
+ * @property {string} ofcps         직위
+ * @property {string} rgistExctvAt  "등기임원" | "미등기임원"
+ * @property {string} fteAt         "상근" | "비상근"
+ * @property {string} chrgJob       담당업무
+ * @property {string} mainCareer    주요경력
+ * @property {string|null} hffcPd   재직기간
+ * @property {string|null} tenureEndOn  임기만료일
+ */
+
+/**
+ * accnutAdtorNmNdAdtOpinion (회계감사인의 명칭 및 감사의견) row
+ * @typedef {Object} DartAuditOpinionRow
+ * @property {string} bsnsYear
+ * @property {string} adtor
+ * @property {string|null} adtOpinion   "적정" | "한정" | "부적정" | "의견거절"
+ * @property {string|null} emphsMatter    강조사항
+ * @property {string|null} coreAdtMatter  핵심감사사항
+ */
+
+/**
+ * 과거 정기공시에서 가져온 section의 출처 기간 — 분기보고서엔 기재의무가
+ * 없는 항목(직원현황 등)을 최근 반기/사업보고서로 보정했을 때만 붙는다.
+ * @typedef {Object} DartSectionAsOf
+ * @property {string} bsnsYear
+ * @property {string} reprtCode
+ * @property {string} rceptNo
+ */
+
+/**
+ * DART 엔드포인트 1개분의 응답. sourceRef가 있으면 해당 패널의
+ * "공시 원문 보기" 다이얼로그를 연다. asOf가 있으면 현재 조회 기간이 아닌
+ * 더 과거의 정기공시에서 채운 데이터라는 뜻 — meta.reprtCode와 다르다.
+ * @template T
+ * @typedef {Object} DartSection
+ * @property {T[]} rows
+ * @property {FilingExcerptRef} [sourceRef]
+ * @property {DartSectionAsOf} [asOf]
+ */
+
+/**
+ * 10개 DART 정기공시 엔드포인트로 구성한 구조화 개요.
+ * 섹션 null = 해당 엔드포인트 무자료 (status 013).
+ * @typedef {Object} DartOverview
+ * @property {DartSectionMeta} meta
+ * @property {DartSection<DartDividendRow>|null} dividends                  alotMatter
+ * @property {DartSection<DartMajorShareholderRow>|null} majorShareholders  hyslrSttus
+ * @property {DartSection<DartMajorShareholderChangeRow>|null} majorShareholderChanges  hyslrChgSttus
+ * @property {DartSection<DartMinorityShareholderRow>|null} minorityShareholders        mrhlSttus
+ * @property {DartSection<DartEmployeeRow>|null} employees                  empSttus
+ * @property {DartSection<DartTreasuryStockRow>|null} treasuryStock         tesstkAcqsDspsSttus
+ * @property {DartSection<DartCapitalChangeRow>|null} capitalChanges        irdsSttus
+ * @property {DartSection<DartStockTotalRow>|null} stockTotals              stockTotqySttus
+ * @property {DartSection<DartExecutiveRow>|null} executives                exctvSttus
+ * @property {DartSection<DartAuditOpinionRow>|null} auditOpinions          accnutAdtorNmNdAdtOpinion
+ */
+
+/**
+ * @typedef {Object} MonitoredCompany
+ * @property {string} corpCode
+ * @property {string} name
+ * @property {string} ticker
+ * @property {string} addedAt ISO local date-time
+ */
+
+/**
+ * @typedef {Object} MonitoredCompanyList
+ * @property {MonitoredCompany[]} items
+ * @property {number} count
+ * @property {number} limit
  */
 
 /**
@@ -298,11 +429,12 @@
  * @property {FinancialMetric[]} financials              연결재무제표 기준
  * @property {FinancialMetric[]} [financialsSeparate]    별도재무제표 기준
  * @property {ReasoningChainFinding[]} findings
- * @property {SectionDiffEntry[]} diffs
  * @property {CompanyProfile} profile
  * @property {MdnaHistoryEntry[]} mdnaHistory
  * @property {RecentFiling[]} [recentFilings]
  * @property {CompanyOverview} [overview]
+ * @property {DartOverview} [dartOverview]  DART 정기공시 API 기반 구조화 개요 (개요 탭)
+ * @property {boolean} [preview] stock-only preview before onboard
  */
 
 export const SCORE_COMPONENT_LABELS = {

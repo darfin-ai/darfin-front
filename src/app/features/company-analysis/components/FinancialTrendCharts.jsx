@@ -4,6 +4,8 @@ import { useLocale } from '../../../shared/i18n';
 import { TrendChartCard } from './TrendChartCard';
 import { formatPercent, formatFinancialMetricValue } from '../lib/format';
 import { buildFinancialRowStyles, rowStyleClasses } from '../lib/financialRowStyle';
+import { useExpandableRows } from '../lib/useExpandableRows';
+import { ExpandToggle } from './dart/ExpandToggle';
 
 const KEY_METRIC_ORDER = [
   '매출액',
@@ -78,7 +80,9 @@ function AccountRow({ metric, rowStyle, expanded, onToggle, locale }) {
             isSection ? 'opacity-60' : ''
           }`}
         />
-        <span className={`min-w-0 flex-1 truncate ${classes.label}`}>{baseName(metric.label)}</span>
+        <span className={`min-w-0 flex-1 truncate ${classes.label}`} title={baseName(metric.label)}>
+          {baseName(metric.label)}
+        </span>
         <span className="hidden sm:block">
           <Sparkline series={metric.series} />
         </span>
@@ -101,6 +105,8 @@ function AccountRow({ metric, rowStyle, expanded, onToggle, locale }) {
     </li>
   );
 }
+
+const SEARCH_VISIBLE_ACCOUNTS = 8;
 
 function AccountList({ metrics, statementType, expandedLabel, onToggle, locale, t }) {
   const rowStyles = useMemo(
@@ -128,6 +134,30 @@ function AccountList({ metrics, statementType, expandedLabel, onToggle, locale, 
         />
       ))}
     </ul>
+  );
+}
+
+function SearchResultAccountList({ metrics, statementType, expandedLabel, onToggle, locale, t }) {
+  const { visible, hasMore, expanded, toggle, total } = useExpandableRows(metrics, SEARCH_VISIBLE_ACCOUNTS);
+
+  return (
+    <>
+      <AccountList
+        metrics={visible}
+        statementType={statementType}
+        expandedLabel={expandedLabel}
+        onToggle={onToggle}
+        locale={locale}
+        t={t}
+      />
+      <ExpandToggle
+        hasMore={hasMore}
+        expanded={expanded}
+        total={total}
+        onToggle={toggle}
+        labelKey="company.panels.showAllAccounts"
+      />
+    </>
   );
 }
 
@@ -273,7 +303,7 @@ export function FinancialTrendCharts({ financials, financialsSeparate }) {
               searchResults.map(([statement, metrics]) => (
                 <div key={statement}>
                   <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">{statement}</p>
-                  <AccountList
+                  <SearchResultAccountList
                     metrics={metrics}
                     statementType={statement}
                     expandedLabel={expandedLabel}

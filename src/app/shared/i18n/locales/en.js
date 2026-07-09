@@ -158,7 +158,7 @@ export const en = {
           bullets: [
             "Overview: business, shareholders, risk, and dividends at a glance",
             "Financials: revenue, profit, and cash flow charts",
-            "Filing changes: automatic quarter-over-quarter text diffs",
+            "AI analysis: business shifts, risks, and key takeaways",
           ],
           cta: "Explore company analysis",
         },
@@ -192,7 +192,7 @@ export const en = {
       aiScore: "AI composite score",
       tabOverview: "Overview",
       tabFinancials: "Financials",
-      tabChanges: "Filing changes",
+      tabAiAnalysis: "AI Analysis",
       aiSummaryText:
         "DS revenue share jumped to 61%—HBM demand lifted operating margin from 8.45% to 42.75%.",
       tradingChrome: "Paper trading · Samsung Electronics",
@@ -240,7 +240,7 @@ export const en = {
             author: "FilingFan",
             initial: "F",
             time: "12m ago",
-            body: "The latest filing change log added HBM capex plans—worth a look alongside the margin story.",
+            body: "AI analysis flagged new HBM capex plans—worth a look alongside the margin story.",
           },
         ],
       },
