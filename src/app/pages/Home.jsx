@@ -503,7 +503,7 @@ const COMPANY_LOAD_CONTAINER = {
   visible: { transition: { staggerChildren: 0.06, delayChildren: 0.06 } },
 };
 const COMPANY_LOAD_ITEM = {
-  hidden: { opacity: 0, y: 8 },
+  hidden: { opacity: 0, y: 8, transition: { duration: 0 } },
   visible: { opacity: 1, y: 0, transition: { duration: 0.3, ease: "easeOut" } },
 };
 const COMPANY_LOAD_ITEM_STATIC = {
@@ -530,14 +530,21 @@ function CompanyMockup({ active = false }) {
     "auditOpinion",
   ];
   const loadItem = reduceMotion ? COMPANY_LOAD_ITEM_STATIC : COMPANY_LOAD_ITEM;
-  const [playKey, setPlayKey] = useState(0);
+  /* Idle default is fully "loaded" (visible); hovering replays the stagger as a reload effect. */
+  const [phase, setPhase] = useState("visible");
   const wasActive = useRef(active);
   useEffect(() => {
-    if (active && !wasActive.current) {
-      setPlayKey((k) => k + 1);
+    if (active && !wasActive.current && !reduceMotion) {
+      setPhase("hidden");
     }
     wasActive.current = active;
-  }, [active]);
+  }, [active, reduceMotion]);
+  useEffect(() => {
+    if (phase === "hidden") {
+      const id = requestAnimationFrame(() => setPhase("visible"));
+      return () => cancelAnimationFrame(id);
+    }
+  }, [phase]);
 
   return (
     <BrowserChrome
@@ -547,10 +554,9 @@ function CompanyMockup({ active = false }) {
       contentClassName="p-0 flex flex-col overflow-hidden"
     >
       <motion.div
-        key={`header-${playKey}`}
         className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 px-3 py-2 shrink-0"
-        initial="hidden"
-        animate="visible"
+        initial={false}
+        animate={phase}
         variants={loadItem}
       >
         <ArrowLeft size={12} className="text-slate-400 shrink-0" aria-hidden />
@@ -571,10 +577,9 @@ function CompanyMockup({ active = false }) {
       </motion.div>
 
       <motion.div
-        key={`content-${playKey}`}
         className="flex-1 min-h-0 overflow-hidden bg-white dark:bg-slate-900 px-3 pt-2.5 pb-3"
-        initial="hidden"
-        animate="visible"
+        initial={false}
+        animate={phase}
         variants={COMPANY_LOAD_CONTAINER}
       >
         <motion.div
@@ -656,14 +661,14 @@ function CompanyMockup({ active = false }) {
             <div className="mb-2 flex h-2 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
               {barSegments.map((seg, i) => (
                 <motion.div
-                  key={`${seg.key}-${playKey}`}
-                  initial={{ width: reduceMotion ? `${seg.pct}%` : 0 }}
-                  animate={{ width: `${seg.pct}%` }}
-                  transition={{
-                    duration: reduceMotion ? 0 : 0.5,
-                    ease: "easeOut",
-                    delay: reduceMotion ? 0 : 0.5 + i * 0.08,
-                  }}
+                  key={seg.key}
+                  initial={false}
+                  animate={{ width: phase === "hidden" ? 0 : `${seg.pct}%` }}
+                  transition={
+                    phase === "hidden"
+                      ? { duration: 0 }
+                      : { duration: 0.5, ease: "easeOut", delay: 0.5 + i * 0.08 }
+                  }
                   style={{ backgroundColor: MOCKUP_BAR_COLORS[seg.key] }}
                 />
               ))}
