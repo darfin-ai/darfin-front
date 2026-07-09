@@ -96,6 +96,12 @@ function isNumericText(s) {
 //  - financial: 숫자 셀 비중이 높은 재무/실적표 → 숫자 우측정렬
 //  - form     : 2열 "항목명 : 값" 폼(주요사항보고·거래소 조회공시류) → 좌측 라벨 강조
 //  - default  : 그 외 일반 표 → 기존 스타일 유지
+// 열 개수는 셀 "개수"가 아니라 colSpan 합으로 세야, 병합 셀이 있는 표에서도 실제 열 폭과
+// 맞는다(예: 헤더가 colSpan으로 하위 열을 묶는 재무제표 각주 표).
+function rowSpanWidth(row) {
+  return row.reduce((sum, cell) => sum + (cell.colSpan > 0 ? cell.colSpan : 1), 0);
+}
+
 function detectTableVariant(rows) {
   let numeric = 0, nonEmpty = 0;
   for (const row of rows) {
@@ -106,7 +112,7 @@ function detectTableVariant(rows) {
       if (isNumericText(t)) numeric++;
     }
   }
-  const maxCols = rows.reduce((m, r) => Math.max(m, r.length), 0);
+  const maxCols = rows.reduce((m, r) => Math.max(m, rowSpanWidth(r)), 0);
 
   if (nonEmpty > 0 && numeric / nonEmpty >= 0.35 && rows.length >= 2 && maxCols >= 2) {
     return "financial";
@@ -116,6 +122,17 @@ function detectTableVariant(rows) {
     return "form";
   }
   return "default";
+}
+
+// 재무표 안에서 "값이 아니라 각주/설명 문장"으로 보이는 행(예: "공정가치 공시대상에서
+// 제외한 사유")을 감지한다. 숫자 없이 긴 문장 셀이 대부분이면 데이터 행이 아니라
+// 각주로 보고, 본문과 구분되는 옅은 스타일을 준다 — 안 그러면 숫자 행과 똑같이 그려져서
+// 눈으로 "이게 값인지 설명인지" 구분이 안 된다.
+function isNoteRow(row) {
+  const cells = row.map((c) => cellPlainText(c)).filter(Boolean);
+  if (cells.length === 0) return false;
+  const longTextCells = cells.filter((t) => !isNumericText(t) && t.length > 18);
+  return longTextCells.length >= Math.ceil(cells.length * 0.6);
 }
 
 // ── 제목(heading) 스타일 (개선 1) ────────────────────────────────
@@ -476,49 +493,105 @@ export function OriginalDocument({
     // 개선 2: 표 — 셀 내용으로 variant를 정해 정렬/강조를 다르게 준다.
     if (block.type === "table") {
       const variant = detectTableVariant(block.rows);
-      // 첫 행에 숫자 셀이 하나도 없으면 헤더 행으로 간주(재무/폼 표에 한함).
-      const firstRowIsHeader =
-        variant !== "default" &&
-        block.rows.length > 1 &&
-        block.rows[0].every((c) => !isNumericText(cellPlainText(c)));
+      // 재무제표는 "제58기 1분기 / 제57기 / 제56기" 행 아래에 "금액 / 비중"(또는
+      // "당기 / 전기") 행이 한 번 더 이어지는 2단 헤더가 흔하다. 숫자 셀이 없는
+      // 선두 행이 몇 개든 이어지는 동안 계속 헤더로 간주해서, 두 번째 헤더 행도
+      // 첫 행과 동일하게 가운데 정렬·강조를 받게 한다.
+      // financial 표에만 적용한다 — form 표("부문 | 주요 제품" 다음 "DX 부문 | TV,모니터…"
+      // 같은 2열 라벨:값)는 데이터 행도 숫자가 없는 경우가 흔해서, 같은 규칙을 쓰면
+      // 실제 데이터 행까지 헤더로 잘못 묶인다(실측: 사업보고서 1건에서 29개 표 오탐).
+      const headerRowCount = (() => {
+        if (block.rows.length <= 1) return 0;
+        if (variant === "form") {
+          return block.rows[0].every((c) => !isNumericText(cellPlainText(c))) ? 1 : 0;
+        }
+        if (variant !== "financial") return 0;
+        let count = 0;
+        const limit = Math.min(3, block.rows.length - 1);
+        for (const row of block.rows) {
+          if (count >= limit) break;
+          if (row.length === 0 || !row.every((c) => !isNumericText(cellPlainText(c)))) break;
+          count++;
+        }
+        return count;
+      })();
+
+      const maxCols = block.rows.reduce((m, r) => Math.max(m, rowSpanWidth(r)), 0);
+      // 표 안 세로 스크롤이 생길 만큼 행이 많을 때만 높이를 제한한다 — 짧은 표까지
+      // 스크롤 박스로 가두면 오히려 답답해 보인다.
+      const isTall = block.rows.length > 12;
 
       return (
-        <div key={key} className="my-4 overflow-x-auto rounded-lg border border-slate-200">
-          <table className="min-w-full border-collapse text-[13px]">
+        <div
+          key={key}
+          className={`my-4 rounded-lg border border-slate-200 overflow-auto ${isTall ? "max-h-[420px]" : ""}`}
+        >
+          <table className="min-w-full border-collapse text-sm">
             <tbody>
-              {block.rows.map((row, ri) => (
-                <tr key={ri}>
-                  {row.map((cell, ci) => {
-                    const plain = cellPlainText(cell);
-                    const isHeader = firstRowIsHeader && ri === 0;
-                    const isNumeric = !isHeader && variant === "financial" && isNumericText(plain);
-                    const isFormLabel = !isHeader && variant === "form" && ci === 0;
+              {block.rows.map((row, ri) => {
+                const isHeaderRow = ri < headerRowCount;
+                const noteRow = !isHeaderRow && variant === "financial" && isNoteRow(row);
+                const rowWidth = rowSpanWidth(row);
+                // 다른 행보다 셀이 눈에 띄게 적은 행(예: "전기말" 구간 라벨)은 실제로는
+                // 표 전체 폭을 차지하는 섹션 표시인 경우가 많다 — 마지막 셀을 나머지
+                // 열 수만큼 늘려서 표 중간에 좁은 조각처럼 끊겨 보이지 않게 한다.
+                const shouldFillGap = row.length > 0 && row.length <= 2 && rowWidth < maxCols;
 
-                    const tdClass = [
-                      "border border-slate-200 px-2.5 py-1.5 align-top leading-6 whitespace-pre-wrap",
-                      isHeader
-                        ? "bg-slate-100 font-semibold text-slate-700 text-center"
-                        : isNumeric
-                          ? "text-right tabular-nums font-medium text-slate-800"
-                          : "text-slate-700",
-                      isFormLabel ? "bg-slate-50 font-medium text-slate-600 w-1/3" : "",
-                    ]
-                      .filter(Boolean)
-                      .join(" ");
+                return (
+                  <tr
+                    key={ri}
+                    className={
+                      !isHeaderRow && !noteRow && ri % 2 === 1 ? "bg-slate-50/60" : undefined
+                    }
+                  >
+                    {row.map((cell, ci) => {
+                      const plain = cellPlainText(cell);
+                      const isEmpty =
+                        variant !== "default" && !plain && cell.blocks.every((b) => b.type !== "table");
+                      const isLastCell = ci === row.length - 1;
+                      const isNumeric = !isHeaderRow && variant === "financial" && isNumericText(plain);
+                      const isFormLabel = !isHeaderRow && variant === "form" && ci === 0;
+                      const effectiveColSpan =
+                        shouldFillGap && isLastCell
+                          ? (cell.colSpan > 0 ? cell.colSpan : 1) + (maxCols - rowWidth)
+                          : cell.colSpan;
 
-                    return (
-                      <td
-                        key={ci}
-                        rowSpan={cell.rowSpan > 1 ? cell.rowSpan : undefined}
-                        colSpan={cell.colSpan > 1 ? cell.colSpan : undefined}
-                        className={tdClass}
-                      >
-                        {renderCellContent(cell.blocks, `${key}-${ri}-${ci}`)}
-                      </td>
-                    );
-                  })}
-                </tr>
-              ))}
+                      // 헤더는 라벨이 짧고 고정돼 있어 줄바꿈 없이 가운데 정렬하는 게 더 읽기 쉽다
+                      // (whitespace-pre-wrap을 유지하면 좁은 열에서 "금액"/"비중"도 줄바꿈될 수 있다).
+                      // sticky는 첫 헤더 행에만 건다 — 2단 헤더에서 둘째 행까지 top-0로 고정하면
+                      // 스크롤 시 첫 행과 같은 위치에서 겹친다.
+                      const tdClass = [
+                        "border border-slate-200 px-3 py-2 align-top leading-6",
+                        isHeaderRow
+                          ? `whitespace-nowrap text-center bg-slate-100 font-semibold text-slate-700 ${ri === 0 ? "sticky top-0 z-10" : ""}`
+                          : noteRow
+                            ? "whitespace-pre-wrap text-slate-500 text-xs italic bg-slate-50/40"
+                            : isNumeric
+                              ? "whitespace-pre-wrap text-right tabular-nums font-medium text-slate-800"
+                              : "whitespace-pre-wrap text-slate-700",
+                        isFormLabel ? "bg-slate-50 font-medium text-slate-600 w-1/3" : "",
+                      ]
+                        .filter(Boolean)
+                        .join(" ");
+
+                      return (
+                        <td
+                          key={ci}
+                          rowSpan={cell.rowSpan > 1 ? cell.rowSpan : undefined}
+                          colSpan={effectiveColSpan > 1 ? effectiveColSpan : undefined}
+                          className={tdClass}
+                        >
+                          {isEmpty && !isHeaderRow ? (
+                            <span className="text-slate-300">–</span>
+                          ) : (
+                            renderCellContent(cell.blocks, `${key}-${ri}-${ci}`)
+                          )}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

@@ -423,7 +423,7 @@ export function DisclosureViewer() {
               )}
               {termsEnabled && termHighlights.length > 0 && (
                 <span className="flex items-center gap-1.5">
-                  <span className="inline-block text-slate-600 dark:text-slate-300 border-b-2 border-dotted border-slate-400 dark:border-slate-500">用語</span>
+                  <span className="inline-block text-slate-600 dark:text-slate-300 border-b-2 border-dotted border-slate-400 dark:border-slate-500">용어</span>
                   {t("disclosure.viewer.legendTerms")}
                 </span>
               )}
@@ -440,6 +440,14 @@ export function DisclosureViewer() {
             <div className="flex-1 flex flex-col items-center justify-center gap-3 p-8 text-center text-slate-400 dark:text-slate-500">
               <AlertTriangle size={32} className="text-red-400 dark:text-red-500" />
               <p className="text-sm text-red-600 dark:text-red-400">{originalTextError}</p>
+              <button
+                type="button"
+                onClick={handleOpenDartViewer}
+                className={`flex items-center gap-1.5 ${BTN_PRIMARY} mt-1`}
+              >
+                <ExternalLink size={16} />
+                {t("disclosure.download.openDart")}
+              </button>
             </div>
           ) : (
             <div className="flex-1 overflow-y-auto p-6" ref={originalPanelRef}>
