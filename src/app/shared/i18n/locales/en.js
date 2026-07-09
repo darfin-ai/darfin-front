@@ -193,6 +193,28 @@ export const en = {
       tabOverview: "Overview",
       tabFinancials: "Financials",
       tabAiAnalysis: "AI Analysis",
+      companyOverview: {
+        basisYear: "2024",
+        basisReportCode: "11013",
+        metrics: {
+          majorHolderStake: "19.7%",
+          minorityStake: "66.0%",
+          floatRatio: "98.4%",
+          dividendYield: "0.2%",
+          employees: "257,762",
+          auditOpinion: "Unqualified",
+        },
+        barSegments: [
+          { key: "major", pct: 19.7 },
+          { key: "minority", pct: 66.0 },
+          { key: "others", pct: 14.3 },
+        ],
+        shareholders: [
+          { name: "Samsung Life Insurance", relation: "Largest shareholder", begin: "8.51%", end: "8.41%", delta: "-0.10%p", deltaDown: true },
+          { name: "Hong Ra-hee", relation: "Affiliate executive", begin: "2.30%", end: "2.30%" },
+          { name: "Lee Jae-yong", relation: "Affiliate executive", begin: "1.73%", end: "1.73%" },
+        ],
+      },
       aiSummaryText:
         "DS revenue share jumped to 61%—HBM demand lifted operating margin from 8.45% to 42.75%.",
       tradingChrome: "Paper trading · Samsung Electronics",

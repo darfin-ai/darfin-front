@@ -192,6 +192,28 @@ export const ko = {
       tabOverview: "개요",
       tabFinancials: "재무 추이",
       tabAiAnalysis: "AI 분석",
+      companyOverview: {
+        basisYear: "2024",
+        basisReportCode: "11013",
+        metrics: {
+          majorHolderStake: "19.7%",
+          minorityStake: "66.0%",
+          floatRatio: "98.4%",
+          dividendYield: "0.2%",
+          employees: "257,762명",
+          auditOpinion: "적정의견",
+        },
+        barSegments: [
+          { key: "major", pct: 19.7 },
+          { key: "minority", pct: 66.0 },
+          { key: "others", pct: 14.3 },
+        ],
+        shareholders: [
+          { name: "삼성생명보험(주)", relation: "최대주주 본인", begin: "8.51%", end: "8.41%", delta: "-0.10%p", deltaDown: true },
+          { name: "홍라희", relation: "계열회사 임원", begin: "2.30%", end: "2.30%" },
+          { name: "이재용", relation: "계열회사 임원", begin: "1.73%", end: "1.73%" },
+        ],
+      },
       aiSummaryText:
         "DS 부문 매출 비중이 61%로 급등 — HBM 수요 확대가 영업이익률을 8.45%→42.75%로 끌어올림.",
       tradingChrome: "모의투자 · 삼성전자",

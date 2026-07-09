@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, Link } from "react-router";
 import { motion, AnimatePresence, useReducedMotion, useInView } from "motion/react";
-import { ChevronRight, ChevronDown, ArrowRight, Lightbulb, TrendingUp, Landmark, AlertTriangle, ShieldCheck, Check } from "lucide-react";
+import { ChevronRight, ChevronDown, ArrowRight, ArrowLeft, Lightbulb, TrendingUp, Landmark, AlertTriangle, ShieldCheck, Check } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useAuth } from "../features/auth";
 import { useLocale } from "../shared/i18n";
@@ -482,60 +482,195 @@ function BrowserChrome({ label, children, active = false, className = "", conten
   );
 }
 
+const MOCKUP_BAR_COLORS = {
+  major: "#1e40af",
+  minority: "#3b82f6",
+  others: "#94a3b8",
+};
+
+function CompanyMockupStatCell({ label, value }) {
+  return (
+    <div className="bg-white dark:bg-slate-900 px-2 py-2 text-center">
+      <p className="text-[9px] leading-tight text-slate-500 dark:text-slate-400">{label}</p>
+      <p className="mt-0.5 text-xs font-semibold tabular-nums text-slate-900 dark:text-slate-100">{value}</p>
+    </div>
+  );
+}
+
 function CompanyMockup({ active = false }) {
   const { t } = useLocale();
   const reduceMotion = useReducedMotion();
+  const overview = t("landing.mockups.companyOverview");
+  const metrics = overview.metrics;
+  const shareholders = overview.shareholders ?? [];
+  const barSegments = overview.barSegments ?? [];
+  const companyName = t("landing.mockups.demoCompanyName");
+  const mockAvatarLabel = companyName.length <= 2 ? companyName : companyName.slice(0, 2);
+  const subNavKeys = ["governance", "capital", "returns", "snapshot"];
+  const metricKeys = [
+    "majorHolderStake",
+    "minorityStake",
+    "floatRatio",
+    "dividendYield",
+    "employees",
+    "auditOpinion",
+  ];
+
   return (
-    <BrowserChrome label={t("landing.mockups.companyChrome")} active={active}>
-      <div className="flex items-center justify-between mb-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <span className="font-medium text-slate-900 dark:text-slate-100">{t("landing.mockups.demoCompanyName")}</span>
-            <span className="text-xs text-slate-400 dark:text-slate-500 tabular-nums">005930</span>
-            <span className="rounded-full bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 text-[10px] font-medium px-1.5 py-0.5">KOSPI</span>
+    <BrowserChrome
+      label={t("landing.mockups.companyChrome")}
+      active={active}
+      className="min-h-[440px] sm:min-h-[460px]"
+      contentClassName="p-0 flex flex-col overflow-hidden"
+    >
+      <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 px-3 py-2 shrink-0">
+        <ArrowLeft size={12} className="text-slate-400 shrink-0" aria-hidden />
+        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-blue-600 text-[9px] font-semibold text-white">
+          {mockAvatarLabel}
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-1.5">
+            <span className="truncate text-xs font-semibold text-slate-900 dark:text-slate-100">
+              {t("landing.mockups.demoCompanyName")}
+            </span>
+            <span className="text-[10px] text-slate-400 tabular-nums">005930</span>
+            <span className="rounded-full border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/40 px-1 py-0.5 text-[8px] font-medium text-blue-700 dark:text-blue-300">
+              KOSPI
+            </span>
           </div>
-          <div className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">{t("landing.mockups.companySector")}</div>
         </div>
+      </div>
+
+      <div className="flex-1 min-h-0 overflow-hidden bg-white dark:bg-slate-900 px-3 pt-2.5 pb-3">
+        <div className="mb-2.5 flex items-center gap-1.5 rounded-lg border border-emerald-200 dark:border-emerald-900/60 bg-emerald-50/80 dark:bg-emerald-950/30 px-2.5 py-1.5">
+          <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500" aria-hidden />
+          <p className="text-[10px] text-emerald-800 dark:text-emerald-300">{t("company.detail.monitoringActive")}</p>
+        </div>
+
+        <div className="mb-3 flex gap-1 rounded-lg bg-slate-100/80 dark:bg-slate-800/80 p-0.5 text-[10px] font-medium">
+          <span className="flex-1 rounded-md bg-white dark:bg-slate-900 py-1 text-center text-slate-900 dark:text-slate-100 shadow-sm">
+            {t("landing.mockups.tabOverview")}
+          </span>
+          <span className="flex-1 py-1 text-center text-slate-400 dark:text-slate-500">{t("landing.mockups.tabAiAnalysis")}</span>
+          <span className="flex-1 py-1 text-center text-slate-400 dark:text-slate-500">{t("landing.mockups.tabFinancials")}</span>
+        </div>
+
+        <div className="mb-1.5 flex justify-end">
+          <span className="rounded-full border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-2 py-0.5 text-[9px] font-medium text-slate-500 dark:text-slate-400">
+            {t("company.dart.basisBadge", {
+              year: overview.basisYear,
+              report: t(`company.dart.reportCode.${overview.basisReportCode}`),
+            })}
+          </span>
+        </div>
+
         <motion.div
-          className="text-right"
-          animate={active && !reduceMotion ? { scale: [1, 1.08, 1] } : { scale: 1 }}
-          transition={{ duration: 0.5, ease: "easeOut" }}
+          className="mb-3 grid grid-cols-3 gap-px overflow-hidden rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-200 dark:bg-slate-800"
+          animate={active && !reduceMotion ? { opacity: [0.92, 1] } : { opacity: 1 }}
+          transition={{ duration: 0.4 }}
         >
-          <div className="text-xs text-slate-400 dark:text-slate-500">{t("landing.mockups.aiScore")}</div>
-          <div className="text-base font-semibold text-blue-600 dark:text-blue-400 tabular-nums">78</div>
+          {metricKeys.map((key) => (
+            <CompanyMockupStatCell
+              key={key}
+              label={t(`company.dart.hero.${key}`)}
+              value={metrics[key]}
+            />
+          ))}
         </motion.div>
-      </div>
-      <div className="flex gap-1 mb-6 bg-slate-100/80 dark:bg-slate-800/80 rounded-lg p-1 text-xs font-medium">
-        <span className="flex-1 text-center py-1.5 bg-white dark:bg-slate-900 rounded-md text-slate-900 dark:text-slate-100 shadow-sm">{t("landing.mockups.tabOverview")}</span>
-        <span className="flex-1 text-center py-1.5 text-slate-400 dark:text-slate-500">{t("landing.mockups.tabFinancials")}</span>
-        <span className="flex-1 text-center py-1.5 text-slate-400 dark:text-slate-500">{t("landing.mockups.tabAiAnalysis")}</span>
-      </div>
-      <div className="flex items-start justify-between mb-6 px-1 flex-1">
-        {["2024 Q1", "2025 Q1", "2026 Q1"].map((q, i) => (
-          <div key={q} className="flex flex-col items-center gap-1 relative flex-1">
-            {i > 0 && <div className="absolute right-1/2 top-3 w-full h-px bg-slate-200 dark:bg-slate-700 -z-10" />}
-            <motion.div
-              className={`h-6 w-6 rounded-full flex items-center justify-center text-[10px] font-bold ${i === 2 ? "bg-blue-600 text-white" : "bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400"}`}
-              animate={active && !reduceMotion && i === 2 ? { scale: [1, 1.2, 1] } : { scale: 1 }}
-              transition={{ duration: 0.45, ease: "easeOut" }}
+
+        <nav className="mb-2.5 flex gap-3 overflow-x-auto border-b border-slate-200 dark:border-slate-800">
+          {subNavKeys.map((key, i) => (
+            <span
+              key={key}
+              className={`whitespace-nowrap pb-1.5 text-[10px] font-medium ${
+                i === 0
+                  ? "border-b-2 border-blue-600 text-blue-600 dark:text-blue-400"
+                  : "text-slate-400 dark:text-slate-500"
+              }`}
             >
-              {i === 2 ? "●" : "✓"}
-            </motion.div>
-            <span className="text-[10px] text-slate-400 dark:text-slate-500 tabular-nums">{q}</span>
-          </div>
-        ))}
-      </div>
-      <motion.div
-        className="flex gap-2 rounded-md border border-blue-100 dark:border-blue-900/50 bg-blue-50/60 dark:bg-blue-950/30 px-3 py-2.5"
-        animate={active && !reduceMotion ? { y: [0, -3, 0] } : { y: 0 }}
-        transition={{ duration: 0.5, ease: "easeOut" }}
-      >
-        <Lightbulb size={13} className="mt-0.5 shrink-0 text-blue-500 dark:text-blue-400" />
-        <p className="text-xs leading-relaxed text-slate-700 dark:text-slate-300">
-          <span className="font-medium text-blue-700 dark:text-blue-300">{t("landing.demo.aiSummary")} </span>
-          {t("landing.mockups.aiSummaryText")}
+              {t(`company.dart.groups.${key}`).replace(/^\d+\s*·\s*/, "")}
+            </span>
+          ))}
+        </nav>
+
+        <p className="mb-2 text-[9px] font-semibold uppercase tracking-widest text-slate-400 dark:text-slate-500">
+          {t("company.dart.groups.governance")}
         </p>
-      </motion.div>
+
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          <div className="min-w-0 rounded-lg border border-slate-200 dark:border-slate-800 p-2.5">
+            <div className="mb-2 flex items-start justify-between gap-1">
+              <h3 className="text-[10px] font-semibold text-slate-900 dark:text-slate-100">
+                {t("company.dart.panels.majorShareholders")}
+              </h3>
+              <span className="shrink-0 rounded-full border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-1.5 py-0.5 text-[8px] font-medium text-slate-500">
+                {t("company.panels.viewSourceFull")}
+              </span>
+            </div>
+            <div className="mb-2 flex h-2 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+              {barSegments.map((seg, i) => (
+                <motion.div
+                  key={seg.key}
+                  initial={{ width: 0 }}
+                  animate={{ width: `${seg.pct}%` }}
+                  transition={{
+                    duration: active && !reduceMotion ? 0.5 : 0,
+                    ease: "easeOut",
+                    delay: active && !reduceMotion ? i * 0.08 : 0,
+                  }}
+                  style={{ backgroundColor: MOCKUP_BAR_COLORS[seg.key] }}
+                />
+              ))}
+            </div>
+            <div className="mb-2 flex flex-wrap gap-x-2 gap-y-0.5">
+              {[
+                { key: "major", label: t("company.dart.labels.majorGroup"), pct: "19.7%" },
+                { key: "minority", label: t("company.dart.labels.minorityGroup"), pct: "66.0%" },
+                { key: "others", label: t("company.dart.labels.othersGroup"), pct: "14.3%" },
+              ].map((seg) => (
+                <span key={seg.key} className="inline-flex items-center gap-1 text-[8px] text-slate-500">
+                  <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: MOCKUP_BAR_COLORS[seg.key] }} />
+                  {seg.label} <span className="font-semibold text-slate-700 dark:text-slate-300">{seg.pct}</span>
+                </span>
+              ))}
+            </div>
+            <table className="w-full border-collapse text-[8px]">
+              <thead>
+                <tr className="border-b border-slate-200 dark:border-slate-800 text-slate-400">
+                  <th className="py-1 text-left font-medium">{t("company.dart.labels.holder")}</th>
+                  <th className="py-1 text-left font-medium">{t("company.dart.labels.relation")}</th>
+                  <th className="py-1 text-right font-medium">{t("company.dart.labels.stakeEnd")}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {shareholders.map((row) => (
+                  <tr key={row.name} className="border-b border-slate-100 dark:border-slate-800/80 text-slate-600 dark:text-slate-400">
+                    <td className="py-1 pr-1 text-slate-900 dark:text-slate-100">{row.name}</td>
+                    <td className="py-1 pr-1">{row.relation}</td>
+                    <td className="py-1 text-right tabular-nums">
+                      <span className="font-medium text-slate-800 dark:text-slate-200">{row.end}</span>
+                      {row.delta && (
+                        <span className={`ml-1 ${row.deltaDown ? "text-blue-600 dark:text-blue-400" : "text-red-600"}`}>
+                          {row.delta}
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="min-w-0 rounded-lg border border-slate-200 dark:border-slate-800 p-2.5">
+            <h3 className="mb-2 text-[10px] font-semibold text-slate-900 dark:text-slate-100">
+              {t("company.dart.panels.shareholderChanges")}
+            </h3>
+            <p className="text-[9px] leading-relaxed text-slate-400 dark:text-slate-500">
+              {t("company.dart.empty.shareholderChanges")}
+            </p>
+          </div>
+        </div>
+      </div>
     </BrowserChrome>
   );
 }
