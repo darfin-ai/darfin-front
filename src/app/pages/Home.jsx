@@ -497,6 +497,20 @@ function CompanyMockupStatCell({ label, value }) {
   );
 }
 
+/* Content loads in with a stagger, as if the page just finished navigating in from a click. */
+const COMPANY_LOAD_CONTAINER = {
+  hidden: {},
+  visible: { transition: { staggerChildren: 0.06, delayChildren: 0.06 } },
+};
+const COMPANY_LOAD_ITEM = {
+  hidden: { opacity: 0, y: 8 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.3, ease: "easeOut" } },
+};
+const COMPANY_LOAD_ITEM_STATIC = {
+  hidden: { opacity: 1, y: 0 },
+  visible: { opacity: 1, y: 0 },
+};
+
 function CompanyMockup({ active = false }) {
   const { t } = useLocale();
   const reduceMotion = useReducedMotion();
@@ -515,6 +529,15 @@ function CompanyMockup({ active = false }) {
     "employees",
     "auditOpinion",
   ];
+  const loadItem = reduceMotion ? COMPANY_LOAD_ITEM_STATIC : COMPANY_LOAD_ITEM;
+  const [playKey, setPlayKey] = useState(0);
+  const wasActive = useRef(active);
+  useEffect(() => {
+    if (active && !wasActive.current) {
+      setPlayKey((k) => k + 1);
+    }
+    wasActive.current = active;
+  }, [active]);
 
   return (
     <BrowserChrome
@@ -523,7 +546,13 @@ function CompanyMockup({ active = false }) {
       className="min-h-[440px] sm:min-h-[460px]"
       contentClassName="p-0 flex flex-col overflow-hidden"
     >
-      <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 px-3 py-2 shrink-0">
+      <motion.div
+        key={`header-${playKey}`}
+        className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 px-3 py-2 shrink-0"
+        initial="hidden"
+        animate="visible"
+        variants={loadItem}
+      >
         <ArrowLeft size={12} className="text-slate-400 shrink-0" aria-hidden />
         <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-blue-600 text-[9px] font-semibold text-white">
           {mockAvatarLabel}
@@ -539,35 +568,46 @@ function CompanyMockup({ active = false }) {
             </span>
           </div>
         </div>
-      </div>
+      </motion.div>
 
-      <div className="flex-1 min-h-0 overflow-hidden bg-white dark:bg-slate-900 px-3 pt-2.5 pb-3">
-        <div className="mb-2.5 flex items-center gap-1.5 rounded-lg border border-emerald-200 dark:border-emerald-900/60 bg-emerald-50/80 dark:bg-emerald-950/30 px-2.5 py-1.5">
+      <motion.div
+        key={`content-${playKey}`}
+        className="flex-1 min-h-0 overflow-hidden bg-white dark:bg-slate-900 px-3 pt-2.5 pb-3"
+        initial="hidden"
+        animate="visible"
+        variants={COMPANY_LOAD_CONTAINER}
+      >
+        <motion.div
+          variants={loadItem}
+          className="mb-2.5 flex items-center gap-1.5 rounded-lg border border-emerald-200 dark:border-emerald-900/60 bg-emerald-50/80 dark:bg-emerald-950/30 px-2.5 py-1.5"
+        >
           <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500" aria-hidden />
           <p className="text-[10px] text-emerald-800 dark:text-emerald-300">{t("company.detail.monitoringActive")}</p>
-        </div>
+        </motion.div>
 
-        <div className="mb-3 flex gap-1 rounded-lg bg-slate-100/80 dark:bg-slate-800/80 p-0.5 text-[10px] font-medium">
+        <motion.div
+          variants={loadItem}
+          className="mb-3 flex gap-1 rounded-lg bg-slate-100/80 dark:bg-slate-800/80 p-0.5 text-[10px] font-medium"
+        >
           <span className="flex-1 rounded-md bg-white dark:bg-slate-900 py-1 text-center text-slate-900 dark:text-slate-100 shadow-sm">
             {t("landing.mockups.tabOverview")}
           </span>
           <span className="flex-1 py-1 text-center text-slate-400 dark:text-slate-500">{t("landing.mockups.tabAiAnalysis")}</span>
           <span className="flex-1 py-1 text-center text-slate-400 dark:text-slate-500">{t("landing.mockups.tabFinancials")}</span>
-        </div>
+        </motion.div>
 
-        <div className="mb-1.5 flex justify-end">
+        <motion.div variants={loadItem} className="mb-1.5 flex justify-end">
           <span className="rounded-full border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-2 py-0.5 text-[9px] font-medium text-slate-500 dark:text-slate-400">
             {t("company.dart.basisBadge", {
               year: overview.basisYear,
               report: t(`company.dart.reportCode.${overview.basisReportCode}`),
             })}
           </span>
-        </div>
+        </motion.div>
 
         <motion.div
+          variants={loadItem}
           className="mb-3 grid grid-cols-3 gap-px overflow-hidden rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-200 dark:bg-slate-800"
-          animate={active && !reduceMotion ? { opacity: [0.92, 1] } : { opacity: 1 }}
-          transition={{ duration: 0.4 }}
         >
           {metricKeys.map((key) => (
             <CompanyMockupStatCell
@@ -578,7 +618,10 @@ function CompanyMockup({ active = false }) {
           ))}
         </motion.div>
 
-        <nav className="mb-2.5 flex gap-3 overflow-x-auto border-b border-slate-200 dark:border-slate-800">
+        <motion.nav
+          variants={loadItem}
+          className="mb-2.5 flex gap-3 overflow-x-auto border-b border-slate-200 dark:border-slate-800"
+        >
           {subNavKeys.map((key, i) => (
             <span
               key={key}
@@ -591,14 +634,17 @@ function CompanyMockup({ active = false }) {
               {t(`company.dart.groups.${key}`).replace(/^\d+\s*·\s*/, "")}
             </span>
           ))}
-        </nav>
+        </motion.nav>
 
-        <p className="mb-2 text-[9px] font-semibold uppercase tracking-widest text-slate-400 dark:text-slate-500">
+        <motion.p
+          variants={loadItem}
+          className="mb-2 text-[9px] font-semibold uppercase tracking-widest text-slate-400 dark:text-slate-500"
+        >
           {t("company.dart.groups.governance")}
-        </p>
+        </motion.p>
 
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-          <div className="min-w-0 rounded-lg border border-slate-200 dark:border-slate-800 p-2.5">
+          <motion.div variants={loadItem} className="min-w-0 rounded-lg border border-slate-200 dark:border-slate-800 p-2.5">
             <div className="mb-2 flex items-start justify-between gap-1">
               <h3 className="text-[10px] font-semibold text-slate-900 dark:text-slate-100">
                 {t("company.dart.panels.majorShareholders")}
@@ -610,13 +656,13 @@ function CompanyMockup({ active = false }) {
             <div className="mb-2 flex h-2 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
               {barSegments.map((seg, i) => (
                 <motion.div
-                  key={seg.key}
-                  initial={{ width: 0 }}
+                  key={`${seg.key}-${playKey}`}
+                  initial={{ width: reduceMotion ? `${seg.pct}%` : 0 }}
                   animate={{ width: `${seg.pct}%` }}
                   transition={{
-                    duration: active && !reduceMotion ? 0.5 : 0,
+                    duration: reduceMotion ? 0 : 0.5,
                     ease: "easeOut",
-                    delay: active && !reduceMotion ? i * 0.08 : 0,
+                    delay: reduceMotion ? 0 : 0.5 + i * 0.08,
                   }}
                   style={{ backgroundColor: MOCKUP_BAR_COLORS[seg.key] }}
                 />
@@ -659,18 +705,18 @@ function CompanyMockup({ active = false }) {
                 ))}
               </tbody>
             </table>
-          </div>
+          </motion.div>
 
-          <div className="min-w-0 rounded-lg border border-slate-200 dark:border-slate-800 p-2.5">
+          <motion.div variants={loadItem} className="min-w-0 rounded-lg border border-slate-200 dark:border-slate-800 p-2.5">
             <h3 className="mb-2 text-[10px] font-semibold text-slate-900 dark:text-slate-100">
               {t("company.dart.panels.shareholderChanges")}
             </h3>
             <p className="text-[9px] leading-relaxed text-slate-400 dark:text-slate-500">
               {t("company.dart.empty.shareholderChanges")}
             </p>
-          </div>
+          </motion.div>
         </div>
-      </div>
+      </motion.div>
     </BrowserChrome>
   );
 }
