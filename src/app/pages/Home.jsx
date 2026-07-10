@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, Link } from "react-router";
 import { motion, AnimatePresence, useReducedMotion, useInView } from "motion/react";
-import { ChevronRight, ChevronDown, ArrowRight, ArrowLeft, Lightbulb, TrendingUp, Landmark, AlertTriangle, ShieldCheck, Check } from "lucide-react";
+import { ChevronRight, ChevronDown, ArrowRight, ArrowLeft, Lightbulb, TrendingUp, Landmark, AlertTriangle, ShieldCheck, Check, CheckCircle2, CornerDownRight, MessageCircle } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useAuth } from "../features/auth";
 import { useLocale } from "../shared/i18n";
@@ -914,21 +914,14 @@ function TradingMockup({ active = false }) {
   );
 }
 
-function CommunityTypingIndicator({ paletteIndex = 0 }) {
+function AnswerSkeleton({ indent = false }) {
   return (
-    <div className="flex items-center gap-2 px-1 py-0.5">
-      <div
-        className={`h-6 w-6 shrink-0 rounded-full bg-gradient-to-br ${AVATAR_PALETTE[paletteIndex % AVATAR_PALETTE.length]} opacity-40`}
-      />
-      <div className="flex items-center gap-1 px-2.5 py-2 rounded-2xl bg-slate-100 dark:bg-slate-800 border border-slate-200/60 dark:border-slate-700/60">
-        {[0, 1, 2].map((i) => (
-          <motion.span
-            key={i}
-            className="w-1.5 h-1.5 rounded-full bg-slate-400 dark:bg-slate-500"
-            animate={{ y: [0, -3, 0], opacity: [0.35, 1, 0.35] }}
-            transition={{ duration: 0.55, repeat: Infinity, delay: i * 0.14, ease: "easeInOut" }}
-          />
-        ))}
+    <div className={`flex gap-2 rounded-lg p-2 ${indent ? "ml-7" : ""}`}>
+      <div className="h-6 w-6 shrink-0 rounded-full bg-slate-200 dark:bg-slate-700 animate-pulse" />
+      <div className="min-w-0 flex-1 py-0.5 space-y-1.5">
+        <div className="h-2 w-14 rounded-full bg-slate-200 dark:bg-slate-700 animate-pulse" />
+        <div className="h-2 w-full rounded-full bg-slate-100 dark:bg-slate-800 animate-pulse" />
+        <div className="h-2 w-3/4 rounded-full bg-slate-100 dark:bg-slate-800 animate-pulse" />
       </div>
     </div>
   );
@@ -945,7 +938,8 @@ function CommunityMockup({ active = false }) {
 
   const [visibleCount, setVisibleCount] = useState(messages.length);
   const [showTyping, setShowTyping] = useState(false);
-  const [threadFaded, setThreadFaded] = useState(false);
+  const [typedLength, setTypedLength] = useState(thread.title.length);
+  const [showAdopted, setShowAdopted] = useState(true);
   const timersRef = useRef([]);
   const sequenceIdRef = useRef(0);
 
@@ -964,64 +958,63 @@ function CommunityMockup({ active = false }) {
     const isCurrent = () => sequenceId === sequenceIdRef.current;
 
     clearTimers();
-    setThreadFaded(false);
     setVisibleCount(0);
     setShowTyping(false);
+    setShowAdopted(false);
+    setTypedLength(0);
 
     if (reduceMotion) {
+      setTypedLength(thread.title.length);
       setVisibleCount(messages.length);
+      setShowAdopted(true);
       return;
     }
 
-    const TYPING_MS = 850;
-    const MESSAGE_GAP_MS = 500;
-    const LOOP_PAUSE_MS = 3200;
-    const LOOP_FADE_MS = 280;
-    let delay = 400;
+    const TYPE_CHAR_MS = 32;
+    const TITLE_PAUSE_MS = 320;
+    const SKELETON_MS = 420;
+    const POP_INTERVAL_MS = 380;
+    const END_PAUSE_MS = 550;
+    let delay = 300;
+
+    // Type out the question one character at a time.
+    const title = thread.title;
+    for (let i = 1; i <= title.length; i++) {
+      schedule(() => {
+        if (!isCurrent()) return;
+        setTypedLength(i);
+      }, delay);
+      delay += TYPE_CHAR_MS;
+    }
+    delay += TITLE_PAUSE_MS;
 
     schedule(() => {
       if (!isCurrent()) return;
       setShowTyping(true);
     }, delay);
-    delay += TYPING_MS;
-
-    messages.forEach((_, i) => {
-      const nextCount = i + 1;
-      schedule(() => {
-        if (!isCurrent()) return;
-        setShowTyping(false);
-      }, delay);
-      delay += 160;
-
-      schedule(() => {
-        if (!isCurrent()) return;
-        setVisibleCount(nextCount);
-      }, delay);
-      delay += 380;
-
-      if (i < messages.length - 1) {
-        delay += MESSAGE_GAP_MS;
-        schedule(() => {
-          if (!isCurrent()) return;
-          setShowTyping(true);
-        }, delay);
-        delay += TYPING_MS;
-      }
-    });
+    delay += SKELETON_MS;
 
     schedule(() => {
-      if (!isCurrent() || !activeRef.current) return;
-      setThreadFaded(true);
-    }, delay + LOOP_PAUSE_MS - LOOP_FADE_MS);
-
-    schedule(() => {
-      if (!isCurrent() || !activeRef.current) return;
-      setVisibleCount(0);
+      if (!isCurrent()) return;
       setShowTyping(false);
-      setThreadFaded(false);
-      runChatSequence();
-    }, delay + LOOP_PAUSE_MS);
-  }, [clearTimers, messages, reduceMotion, schedule]);
+    }, delay);
+
+    // Pop in each answer at a steady rhythm, no per-message typing wait.
+    messages.forEach((_, i) => {
+      schedule(() => {
+        if (!isCurrent()) return;
+        setVisibleCount(i + 1);
+      }, delay);
+      if (i < messages.length - 1) delay += POP_INTERVAL_MS;
+    });
+    delay += END_PAUSE_MS;
+
+    // Reveal the resolved state and adopted answer highlight last.
+    schedule(() => {
+      if (!isCurrent()) return;
+      setShowAdopted(true);
+    }, delay);
+  }, [clearTimers, messages, reduceMotion, schedule, thread.title]);
 
   useEffect(() => {
     if (active) {
@@ -1029,14 +1022,19 @@ function CommunityMockup({ active = false }) {
     } else {
       sequenceIdRef.current += 1;
       clearTimers();
-      setThreadFaded(false);
       setVisibleCount(messages.length);
       setShowTyping(false);
+      setShowAdopted(true);
+      setTypedLength(thread.title.length);
     }
     return clearTimers;
-  }, [active, runChatSequence, clearTimers, messages.length]);
+  }, [active, runChatSequence, clearTimers, messages.length, thread.title.length]);
 
-  const replyCount = Math.max(0, visibleCount - 1);
+  const adoptedIndex = messages.findIndex((msg) => msg.adopted);
+  const isResolved = adoptedIndex !== -1 && showAdopted;
+  const answeredCount = messages.slice(0, visibleCount).filter((msg) => !msg.isReply).length;
+  const typedTitle = thread.title.slice(0, typedLength);
+  const isTypingTitle = active && !reduceMotion && typedLength < thread.title.length;
 
   return (
     <BrowserChrome
@@ -1051,81 +1049,122 @@ function CommunityMockup({ active = false }) {
               {thread.company} <span className="text-slate-400 dark:text-slate-500 tabular-nums">{thread.ticker}</span>
             </span>
             <motion.span
-              key={active ? replyCount : "final"}
-              initial={active && !reduceMotion ? { opacity: 0 } : false}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.2, ease: "easeOut" }}
-              className="text-[10px] font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 px-1.5 py-0.5 rounded-full border border-blue-200 dark:border-blue-800 tabular-nums"
+              key={isResolved ? "resolved" : "awaiting"}
+              layout
+              initial={active && !reduceMotion ? { opacity: 0, scale: 0.92 } : false}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ type: "spring", stiffness: 420, damping: 28 }}
+              className={
+                isResolved
+                  ? "flex items-center gap-1 text-emerald-600 dark:text-emerald-400 text-[10px] font-medium bg-emerald-50 dark:bg-emerald-950/30 px-1.5 py-0.5 rounded-md"
+                  : "text-slate-500 dark:text-slate-400 text-[10px] font-medium bg-slate-50 dark:bg-slate-800/50 px-1.5 py-0.5 rounded-md border border-slate-200 dark:border-slate-700"
+              }
             >
-              {replyCount > 0
-                ? `${thread.replyCountPrefix}${replyCount}${thread.replyCountSuffix}`
-                : thread.awaitingReply}
+              {isResolved && <CheckCircle2 size={10} />}
+              {isResolved ? thread.resolvedLabel : thread.awaitingLabel}
             </motion.span>
           </div>
-          <p className="text-xs font-medium text-slate-900 dark:text-slate-100 leading-snug">{thread.title}</p>
+          <p className="text-xs font-medium text-slate-900 dark:text-slate-100 leading-snug">
+            {active && !reduceMotion ? typedTitle : thread.title}
+            {isTypingTitle && (
+              <span className="inline-block w-[2px] h-3 -mb-px ml-0.5 bg-slate-900 dark:bg-slate-100 animate-pulse align-middle" />
+            )}
+          </p>
         </div>
 
-        <motion.div
-          className="flex-1 min-h-0 overflow-hidden space-y-2"
-          animate={{ opacity: threadFaded ? 0 : 1 }}
-          transition={{ duration: 0.28, ease: "easeInOut" }}
-        >
-          <AnimatePresence initial={false}>
-            {messages.slice(0, visibleCount).map((msg, i) => (
-              <motion.div
-                key={`${msg.author}-${i}`}
-                initial={active && !reduceMotion && i === visibleCount - 1 ? { opacity: 0 } : false}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.2, ease: "easeOut" }}
-                className={msg.isReply ? "ml-4" : undefined}
-              >
-                <div
-                  className={`flex gap-2 rounded-lg p-2 ${
-                    msg.adopted
-                      ? "border border-emerald-200 dark:border-emerald-900/50 bg-emerald-50/60 dark:bg-emerald-950/20"
-                      : msg.isReply
-                        ? "border border-slate-100 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-800/40"
-                        : ""
-                  }`}
-                >
-                  <div
-                    className={`h-6 w-6 shrink-0 rounded-full bg-gradient-to-br ${AVATAR_PALETTE[i % AVATAR_PALETTE.length]} text-white text-[9px] font-medium flex items-center justify-center`}
-                  >
-                    {msg.initial}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-1.5 mb-0.5 flex-wrap">
-                      <span className="text-[10px] font-medium text-slate-800 dark:text-slate-200">{msg.author}</span>
-                      <span className="text-[9px] text-slate-400 dark:text-slate-500">{msg.time}</span>
-                      {msg.adopted && visibleCount === messages.length && (
-                        <motion.span
-                          initial={active && !reduceMotion ? { opacity: 0 } : false}
-                          animate={{ opacity: 1 }}
-                          transition={{ delay: 0.2, duration: 0.2, ease: "easeOut" }}
-                          className="text-[9px] font-medium text-emerald-600 dark:text-emerald-400"
-                        >
-                          {thread.adopted}
-                        </motion.span>
-                      )}
-                    </div>
-                    <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed">{msg.body}</p>
-                  </div>
-                </div>
-              </motion.div>
-            ))}
+        <motion.div layout className="flex-1 min-h-0 overflow-hidden flex flex-col">
+          <div className="flex items-center gap-1.5 mb-2 shrink-0">
+            <MessageCircle className="text-blue-600 dark:text-blue-400" size={12} />
+            <span className="text-[10px] font-medium text-slate-500 dark:text-slate-400">
+              {thread.answersLabel} <span className="text-blue-600 dark:text-blue-400 tabular-nums">{answeredCount}</span>
+            </span>
+          </div>
 
-            {showTyping && (
-              <motion.div
-                key="typing"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.15, ease: "easeOut" }}
-              >
-                <CommunityTypingIndicator paletteIndex={visibleCount} />
-              </motion.div>
-            )}
-          </AnimatePresence>
+          <div className="flex-1 min-h-0 overflow-hidden space-y-2">
+            <AnimatePresence initial={false} mode="popLayout">
+              {messages.slice(0, visibleCount).map((msg, i) =>
+                msg.isReply ? (
+                  <motion.div
+                    key={`${msg.author}-${i}`}
+                    layout
+                    initial={active && !reduceMotion && i === visibleCount - 1 ? { opacity: 0, y: 6 } : false}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ type: "spring", stiffness: 360, damping: 30, mass: 0.7 }}
+                    className="ml-7 flex gap-1.5"
+                  >
+                    <CornerDownRight size={11} className="text-slate-300 dark:text-slate-600 shrink-0 mt-2" />
+                    <div className="flex-1 min-w-0 rounded-lg px-2 py-1.5 border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40">
+                      <div className="flex items-center gap-1.5 mb-0.5 flex-wrap">
+                        <div
+                          className={`h-4 w-4 shrink-0 rounded-full bg-gradient-to-br ${AVATAR_PALETTE[i % AVATAR_PALETTE.length]} text-white text-[7px] font-medium flex items-center justify-center`}
+                        >
+                          {msg.initial}
+                        </div>
+                        <span className="text-[9px] font-medium text-slate-700 dark:text-slate-300">{msg.author}</span>
+                        <span className="text-[8px] text-slate-400 dark:text-slate-500">{msg.time}</span>
+                      </div>
+                      <p className="text-[10px] text-slate-600 dark:text-slate-300 leading-relaxed ml-5">{msg.body}</p>
+                    </div>
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    key={`${msg.author}-${i}`}
+                    layout
+                    initial={active && !reduceMotion && i === visibleCount - 1 ? { opacity: 0, y: 6, scale: 0.98 } : false}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    transition={{ type: "spring", stiffness: 360, damping: 30, mass: 0.7 }}
+                  >
+                    <div
+                      className={`flex gap-2 rounded-lg p-2 border transition-colors duration-300 ${
+                        msg.adopted && showAdopted
+                          ? "border-emerald-200 dark:border-emerald-900/50 bg-emerald-50/60 dark:bg-emerald-950/20"
+                          : "border-transparent"
+                      }`}
+                    >
+                      <div
+                        className={`h-6 w-6 shrink-0 rounded-full bg-gradient-to-br ${AVATAR_PALETTE[i % AVATAR_PALETTE.length]} text-white text-[9px] font-medium flex items-center justify-center transition-shadow duration-300 ${
+                          msg.adopted && showAdopted ? "ring-2 ring-emerald-400 dark:ring-emerald-600" : ""
+                        }`}
+                      >
+                        {msg.initial}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5 mb-0.5 flex-wrap">
+                          <span className="text-[10px] font-medium text-slate-800 dark:text-slate-200">{msg.author}</span>
+                          <span className="text-[9px] text-slate-400 dark:text-slate-500">{msg.time}</span>
+                          {msg.adopted && showAdopted && (
+                            <motion.span
+                              initial={active && !reduceMotion ? { opacity: 0, scale: 0.9 } : false}
+                              animate={{ opacity: 1, scale: 1 }}
+                              transition={{ type: "spring", stiffness: 420, damping: 24, delay: 0.1 }}
+                              className="flex items-center gap-0.5 text-[9px] font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-950/40 px-1 py-px rounded"
+                            >
+                              <CheckCircle2 size={9} />
+                              {thread.adopted}
+                            </motion.span>
+                          )}
+                        </div>
+                        <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed">{msg.body}</p>
+                      </div>
+                    </div>
+                  </motion.div>
+                )
+              )}
+
+              {showTyping && (
+                <motion.div
+                  key="skeleton"
+                  layout
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.18, ease: "easeOut" }}
+                >
+                  <AnswerSkeleton indent={messages[visibleCount]?.isReply} />
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
         </motion.div>
 
         <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center gap-2 shrink-0">
