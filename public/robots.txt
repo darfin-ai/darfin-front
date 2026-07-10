@@ -1,0 +1,14 @@
+User-agent: *
+Allow: /
+Disallow: /login
+Disallow: /signup
+Disallow: /forgot-id
+Disallow: /reset-password
+Disallow: /mypage
+Disallow: /subscription
+Disallow: /billing/
+Disallow: /oauth/
+Disallow: /community/write
+Disallow: /trading
+
+Sitemap: https://darfin-front.onrender.com/sitemap.xml

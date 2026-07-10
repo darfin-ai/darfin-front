@@ -6,11 +6,15 @@ import { useAuth } from "../context/AuthContext";
 import { login as apiLogin, getSocialLoginUrl } from "../../../shared/api/authApi";
 import { authCardClassName, authInputClassName, authLabelClassName, authPrimaryButtonClassName } from "../authUi";
 import { useLocale } from "../../../shared/i18n";
+import { usePageMeta } from "../../../shared/hooks/usePageMeta";
 
 export function Login() {
   const navigate = useNavigate();
   const { login } = useAuth();
   const { t } = useLocale();
+
+  usePageMeta({ title: t("nav.login"), noindex: true });
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);

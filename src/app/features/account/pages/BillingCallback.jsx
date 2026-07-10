@@ -3,9 +3,12 @@ import { useNavigate } from "react-router";
 import { toast } from "sonner";
 import { registerCard } from "../../../shared/api/billingApi";
 import { useLocale } from "../../../shared/i18n";
+import { usePageMeta } from "../../../shared/hooks/usePageMeta";
 
 export function BillingCallback() {
   const { t } = useLocale();
+
+  usePageMeta({ noindex: true });
   const navigate = useNavigate();
   const [status, setStatus] = useState("processing");
   const ranOnce = useRef(false);

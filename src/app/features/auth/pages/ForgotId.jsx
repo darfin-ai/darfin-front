@@ -4,9 +4,13 @@ import { toast } from "sonner";
 import { User, Phone, ArrowLeft, Mail } from "lucide-react";
 import { findId } from "../../../shared/api/authApi";
 import { useLocale } from "../../../shared/i18n";
+import { usePageMeta } from "../../../shared/hooks/usePageMeta";
 
 export function ForgotId() {
   const { t } = useLocale();
+
+  usePageMeta({ title: t("authRecovery.forgotId.title"), noindex: true });
+
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [loading, setLoading] = useState(false);

@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { User, Mail, Lock, Phone, MessageSquare } from "lucide-react";
 import { signup } from "../../../shared/api/authApi";
 import { useLocale } from "../../../shared/i18n";
+import { usePageMeta } from "../../../shared/hooks/usePageMeta";
 import {
   authCardClassName,
   authInputClassName,
@@ -34,6 +35,9 @@ function FieldGroup({ children }) {
 export function SignUp() {
   const navigate = useNavigate();
   const { t } = useLocale();
+
+  usePageMeta({ title: t("auth.signup.title"), noindex: true });
+
   const [form, setForm] = useState({ name: "", nickname: "", phone: "", email: "", password: "", confirmPassword: "" });
   const [profileImage, setProfileImage] = useState(null);
   const [loading, setLoading] = useState(false);

@@ -48,10 +48,6 @@ export function Layout() {
   const routeKey = location.pathname.split("/")[1] || "home";
 
   useEffect(() => {
-    document.title = t("common.documentTitle");
-  }, [t]);
-
-  useEffect(() => {
     setIsMobileMenuOpen(false);
     setFeaturesOpen(false);
     clearFeaturesCloseTimer();
@@ -327,13 +323,13 @@ export function Layout() {
         <div className="container flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-slate-500 dark:text-slate-400">
           <p>{t("footer.copyright")}</p>
           <div className="flex gap-4">
-            <a href="#" className="hover:text-slate-900 dark:hover:text-slate-100">
+            <Link to="/terms" className="hover:text-slate-900 dark:hover:text-slate-100">
               {t("footer.terms")}
-            </a>
-            <a href="#" className="hover:text-slate-900 dark:hover:text-slate-100">
+            </Link>
+            <Link to="/privacy" className="hover:text-slate-900 dark:hover:text-slate-100">
               {t("footer.privacy")}
-            </a>
-            <a href="#" className="hover:text-slate-900 dark:hover:text-slate-100">
+            </Link>
+            <a href="mailto:hello@darfin.com" className="hover:text-slate-900 dark:hover:text-slate-100">
               {t("footer.api")}
             </a>
           </div>

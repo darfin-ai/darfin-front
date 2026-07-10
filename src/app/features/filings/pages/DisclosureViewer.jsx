@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router";
 import { getAnalysisCategoryLabel } from "../constants";
 import { useLocale } from "@/app/shared/i18n";
+import { usePageMeta } from "@/app/shared/hooks/usePageMeta";
 import {
   AlertTriangle,
   ArrowLeft,
@@ -145,6 +146,16 @@ export function DisclosureViewer() {
   }, [termsEnabled, rceptNo]);
 
   const companyName = searchParams.get("company") || disclosure?.companyName;
+
+  usePageMeta({
+    title: disclosure?.title
+      ? t("seo.disclosureDetail.title", { title: disclosure.title })
+      : t("seo.disclosure.title"),
+    description: disclosure?.title
+      ? t("seo.disclosureDetail.description", { title: disclosure.title })
+      : t("seo.disclosure.description"),
+  });
+
   const hasSummary = Boolean(disclosure?.summaryText);
   const analysisItems = disclosure?.analysisItems ?? [];
   const criticalAlert = getCriticalAlert(disclosure?.extra, t);

@@ -5,6 +5,7 @@ import { formatDistanceToNow } from "date-fns";
 import { getQuestions } from "../api/communityApi";
 import { CARD, PAGE_TITLE, PAGE_DESC, BTN_PRIMARY } from "../communityUi";
 import { useLocale } from "../../../shared/i18n";
+import { usePageMeta } from "../../../shared/hooks/usePageMeta";
 import { getDateFnsLocale } from "../../../shared/i18n/localeFormat";
 
 function Avatar({ src, alt, size = "sm" }) {
@@ -20,6 +21,12 @@ function Avatar({ src, alt, size = "sm" }) {
 
 export function CommunityList() {
   const { t, locale } = useLocale();
+
+  usePageMeta({
+    title: t("seo.community.title"),
+    description: t("seo.community.description"),
+  });
+
   const [searchTerm, setSearchTerm] = useState("");
   const [inputValue, setInputValue] = useState("");
   const [questions, setQuestions] = useState([]);

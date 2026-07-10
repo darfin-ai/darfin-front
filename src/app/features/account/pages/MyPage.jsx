@@ -26,6 +26,7 @@ import {
 } from "../../../shared/api/billingApi";
 import { startCardRegistration } from "../../../shared/lib/tossBilling";
 import { useLocale } from "../../../shared/i18n";
+import { usePageMeta } from "../../../shared/hooks/usePageMeta";
 import { formatLocaleDate, formatLocaleDateTime } from "../../../shared/i18n/localeFormat";
 import {
   authLabelClassName,
@@ -62,6 +63,8 @@ export function MyPage() {
   const navigate = useNavigate();
   const { user, updateUser, logout } = useAuth();
   const { t, locale } = useLocale();
+
+  usePageMeta({ title: t("nav.mypage"), noindex: true });
 
   const [activeTab, setActiveTab] = useState(() => {
     const tab = new URLSearchParams(window.location.search).get("tab");

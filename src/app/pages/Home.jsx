@@ -5,6 +5,9 @@ import { ChevronRight, ChevronDown, ArrowRight, ArrowLeft, Lightbulb, TrendingUp
 import { useTheme } from "next-themes";
 import { useAuth } from "../features/auth";
 import { useLocale } from "../shared/i18n";
+import { usePageMeta } from "../shared/hooks/usePageMeta";
+import { useJsonLd } from "../shared/hooks/useJsonLd";
+import { getSiteUrl } from "../shared/lib/siteUrl";
 import { topKospiCompanies } from "../../mocks/companyAnalysis/topKospi";
 import { topKosdaqCompanies } from "../../mocks/companyAnalysis/topKosdaq";
 
@@ -1295,6 +1298,38 @@ export function Home() {
   const navigate = useNavigate();
   const { isLoggedIn } = useAuth();
   const { t } = useLocale();
+  const siteUrl = getSiteUrl();
+
+  usePageMeta({
+    title: t("seo.home.title"),
+    description: t("seo.home.description"),
+  });
+
+  useJsonLd([
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      name: "Darfin",
+      alternateName: "다핀",
+      url: siteUrl,
+      description: t("seo.home.description"),
+      potentialAction: {
+        "@type": "SearchAction",
+        target: `${siteUrl}/disclosure?companyName={search_term_string}`,
+        "query-input": "required name=search_term_string",
+      },
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "Organization",
+      name: "Darfin",
+      alternateName: "다핀",
+      url: siteUrl,
+      logo: `${siteUrl}/images/og.png?v=2`,
+      description: t("seo.home.description"),
+    },
+  ]);
+
   const credibilityStats = t("landing.credibility.stats");
   const walkthroughItems = t("landing.walkthrough.items");
   const disclosureItems = t("landing.disclosures.items");

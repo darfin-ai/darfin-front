@@ -4,9 +4,13 @@ import { toast } from "sonner";
 import { Mail, ArrowLeft, CheckCircle } from "lucide-react";
 import { resetPassword } from "../../../shared/api/authApi";
 import { useLocale } from "../../../shared/i18n";
+import { usePageMeta } from "../../../shared/hooks/usePageMeta";
 
 export function ResetPassword() {
   const { t } = useLocale();
+
+  usePageMeta({ title: t("authRecovery.resetPassword.title"), noindex: true });
+
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);

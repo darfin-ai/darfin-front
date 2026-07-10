@@ -29,6 +29,7 @@ import {
 } from "../subscriptionPlans";
 import { getPlanDescription, getPlanFeatures, formatPlanPrice, formatPlanTokenLine } from "../planI18n";
 import { useLocale } from "../../../shared/i18n";
+import { usePageMeta } from "../../../shared/hooks/usePageMeta";
 import { formatLocaleDate } from "../../../shared/i18n/localeFormat";
 
 const CARD = "rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900";
@@ -47,6 +48,8 @@ export function SubscriptionManagement() {
   const navigate = useNavigate();
   const { user, isLoggedIn } = useAuth();
   const { t, locale } = useLocale();
+
+  usePageMeta({ title: t("nav.subscription"), noindex: true });
 
   const [plans, setPlans] = useState([]);
   const [subscription, setSubscription] = useState(null);

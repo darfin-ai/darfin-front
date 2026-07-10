@@ -3,6 +3,7 @@ import { motion, useReducedMotion } from "motion/react";
 import { Check, Zap, ArrowRight } from "lucide-react";
 import { useAuth } from "../features/auth";
 import { useLocale } from "../shared/i18n";
+import { usePageMeta } from "../shared/hooks/usePageMeta";
 import {
   STATIC_PLANS,
   PLAN_LABELS,
@@ -46,6 +47,11 @@ export function Pricing() {
   const { isLoggedIn } = useAuth();
   const { t, locale } = useLocale();
   const reduceMotion = useReducedMotion();
+
+  usePageMeta({
+    title: t("seo.pricing.title"),
+    description: t("seo.pricing.description"),
+  });
 
   return (
     <div className="container py-10 sm:py-14">

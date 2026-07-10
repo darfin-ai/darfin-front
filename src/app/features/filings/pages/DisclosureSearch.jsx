@@ -27,6 +27,7 @@ import {
 import * as Popover from "@radix-ui/react-popover";
 import { DISCLOSURE_GROUPS, getDisclosureGroupLabel } from "../constants";
 import { useLocale } from "@/app/shared/i18n";
+import { usePageMeta } from "@/app/shared/hooks/usePageMeta";
 import { getDateFnsLocale } from "@/app/shared/i18n/localeFormat";
 import { searchDisclosures } from "../api/disclosureApi";
 import { RiskBadge } from "../components/RiskBadge";
@@ -134,6 +135,12 @@ function getStaggerVariants(reduceMotion, { stagger = 0.03, delayChildren = 0 } 
 export function DisclosureSearch() {
   const navigate = useNavigate();
   const { t, locale } = useLocale();
+
+  usePageMeta({
+    title: t("seo.disclosure.title"),
+    description: t("seo.disclosure.description"),
+  });
+
   const dateFnsLocale = getDateFnsLocale(locale);
   const today = new Date();
 

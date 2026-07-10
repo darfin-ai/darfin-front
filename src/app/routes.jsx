@@ -2,6 +2,7 @@ import { createBrowserRouter } from "react-router";
 import { Layout } from "./shared/components/Layout";
 import { Home } from "./pages/Home";
 import { Pricing } from "./pages/Pricing";
+import { Terms, Privacy } from "./pages/LegalPage";
 import { CompaniesGrid, CompanyDetailPage, CompanyRouteError } from "./features/company-analysis";
 import { DisclosureSearch, DisclosureViewer } from "./features/filings";
 import { TradingRoot } from "./features/paper-trading";
@@ -15,6 +16,8 @@ export const router = createBrowserRouter([
     children: [
       { index: true, Component: Home },
       { path: "pricing", Component: Pricing },
+      { path: "terms", Component: Terms },
+      { path: "privacy", Component: Privacy },
       { path: "company", Component: CompaniesGrid, ErrorBoundary: CompanyRouteError },
       { path: "company/:id", Component: CompanyDetailPage, ErrorBoundary: CompanyRouteError },
       { path: "disclosure", Component: DisclosureSearch },

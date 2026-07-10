@@ -34,6 +34,7 @@ import { isAiReady } from '../lib/aiStatus';
 import { hasDartOverviewData } from '../components/dart/dartDerive';
 import { latestValue } from '../lib/scoring';
 import { useMonitoredCompanies } from '../lib/useMonitoredCompanies';
+import { usePageMeta } from '../../../shared/hooks/usePageMeta';
 
 const POLL_INTERVAL_MS = 12_000;
 const MAX_POLLS = 10;
@@ -73,6 +74,16 @@ export function CompanyDetailPage() {
 
   const { limit, canAddMore, isMonitored, add } = useMonitoredCompanies();
   const monitored = isMonitored(id);
+
+  const companyForMeta = detail?.company;
+  usePageMeta({
+    title: companyForMeta
+      ? t("seo.companyDetail.title", { name: companyForMeta.name, ticker: companyForMeta.ticker })
+      : t("seo.company.title"),
+    description: companyForMeta
+      ? t("seo.companyDetail.description", { name: companyForMeta.name })
+      : t("seo.company.description"),
+  });
 
   useEffect(() => {
     let cancelled = false;

@@ -8,12 +8,19 @@ import { CompanySearchResults } from '../components/CompanySearchResults';
 import { MyAnalysisSection } from '../components/MyAnalysisSection';
 import { getPlanLabelKey } from '../lib/monitoringPlan';
 import { useMonitoredCompanies } from '../lib/useMonitoredCompanies';
+import { usePageMeta } from '../../../shared/hooks/usePageMeta';
 
 const SEARCH_DEBOUNCE_MS = 300;
 const MIN_SEARCH_LENGTH = 2;
 
 export function CompaniesGrid() {
   const { t } = useLocale();
+
+  usePageMeta({
+    title: t("seo.company.title"),
+    description: t("seo.company.description"),
+  });
+
   const navigate = useNavigate();
   const { user } = useAuth();
   const inputRef = useRef(null);

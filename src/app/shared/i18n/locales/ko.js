@@ -6,8 +6,12 @@ import { company } from "./ko/company.js";
 import { trading } from "./ko/trading.js";
 import { disclosure } from "./ko/disclosure.js";
 import { account } from "./ko/account.js";
+import { seo } from "./ko/seo.js";
+import { legal } from "./ko/legal.js";
 
 export const ko = {
+  seo,
+  legal,
   nav: {
     company: "기업 분석",
     disclosure: "공시 분석",
@@ -193,7 +197,7 @@ export const ko = {
       tabFinancials: "재무 추이",
       tabAiAnalysis: "AI 분석",
       companyOverview: {
-        basisYear: "2024",
+        basisYear: "2026",
         basisReportCode: "11013",
         metrics: {
           majorHolderStake: "19.7%",
@@ -224,16 +228,16 @@ export const ko = {
       buy: "매수",
       sell: "매도",
       pnl: "평가손익",
+      orderFilled: "10주 매수 체결",
       communityChrome: "커뮤니티 · 삼성전자 토론",
       communityThread: {
         company: "삼성전자",
         ticker: "005930",
-        replyLabel: "답변 3",
-        replyCountPrefix: "답변 ",
-        replyCountSuffix: "",
-        awaitingReply: "답변 대기",
+        resolvedLabel: "해결됨",
+        awaitingLabel: "답변 대기중",
+        answersLabel: "답변",
         title: "이번 분기 HBM 매출 비중, 다음 분기에도 유지될까요?",
-        adopted: "채택",
+        adopted: "채택된 답변",
         placeholder: "의견을 남겨보세요...",
         submit: "등록",
         messages: [

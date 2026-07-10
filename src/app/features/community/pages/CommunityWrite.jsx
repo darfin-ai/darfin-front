@@ -4,6 +4,7 @@ import { ArrowLeft, Search } from "lucide-react";
 import { toast } from "sonner";
 import { searchStocks, createQuestion } from "../api/communityApi";
 import { useLocale } from "../../../shared/i18n";
+import { usePageMeta } from "../../../shared/hooks/usePageMeta";
 import {
   CARD,
   PAGE_TITLE,
@@ -16,6 +17,9 @@ import {
 
 export function CommunityWrite() {
   const { t } = useLocale();
+
+  usePageMeta({ title: t("community.write.title"), noindex: true });
+
   const navigate = useNavigate();
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");

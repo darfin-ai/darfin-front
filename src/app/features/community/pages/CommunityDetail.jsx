@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 import { useAuth } from "../../auth/context/AuthContext";
 import { useLocale } from "../../../shared/i18n";
+import { usePageMeta } from "../../../shared/hooks/usePageMeta";
 import { getDateFnsLocale } from "../../../shared/i18n/localeFormat";
 import {
   getQuestion,
@@ -65,6 +66,15 @@ export function CommunityDetail() {
   const [editSubmitting, setEditSubmitting] = useState(false);
 
   const isAuthor = user && question && user.userId === question.authorId;
+
+  usePageMeta({
+    title: question
+      ? t("seo.communityDetail.title", { title: question.title })
+      : t("seo.community.title"),
+    description: question
+      ? t("seo.communityDetail.description", { title: question.title })
+      : t("seo.community.description"),
+  });
 
   useEffect(() => {
     async function load() {

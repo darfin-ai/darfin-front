@@ -6,8 +6,12 @@ import { company } from "./en/company.js";
 import { trading } from "./en/trading.js";
 import { disclosure } from "./en/disclosure.js";
 import { account } from "./en/account.js";
+import { seo } from "./en/seo.js";
+import { legal } from "./en/legal.js";
 
 export const en = {
+  seo,
+  legal,
   nav: {
     company: "Companies",
     disclosure: "Filings",
@@ -194,7 +198,7 @@ export const en = {
       tabFinancials: "Financials",
       tabAiAnalysis: "AI Analysis",
       companyOverview: {
-        basisYear: "2024",
+        basisYear: "2026",
         basisReportCode: "11013",
         metrics: {
           majorHolderStake: "19.7%",
@@ -225,16 +229,16 @@ export const en = {
       buy: "Buy",
       sell: "Sell",
       pnl: "Unrealized P&L",
+      orderFilled: "Bought 10 shares",
       communityChrome: "Community · Samsung Electronics",
       communityThread: {
         company: "Samsung Electronics",
         ticker: "005930",
-        replyLabel: "3 replies",
-        replyCountPrefix: "",
-        replyCountSuffix: " replies",
-        awaitingReply: "Awaiting reply",
+        resolvedLabel: "Resolved",
+        awaitingLabel: "Awaiting reply",
+        answersLabel: "Answers",
         title: "Will HBM revenue share hold next quarter?",
-        adopted: "Accepted",
+        adopted: "Accepted answer",
         placeholder: "Share your take...",
         submit: "Post",
         messages: [
