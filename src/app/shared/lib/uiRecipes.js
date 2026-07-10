@@ -60,9 +60,9 @@ export const BADGE_NEUTRAL =
 
 // ── AI callout (DESIGN_SYSTEM.md §5.6) ──────────────────────────
 export const AI_CALLOUT =
-  "flex gap-2 rounded-md border border-blue-100 dark:border-blue-900/50 bg-blue-50/60 dark:bg-blue-950/30 px-3 py-2.5";
-export const AI_CALLOUT_LEAD = "font-medium text-blue-700 dark:text-blue-300";
-export const AI_CALLOUT_BODY = "text-sm leading-relaxed text-slate-700 dark:text-slate-300";
+  "flex gap-2 rounded-md border border-blue-100 dark:border-blue-900/50 bg-blue-50/60 dark:bg-blue-950/30 px-3.5 py-3";
+export const AI_CALLOUT_LEAD = "font-semibold text-blue-700 dark:text-blue-300";
+export const AI_CALLOUT_BODY = "text-base leading-relaxed text-slate-800 dark:text-slate-200";
 
 // ── Segmented control ───────────────────────────────────────────
 export const SEGMENT_TRACK =

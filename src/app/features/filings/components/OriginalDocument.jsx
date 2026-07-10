@@ -92,6 +92,15 @@ function isNumericText(s) {
   return NUMERIC_CELL_RE.test(t);
 }
 
+// "회사명 :" "제출대상법인 유형 :" 처럼 콜론으로 끝나는 셀은 폼 표의 라벨 그 자체다.
+// 이런 셀이 있는 행을 "숫자가 없으니 헤더"로 오인하면(예: "기업집단명 : | 에스케이"), 진짜
+// 헤더(예: "부문 | 주요 제품")와 똑같은 라벨 행인데도 첫 행만 가운데 정렬·회색 배경으로
+// 튀어 보이고 바로 아래 라벨 행들과 스타일이 어긋난다.
+const LABEL_SUFFIX_RE = /[:：]\s*$/;
+function looksLikeLabelRow(row) {
+  return row.some((c) => LABEL_SUFFIX_RE.test(cellPlainText(c)));
+}
+
 // 표 유형을 셀 내용만 보고 추정한다.
 //  - financial: 숫자 셀 비중이 높은 재무/실적표 → 숫자 우측정렬
 //  - form     : 2열 "항목명 : 값" 폼(주요사항보고·거래소 조회공시류) → 좌측 라벨 강조
@@ -503,7 +512,8 @@ export function OriginalDocument({
       const headerRowCount = (() => {
         if (block.rows.length <= 1) return 0;
         if (variant === "form") {
-          return block.rows[0].every((c) => !isNumericText(cellPlainText(c))) ? 1 : 0;
+          const row0 = block.rows[0];
+          return row0.every((c) => !isNumericText(cellPlainText(c))) && !looksLikeLabelRow(row0) ? 1 : 0;
         }
         if (variant !== "financial") return 0;
         let count = 0;
@@ -550,6 +560,8 @@ export function OriginalDocument({
                         variant !== "default" && !plain && cell.blocks.every((b) => b.type !== "table");
                       const isLastCell = ci === row.length - 1;
                       const isNumeric = !isHeaderRow && variant === "financial" && isNumericText(plain);
+                      const isFinancialCell = !isHeaderRow && !noteRow && variant === "financial";
+                      const isFormCell = !isHeaderRow && !noteRow && variant === "form";
                       const isFormLabel = !isHeaderRow && variant === "form" && ci === 0;
                       const effectiveColSpan =
                         shouldFillGap && isLastCell
@@ -558,6 +570,8 @@ export function OriginalDocument({
 
                       // 헤더는 라벨이 짧고 고정돼 있어 줄바꿈 없이 가운데 정렬하는 게 더 읽기 쉽다
                       // (whitespace-pre-wrap을 유지하면 좁은 열에서 "금액"/"비중"도 줄바꿈될 수 있다).
+                      // 재무표는 "구분"(항목명) 열과 숫자 열 모두 헤더와 동일하게 가운데 정렬해서
+                      // 위계를 통일한다 — 셀 내용이 짧아 줄바꿈 없이도 폭이 늘어나는 선에서만 적용된다.
                       // sticky는 첫 헤더 행에만 건다 — 2단 헤더에서 둘째 행까지 top-0로 고정하면
                       // 스크롤 시 첫 행과 같은 위치에서 겹친다.
                       const tdClass = [
@@ -566,9 +580,11 @@ export function OriginalDocument({
                           ? `whitespace-nowrap text-center bg-slate-100 font-semibold text-slate-700 ${ri === 0 ? "sticky top-0 z-10" : ""}`
                           : noteRow
                             ? "whitespace-pre-wrap text-slate-500 text-xs italic bg-slate-50/40"
-                            : isNumeric
-                              ? "whitespace-pre-wrap text-right tabular-nums font-medium text-slate-800"
-                              : "whitespace-pre-wrap text-slate-700",
+                            : isFinancialCell
+                              ? `whitespace-nowrap text-center ${isNumeric ? "tabular-nums font-medium text-slate-800" : "text-slate-700"}`
+                              : isFormCell
+                                ? "whitespace-nowrap text-center text-slate-700"
+                                : "whitespace-pre-wrap text-slate-700",
                         isFormLabel ? "bg-slate-50 font-medium text-slate-600 w-1/3" : "",
                       ]
                         .filter(Boolean)

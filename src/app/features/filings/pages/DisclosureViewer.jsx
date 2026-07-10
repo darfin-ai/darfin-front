@@ -70,6 +70,18 @@ function ToggleSwitch({ label, icon, checked, onCheckedChange, disabled, checked
   );
 }
 
+// ── 문장 단위 줄바꿈 ──────────────────────────────────────────────
+// AI 요약(investorComment)은 2~3문장이 공백만으로 이어진 한 덩어리 문자열로 온다.
+// 문장 끝(.!?다) 뒤에 공백 + 다음 문장이 이어지는 지점만 끊어서 문장마다 줄을 나눠 보여준다.
+// "69.2%"처럼 소수점 뒤에 공백이 없는 경우는 매치되지 않아 안전하다.
+function splitIntoSentences(text) {
+  if (!text) return [];
+  return text
+    .split(/(?<=[.!?다])\s+(?=[가-힣A-Za-z0-9"'(])/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
 // ── 메인 컴포넌트 ────────────────────────────────────────────────
 export function DisclosureViewer() {
   const { id: rceptNo } = useParams();
@@ -515,13 +527,15 @@ export function DisclosureViewer() {
                     <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400 font-semibold"><Sparkles size={18} /><span>{t("disclosure.viewer.summaryTitle")}</span></div>
                     <RiskBadgeGroup badges={summaryBadges} size="lg" />
                   </div>
-                  <p className="text-base font-semibold text-slate-800 dark:text-slate-100 leading-relaxed">{disclosure.summaryText}</p>
+                  <p className="text-lg font-bold text-slate-900 dark:text-slate-100 leading-snug">{disclosure.summaryText}</p>
                   <div className={`${AI_CALLOUT} gap-3`}>
                     <Lightbulb size={15} className="mt-0.5 shrink-0 text-blue-500 dark:text-blue-400" />
-                    <p className={AI_CALLOUT_BODY}>
-                      <span className={AI_CALLOUT_LEAD}>{t("disclosure.viewer.investorPerspective")} </span>
-                      {disclosure.investorComment}
-                    </p>
+                    <div className="min-w-0 space-y-1.5">
+                      <p className={`${AI_CALLOUT_LEAD} mb-1`}>{t("disclosure.viewer.investorPerspective")}</p>
+                      {splitIntoSentences(disclosure.investorComment).map((sentence, i) => (
+                        <p key={i} className={AI_CALLOUT_BODY}>{sentence}</p>
+                      ))}
+                    </div>
                   </div>
                 </>
               ) : (
@@ -537,7 +551,7 @@ export function DisclosureViewer() {
             <Tabs.Content value="analysis" className="space-y-3 animate-in fade-in outline-none">
               <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400 font-semibold mb-4"><Highlighter size={18} /><span>{t("disclosure.viewer.analysisTitle")}</span></div>
               {analysisItems.length > 0 ? (
-                <div className="space-y-3">
+                <div className="space-y-4">
                   {analysisItems.map((item, index) => {
                     const isActive = activeHighlightKey === item.targetKey;
                     const hasCoords = item.charOffsetStart >= 0 && item.charOffsetEnd > item.charOffsetStart;
@@ -549,19 +563,28 @@ export function DisclosureViewer() {
                         key={`${item.analysisCategory}-${index}`}
                         onClick={() => hasCoords && handleAnalysisItemClick(item)}
                         className={`border border-slate-200 dark:border-slate-800 rounded-xl transition-all duration-200 bg-white dark:bg-slate-900
-                          ${isSingle ? "p-5" : "p-4"}
+                          ${isSingle ? "p-5" : "p-4.5"}
                           ${isActive ? "ring-2 ring-amber-400 dark:ring-amber-500 ring-offset-1 dark:ring-offset-slate-900 border-amber-300 dark:border-amber-700" : ""}
                           ${hasCoords ? "cursor-pointer hover:shadow-sm hover:border-slate-300 dark:hover:border-slate-700" : ""}`}
                       >
-                        <div className="flex items-start justify-between gap-2 mb-2">
+                        <div className="flex items-start justify-between gap-2 mb-2.5">
                           <div className="flex items-center gap-1.5 flex-wrap">
-                            <h4 className={`font-semibold text-slate-800 dark:text-slate-100 ${isSingle ? "text-base" : "text-sm"}`}>{getAnalysisCategoryLabel(t, item.analysisCategory)}</h4>
+                            <h4 className={`font-bold text-slate-900 dark:text-slate-100 ${isSingle ? "text-lg" : "text-base"}`}>{getAnalysisCategoryLabel(t, item.analysisCategory)}</h4>
                             {hasCoords && <span className={`flex items-center gap-0.5 text-[10px] ${META}`}><ChevronRight size={10} />{t("disclosure.viewer.goToOriginal")}</span>}
                           </div>
                           <RiskBadge riskLabel={item.riskLevel} riskTier={item.riskTier} size="md" />
                         </div>
-                        <p className={`text-slate-500 dark:text-slate-400 mb-2 bg-amber-50 dark:bg-amber-950/30 border border-amber-100 dark:border-amber-900/50 px-2 py-1 rounded italic leading-relaxed ${isSingle ? "text-sm" : "text-xs"}`}>"{item.targetKey}"</p>
-                        <p className={`text-slate-600 dark:text-slate-300 leading-relaxed ${isSingle ? "text-base" : "text-sm"}`}>{item.materialImpact}</p>
+                        <p className={`font-medium text-slate-600 dark:text-slate-300 mb-2.5 bg-amber-50 dark:bg-amber-950/30 border border-amber-100 dark:border-amber-900/50 px-2.5 py-1.5 rounded italic leading-relaxed ${isSingle ? "text-base" : "text-sm"}`}>"{item.targetKey}"</p>
+                        <div className="space-y-1.5">
+                          {splitIntoSentences(item.materialImpact).map((sentence, si) => (
+                            <p
+                              key={si}
+                              className={`font-medium text-slate-700 dark:text-slate-300 leading-relaxed ${isSingle ? "text-lg" : "text-base"}`}
+                            >
+                              {sentence}
+                            </p>
+                          ))}
+                        </div>
                       </div>
                     );
                   })}
