@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { Link } from "react-router";
-import { toast } from "sonner";
 import { User, Phone, ArrowLeft, Mail } from "lucide-react";
 import { findId } from "../../../shared/api/authApi";
 import { useLocale } from "../../../shared/i18n";
@@ -22,12 +21,7 @@ export function ForgotId() {
     try {
       const data = await findId({ name, phone });
       setResults(data);
-    } catch (err) {
-      const msg =
-        err?.status === 404
-          ? t("authRecovery.forgotId.notFound")
-          : err?.message || t("authRecovery.forgotId.fail");
-      toast.error(msg);
+    } catch {
     } finally {
       setLoading(false);
     }

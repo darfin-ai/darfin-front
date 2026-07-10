@@ -13,7 +13,6 @@ import {
   Loader2,
   ChevronRight,
 } from "lucide-react";
-import { toast } from "sonner";
 import { useAuth } from "../../auth/context/AuthContext";
 import {
   getPlans,
@@ -92,8 +91,7 @@ export function SubscriptionManagement() {
         customerEmail: user?.email,
         customerName: user?.nickname,
       });
-    } catch (err) {
-      toast.error(err?.message || t("account.subscription.cardStartFailed"));
+    } catch {
       setCardRegistering(false);
     }
   };
@@ -107,7 +105,6 @@ export function SubscriptionManagement() {
     }
 
     if (paymentMethods.length === 0) {
-      toast.error(t("account.subscription.addPaymentFirst"));
       return;
     }
 
@@ -115,9 +112,7 @@ export function SubscriptionManagement() {
     try {
       const updated = await changePlan(selectedPlanId);
       setSubscription(updated);
-      toast.success(t("account.subscription.planChanged", { plan: PLAN_LABELS[selectedPlanId] || selectedPlanId }));
-    } catch (err) {
-      toast.error(err?.message || t("account.subscription.planChangeFailed"));
+    } catch {
     } finally {
       setIsChangingPlan(false);
     }
@@ -129,9 +124,7 @@ export function SubscriptionManagement() {
     try {
       const updated = await cancelSubscription();
       setSubscription(updated);
-      toast.success(t("account.subscription.cancelScheduledToast"));
-    } catch (err) {
-      toast.error(err?.message || t("account.subscription.cancelFailed"));
+    } catch {
     } finally {
       setIsChangingPlan(false);
     }
@@ -142,9 +135,7 @@ export function SubscriptionManagement() {
     try {
       const updated = await resumeSubscription();
       setSubscription(updated);
-      toast.success(t("account.subscription.resumeSuccess"));
-    } catch (err) {
-      toast.error(err?.message || t("account.subscription.resumeFailed"));
+    } catch {
     } finally {
       setIsChangingPlan(false);
     }

@@ -28,7 +28,6 @@ export const authRecovery = {
     login: "로그인하기",
   },
   oauth: {
-    success: "로그인되었습니다.",
     fail: "소셜 로그인에 실패했습니다. 다시 시도해주세요.",
     processing: "로그인 처리 중...",
   },

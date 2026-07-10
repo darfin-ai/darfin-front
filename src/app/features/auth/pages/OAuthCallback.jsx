@@ -1,6 +1,5 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router";
-import { toast } from "sonner";
 import { useAuth } from "../context/AuthContext";
 import { useLocale } from "../../../shared/i18n";
 import { usePageMeta } from "../../../shared/hooks/usePageMeta";
@@ -20,11 +19,8 @@ export function OAuthCallback() {
 
     if (accessToken && refreshToken) {
       login({ accessToken, refreshToken });
-      toast.success(t("authRecovery.oauth.success"));
       navigate("/", { replace: true });
     } else {
-      const msg = error ? decodeURIComponent(error) : t("authRecovery.oauth.fail");
-      toast.error(msg);
       navigate("/login", { replace: true });
     }
   }, [login, navigate, t]);

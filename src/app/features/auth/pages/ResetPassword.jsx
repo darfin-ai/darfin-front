@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { Link } from "react-router";
-import { toast } from "sonner";
 import { Mail, ArrowLeft, CheckCircle } from "lucide-react";
 import { resetPassword } from "../../../shared/api/authApi";
 import { useLocale } from "../../../shared/i18n";
@@ -21,12 +20,7 @@ export function ResetPassword() {
     try {
       await resetPassword({ email });
       setSent(true);
-    } catch (err) {
-      const msg =
-        err?.status === 404
-          ? t("authRecovery.resetPassword.notFound")
-          : err?.message || t("authRecovery.resetPassword.fail");
-      toast.error(msg);
+    } catch {
     } finally {
       setLoading(false);
     }

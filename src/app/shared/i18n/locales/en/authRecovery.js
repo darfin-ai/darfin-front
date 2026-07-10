@@ -28,7 +28,6 @@ export const authRecovery = {
     login: "Log in",
   },
   oauth: {
-    success: "You are logged in.",
     fail: "Social login failed. Please try again.",
     processing: "Completing login...",
   },

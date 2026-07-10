@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router";
-import { toast } from "sonner";
 import { Mail, Lock } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { login as apiLogin, getSocialLoginUrl } from "../../../shared/api/authApi";
@@ -25,11 +24,8 @@ export function Login() {
     try {
       const tokens = await apiLogin({ email, password });
       login(tokens);
-      toast.success(t("auth.login.success"));
       navigate("/");
-    } catch (err) {
-      const msg = err?.message || t("auth.login.fail");
-      toast.error(msg);
+    } catch {
     } finally {
       setLoading(false);
     }

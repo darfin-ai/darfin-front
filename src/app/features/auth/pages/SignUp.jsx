@@ -1,6 +1,5 @@
 import { useRef, useState } from "react";
 import { Link, useNavigate } from "react-router";
-import { toast } from "sonner";
 import { User, Mail, Lock, Phone, MessageSquare } from "lucide-react";
 import { signup } from "../../../shared/api/authApi";
 import { useLocale } from "../../../shared/i18n";
@@ -51,11 +50,9 @@ export function SignUp() {
     if (!file) return;
 
     if (!file.type.startsWith("image/")) {
-      toast.error(t("auth.signup.imageTypeError"));
       return;
     }
     if (file.size > 5 * 1024 * 1024) {
-      toast.error(t("auth.signup.imageSizeError"));
       return;
     }
 
@@ -67,7 +64,6 @@ export function SignUp() {
   const handleSignUp = async (e) => {
     e.preventDefault();
     if (form.password !== form.confirmPassword) {
-      toast.error(t("auth.signup.passwordMismatch"));
       return;
     }
     setLoading(true);
@@ -80,12 +76,8 @@ export function SignUp() {
         nickname: form.nickname,
         profileImage,
       });
-      toast.success(t("auth.signup.success"));
       navigate("/login");
-    } catch (err) {
-      const msg =
-        err?.message || (err?.status === 409 ? t("auth.signup.emailTaken") : t("auth.signup.fail"));
-      toast.error(msg);
+    } catch {
     } finally {
       setLoading(false);
     }

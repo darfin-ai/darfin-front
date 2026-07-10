@@ -13,7 +13,6 @@ import {
   X,
   Plus,
 } from "lucide-react";
-import { toast } from "sonner";
 import { useAuth } from "../../auth/context/AuthContext";
 import { getUserProfile, updateNickname, updatePassword, updateProfileImage, deleteProfileImage, deleteAccount, deleteSocialAccount } from "../../../shared/api/userApi";
 import { getMySubscription } from "../../../shared/api/subscriptionApi";
@@ -140,9 +139,7 @@ export function MyPage() {
     try {
       await updateNickname(nickname);
       updateUser({ nickname });
-      toast.success(t("account.mypage.profile.nicknameUpdated"));
     } catch (err) {
-      toast.error(err?.message || t("account.mypage.profile.saveFailed"));
     } finally {
       setNicknameLoading(false);
     }
@@ -151,19 +148,13 @@ export function MyPage() {
   const handlePasswordChange = async (e) => {
     e.preventDefault();
     if (pwForm.newPassword !== pwForm.confirmPassword) {
-      toast.error(t("account.mypage.security.passwordMismatch"));
       return;
     }
     setPwLoading(true);
     try {
       await updatePassword({ currentPassword: pwForm.currentPassword, newPassword: pwForm.newPassword });
-      toast.success(t("account.mypage.security.passwordChanged"));
       setPwForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
-    } catch (err) {
-      const msg = err?.status === 401
-        ? t("account.mypage.security.wrongCurrentPassword")
-        : (err?.message || t("account.mypage.security.passwordChangeFailed"));
-      toast.error(msg);
+    } catch {
     } finally {
       setPwLoading(false);
     }
@@ -178,13 +169,8 @@ export function MyPage() {
         await deleteSocialAccount();
       }
       await logout();
-      toast.success(t("account.mypage.danger.deleteSuccess"));
       navigate("/");
-    } catch (err) {
-      const msg = err?.status === 401
-        ? t("account.mypage.danger.wrongPassword")
-        : (err?.message || t("account.mypage.danger.deleteFailed"));
-      toast.error(msg);
+    } catch {
     } finally {
       setDeleteLoading(false);
       setIsDeleteModalOpen(false);
@@ -205,7 +191,6 @@ export function MyPage() {
 
   const handleConfirmAddCard = async () => {
     if (!cardNameInput.trim()) {
-      toast.error(t("account.mypage.billing.cardNameRequired"));
       return;
     }
     setCardRegistering(true);
@@ -220,7 +205,6 @@ export function MyPage() {
       // 성공 시 토스 페이지로 리다이렉트되므로 이후 코드는 실행되지 않음
     } catch (err) {
       sessionStorage.removeItem("pendingCardName");
-      toast.error(err?.message || t("account.mypage.billing.cardStartFailed"));
       setCardRegistering(false);
     }
   };
@@ -228,10 +212,8 @@ export function MyPage() {
   const handleDeleteMethod = async (id) => {
     try {
       await deletePaymentMethod(id);
-      toast.success(t("account.mypage.billing.methodDeleted"));
       loadBillingData();
     } catch (err) {
-      toast.error(err?.message || t("account.mypage.billing.methodDeleteFailed"));
     }
   };
 
@@ -240,11 +222,9 @@ export function MyPage() {
     if (!file) return;
 
     if (!file.type.startsWith('image/')) {
-      toast.error(t("account.mypage.profile.imageTypeError"));
       return;
     }
     if (file.size > 5 * 1024 * 1024) {
-      toast.error(t("account.mypage.profile.imageSizeError"));
       return;
     }
 
@@ -257,9 +237,7 @@ export function MyPage() {
       setImageUploading(true);
       try {
         await updateProfileImage(base64);
-        toast.success(t("account.mypage.profile.imageUpdated"));
       } catch {
-        toast.error(t("account.mypage.profile.imageUploadFailed"));
         // 업로드 실패 시 이전 이미지로 복원
         setProfileImage((prev) => prev === base64 ? null : prev);
       } finally {
@@ -272,18 +250,16 @@ export function MyPage() {
   };
 
   const submitRefundRequest = async () => {
-    if (!refundReason) { toast.error(t("account.mypage.billing.selectRefundReason")); return; }
-    if (refundReason === "custom" && !customRefundReason.trim()) { toast.error(t("account.mypage.billing.enterRefundDetail")); return; }
+    if (!refundReason) return;
+    if (refundReason === "custom" && !customRefundReason.trim()) return;
     const reason = refundReason === "custom"
       ? customRefundReason.trim()
       : t(`account.mypage.billing.refundReasons.${refundReason}`);
     try {
       await refundPayment(selectedPaymentId, reason);
       setIsRefundModalOpen(false);
-      toast.success(t("account.mypage.billing.refundSubmitted"));
       loadBillingData();
     } catch (err) {
-      toast.error(err?.message || t("account.mypage.billing.refundFailed"));
     }
   };
 
@@ -327,9 +303,7 @@ export function MyPage() {
                   try {
                     await deleteProfileImage();
                     setProfileImage(null);
-                    toast.success(t("account.mypage.profile.imageRemoved"));
                   } catch {
-                    toast.error(t("account.mypage.profile.imageRemoveFailed"));
                   }
                 }}
                 className="text-sm font-medium text-slate-500 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
@@ -583,7 +557,6 @@ export function MyPage() {
                         href={item.receiptUrl || undefined}
                         target="_blank"
                         rel="noreferrer"
-                        onClick={(e) => { if (!item.receiptUrl) { e.preventDefault(); toast.error(t("account.mypage.billing.receiptMissing")); } }}
                         className="inline-flex items-center justify-center p-2 text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 rounded-md transition-colors"
                         title={t("account.mypage.billing.receiptTitle")}
                       >

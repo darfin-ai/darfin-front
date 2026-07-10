@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
-import { toast } from "sonner";
 import { registerCard } from "../../../shared/api/billingApi";
 import { useLocale } from "../../../shared/i18n";
 import { usePageMeta } from "../../../shared/hooks/usePageMeta";
@@ -19,14 +18,12 @@ export function BillingCallback() {
 
     const params = new URLSearchParams(window.location.search);
     const authKey = params.get("authKey");
-    const errorMessage = params.get("message");
 
     const cardName = sessionStorage.getItem("pendingCardName") || "";
     sessionStorage.removeItem("pendingCardName");
 
     if (!authKey) {
       setStatus("error");
-      toast.error(errorMessage ? decodeURIComponent(errorMessage) : t("billing.canceled"));
       setTimeout(() => navigate("/mypage?tab=billing", { replace: true }), 1500);
       return;
     }
@@ -34,12 +31,10 @@ export function BillingCallback() {
     registerCard(authKey, cardName)
       .then(() => {
         setStatus("done");
-        toast.success(t("billing.success"));
         navigate("/mypage?tab=billing", { replace: true });
       })
       .catch((err) => {
         setStatus("error");
-        toast.error(err?.message || t("billing.cardRegisterFail"));
         navigate("/mypage?tab=billing", { replace: true });
       });
   }, [navigate, t]);

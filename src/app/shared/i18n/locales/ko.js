@@ -27,8 +27,6 @@ export const ko = {
     searchPlaceholderShort: "기업명 또는 종목코드 검색",
     menuOpen: "메뉴 열기",
     menuClose: "메뉴 닫기",
-    loginRequired: "로그인이 필요한 서비스입니다.",
-    logoutSuccess: "로그아웃되었습니다.",
     subscription: "구독 관리",
   },
   footer: {
@@ -79,7 +77,6 @@ export const ko = {
       password: "비밀번호",
       submit: "이메일로 로그인",
       submitting: "로그인 중...",
-      success: "로그인되었습니다.",
       fail: "로그인에 실패했습니다.",
       forgotId: "아이디 찾기",
       resetPassword: "비밀번호 재설정",

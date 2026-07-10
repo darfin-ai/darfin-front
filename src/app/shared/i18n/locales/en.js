@@ -27,8 +27,6 @@ export const en = {
     searchPlaceholderShort: "Search company or ticker",
     menuOpen: "Open menu",
     menuClose: "Close menu",
-    loginRequired: "Please log in to use this feature.",
-    logoutSuccess: "You have been logged out.",
     subscription: "Subscription",
   },
   footer: {
@@ -79,7 +77,6 @@ export const en = {
       password: "Password",
       submit: "Log in with email",
       submitting: "Logging in...",
-      success: "You are logged in.",
       fail: "Log in failed.",
       forgotId: "Find account",
       resetPassword: "Reset password",

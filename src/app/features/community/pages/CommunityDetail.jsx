@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, Link, useNavigate } from "react-router";
 import { ArrowLeft, CheckCircle2, MessageCircle, Edit2, Trash2, X, Save, CornerDownRight } from "lucide-react";
-import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 import { useAuth } from "../../auth/context/AuthContext";
 import { useLocale } from "../../../shared/i18n";
@@ -97,7 +96,6 @@ export function CommunityDetail() {
 
   const handleSubmitAnswer = async () => {
     if (!newAnswer.trim()) {
-      toast.error(t("community.detail.answerRequired"));
       return;
     }
     setAnswerSubmitting(true);
@@ -105,9 +103,7 @@ export function CommunityDetail() {
       const answer = await createAnswer(id, newAnswer);
       setAnswers((prev) => [...prev, answer]);
       setNewAnswer("");
-      toast.success(t("community.detail.answerSuccess"));
     } catch (err) {
-      toast.error(err.message || t("community.detail.answerFail"));
     } finally {
       setAnswerSubmitting(false);
     }
@@ -119,9 +115,7 @@ export function CommunityDetail() {
       await acceptAnswer(answerId);
       setAnswers((prev) => prev.map((a) => (a.id === answerId ? { ...a, isAdopted: true } : a)));
       setQuestion((prev) => ({ ...prev, isResolved: true }));
-      toast.success(t("community.detail.adoptSuccess"));
     } catch (err) {
-      toast.error(err.message || t("community.detail.adoptFail"));
     }
   };
 
@@ -129,16 +123,13 @@ export function CommunityDetail() {
     if (!window.confirm(t("community.detail.confirmDelete"))) return;
     try {
       await deleteQuestion(id);
-      toast.success(t("community.detail.deleteSuccess"));
       navigate("/community");
     } catch (err) {
-      toast.error(err.message || t("community.detail.deleteFail"));
     }
   };
 
   const handleEditSave = async () => {
     if (!editTitle.trim() || !editContent.trim()) {
-      toast.error(t("community.detail.titleBodyRequired"));
       return;
     }
     setEditSubmitting(true);
@@ -150,9 +141,7 @@ export function CommunityDetail() {
       });
       setQuestion(updated);
       setIsEditing(false);
-      toast.success(t("community.detail.editSuccess"));
     } catch (err) {
-      toast.error(err.message || t("community.detail.editFail"));
     } finally {
       setEditSubmitting(false);
     }
@@ -169,14 +158,12 @@ export function CommunityDetail() {
       setRepliesLoaded((prev) => ({ ...prev, [answerId]: true }));
       setReplyingTo(answerId);
     } catch (err) {
-      toast.error(err.message || t("community.detail.replyLoadFail"));
     }
   };
 
   const handleSubmitReply = async (answerId) => {
     const text = (replyInputs[answerId] || "").trim();
     if (!text) {
-      toast.error(t("community.detail.replyRequired"));
       return;
     }
     try {
@@ -184,9 +171,7 @@ export function CommunityDetail() {
       setReplies((prev) => ({ ...prev, [answerId]: [...(prev[answerId] ?? []), reply] }));
       setReplyInputs((prev) => ({ ...prev, [answerId]: "" }));
       setReplyingTo(null);
-      toast.success(t("community.detail.replySuccess"));
     } catch (err) {
-      toast.error(err.message || t("community.detail.replyFail"));
     }
   };
 
@@ -197,9 +182,7 @@ export function CommunityDetail() {
         ...prev,
         [answerId]: (prev[answerId] ?? []).filter((r) => r.id !== replyId),
       }));
-      toast.success(t("community.detail.replyDeleteSuccess"));
     } catch (err) {
-      toast.error(err.message || t("community.detail.replyDeleteFail"));
     }
   };
 

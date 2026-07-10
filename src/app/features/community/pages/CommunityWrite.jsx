@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate, Link } from "react-router";
 import { ArrowLeft, Search } from "lucide-react";
-import { toast } from "sonner";
 import { searchStocks, createQuestion } from "../api/communityApi";
 import { useLocale } from "../../../shared/i18n";
 import { usePageMeta } from "../../../shared/hooks/usePageMeta";
@@ -78,11 +77,9 @@ export function CommunityWrite() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!title.trim()) {
-      toast.error(t("community.write.titleRequired"));
       return;
     }
     if (!content.trim()) {
-      toast.error(t("community.write.bodyRequired"));
       return;
     }
     setSubmitting(true);
@@ -92,10 +89,8 @@ export function CommunityWrite() {
         content,
         dartCorpCode: selectedStock?.dartCorpCode ?? undefined,
       });
-      toast.success(t("community.write.success"));
       navigate("/community");
     } catch (err) {
-      toast.error(err.message || t("community.write.fail"));
     } finally {
       setSubmitting(false);
     }

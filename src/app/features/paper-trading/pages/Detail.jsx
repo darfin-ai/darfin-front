@@ -240,7 +240,6 @@ function OrderPanel({ stock, price, setPrice, priceType, setPriceType }) {
   const [accountLoading, setAccountLoading] = useState(true);
   const [qty, setQty] = useState(0);
   const [submitting, setSubmitting] = useState(false);
-  const [errorToast, setErrorToast] = useState(null);
   const [orderResult, setOrderResult] = useState(null);
 
   const isBuy = tab === 'BUY';
@@ -280,7 +279,6 @@ function OrderPanel({ stock, price, setPrice, priceType, setPriceType }) {
   const submit = async () => {
     if (!canSubmit) return;
     setSubmitting(true);
-    setErrorToast(null);
     const body = {
       stockCode: stock.code,
       orderType: priceType === 'market' ? 'MARKET' : 'LIMIT',
@@ -318,8 +316,7 @@ function OrderPanel({ stock, price, setPrice, priceType, setPriceType }) {
         balance: nextBalance,
         holding: nextHolding,
       });
-    } catch (e) {
-      setErrorToast(e.response?.data?.message || `${isBuy ? '매수' : '매도'} 주문에 실패했어요.`);
+    } catch {
     } finally {
       setSubmitting(false);
       setAccountLoading(false);
@@ -327,7 +324,6 @@ function OrderPanel({ stock, price, setPrice, priceType, setPriceType }) {
   };
 
   const accent = isBuy ? UP : DOWN;
-  const errColor = '#E03131';
   const lblStyle = { fontSize: 14, color: '#4E5968', fontWeight: 600, flexShrink: 0, width: 72 };
   const obStep = { width: 44, height: 48, flexShrink: 0, borderRadius: 10, border: '1px solid #E5E8EB', background: '#fff', fontSize: 20, fontWeight: 700, color: '#4E5968', cursor: 'pointer' };
 
@@ -433,12 +429,6 @@ function OrderPanel({ stock, price, setPrice, priceType, setPriceType }) {
         </>
       )}
 
-      {errorToast && (
-        <div style={{ marginTop: 14, display: 'flex', alignItems: 'center', gap: 8, background: '#FDEDED', borderRadius: 12, padding: '12px 14px' }}>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={errColor} strokeWidth="2.4"><path d="M12 8v5M12 16h.01M12 3l9 16H3l9-16z" strokeLinecap="round" strokeLinejoin="round" /></svg>
-          <span style={{ fontSize: 14, fontWeight: 700, color: errColor }}>{errorToast}</span>
-        </div>
-      )}
       {orderResult && <OrderResultModal result={orderResult} onClose={() => setOrderResult(null)} />}
     </Card>
   );

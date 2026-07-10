@@ -2,7 +2,6 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { Link, useNavigate, useLocation, useOutlet } from "react-router";
 import { motion, AnimatePresence, useReducedMotion } from "motion/react";
 import { BookOpen, BarChart2, TrendingUp, MessageSquare, UserCircle, LogOut, Menu, X, ChevronDown, CreditCard } from "lucide-react";
-import { Toaster } from "sonner";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -10,7 +9,6 @@ import {
   DropdownMenuItem,
 } from "./ui/dropdown-menu";
 import { useAuth } from "../../features/auth";
-import { toast } from "sonner";
 import { useLocale } from "../i18n";
 import { ThemeToggle } from "./ThemeToggle";
 import { LocaleToggle } from "./LocaleToggle";
@@ -58,14 +56,12 @@ export function Layout() {
   const handleServiceClick = (e, path) => {
     if (!isLoggedIn && path !== "/trading") {
       e.preventDefault();
-      toast.error(t("nav.loginRequired"));
       navigate("/login");
     }
   };
 
   const handleLogout = async () => {
     await logout();
-    toast.success(t("nav.logoutSuccess"));
     navigate("/");
   };
 
@@ -80,7 +76,6 @@ export function Layout() {
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col font-sans text-slate-900 dark:text-slate-100">
-      <Toaster position="top-center" />
       <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-50">
         <div className="container">
           <div className="flex items-center justify-between gap-3 h-16">
