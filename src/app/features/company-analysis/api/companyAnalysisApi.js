@@ -11,19 +11,37 @@ export function searchCompanies(keyword) {
   return request(`/api/v1/companies/search?keyword=${query}`);
 }
 
-/** @returns {Promise<import('../../../../mocks/companyAnalysis/types').MonitoredCompanyList>} */
-export function fetchMonitoredCompanies() {
-  return request('/api/v1/companies/monitored');
+/** @returns {Promise<import('../../../../mocks/companyAnalysis/types').StarredCompanyList>} */
+export function fetchStarredCompanies() {
+  return request('/api/v1/companies/starred');
 }
 
-/** @returns {Promise<import('../../../../mocks/companyAnalysis/types').MonitoredCompany>} */
-export function addMonitoredCompany(corpCode) {
-  return request(`/api/v1/companies/monitored/${encodeURIComponent(corpCode)}`, { method: 'POST' });
+/** @returns {Promise<import('../../../../mocks/companyAnalysis/types').StarredCompany>} */
+export function addStarredCompany(corpCode) {
+  return request(`/api/v1/companies/starred/${encodeURIComponent(corpCode)}`, { method: 'POST' });
 }
 
 /** @returns {Promise<void>} */
-export function removeMonitoredCompany(corpCode) {
-  return request(`/api/v1/companies/monitored/${encodeURIComponent(corpCode)}`, { method: 'DELETE' });
+export function removeStarredCompany(corpCode) {
+  return request(`/api/v1/companies/starred/${encodeURIComponent(corpCode)}`, { method: 'DELETE' });
+}
+
+/**
+ * AI 분석 열람권 구매 — 2000토큰 차감(1회), 관심 기업 자동 등록.
+ * 잔액 부족 시 request()가 { status: 402 }를 던진다.
+ * @returns {Promise<import('../../../../mocks/companyAnalysis/types').AiUnlockResult>}
+ */
+export function unlockAiAnalysis(corpCode) {
+  return request(`/api/v1/companies/${encodeURIComponent(corpCode)}/ai-analysis/unlock`, { method: 'POST' });
+}
+
+/**
+ * AI분석 탭 데이터 (리스크 상태머신 궤적 — on-demand 계산이라 콜드 기업은 수 초 걸릴 수 있음).
+ * 열람권 미보유 시 status='locked' 게이트 응답이 온다.
+ * @returns {Promise<import('../../../../mocks/companyAnalysis/types').AiAnalysis>}
+ */
+export function fetchAiAnalysis(corpCode) {
+  return request(`/api/v1/companies/${encodeURIComponent(corpCode)}/ai-analysis`);
 }
 
 /**

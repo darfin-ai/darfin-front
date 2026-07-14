@@ -1,6 +1,5 @@
 import { Link } from 'react-router';
 import { motion } from 'motion/react';
-import { Star } from 'lucide-react';
 import { useLocale } from '../../../shared/i18n';
 import { Badge } from '../../../shared/components/ui/badge';
 import { formatFilingDate } from '../lib/format';
@@ -9,9 +8,9 @@ import { scoreComponentLabel } from '../lib/i18n';
 import { dominantScoreChange, changeLevel, CHANGE_LEVEL_STYLES } from '../lib/scoring';
 
 /**
- * @param {{ company: import('../../../../mocks/companyAnalysis/types').Company, scores: import('../../../../mocks/companyAnalysis/types').ScoreComponent[], index?: number, isWatched?: boolean, onToggleWatch?: (id: string) => void }} props
+ * @param {{ company: import('../../../../mocks/companyAnalysis/types').Company, scores: import('../../../../mocks/companyAnalysis/types').ScoreComponent[], index?: number }} props
  */
-export function CompanyCard({ company, scores, index = 0, isWatched = false, onToggleWatch }) {
+export function CompanyCard({ company, scores, index = 0 }) {
   const { t } = useLocale();
   const dominant = dominantScoreChange(scores);
   const level = changeLevel(dominant.normalized);
@@ -29,22 +28,6 @@ export function CompanyCard({ company, scores, index = 0, isWatched = false, onT
         to={`/company/${company.id}`}
         className="group relative block rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 transition-shadow hover:shadow-md dark:hover:shadow-none dark:hover:border-slate-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-950"
       >
-        {onToggleWatch && (
-          <button
-            type="button"
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              onToggleWatch(company.id);
-            }}
-            aria-pressed={isWatched}
-            aria-label={isWatched ? t('company.grid.removeWatchlist', { name: company.name }) : t('company.grid.addWatchlist', { name: company.name })}
-            className="absolute right-4 top-4 rounded-full p-1 text-slate-300 dark:text-slate-600 transition-colors hover:text-amber-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-          >
-            <Star className={`h-5 w-5 ${isWatched ? 'fill-amber-400 text-amber-400' : ''}`} />
-          </button>
-        )}
-
         <div className="flex items-start justify-between gap-3 pr-6">
           <div className="flex min-w-0 items-start gap-3">
             <span

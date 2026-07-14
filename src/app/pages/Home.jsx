@@ -13,6 +13,53 @@ import { topKosdaqCompanies } from "../../mocks/companyAnalysis/topKosdaq";
 
 const SECTION = "py-14 sm:py-16";
 
+/* Same fade-up used on the pricing page: whole element slides/fades in as
+   one unit, mount-triggered, no variants/staggerChildren — timing is a
+   plain computed delay so callers can hand-sequence multiple elements. */
+const fadeUp = (reduceMotion, delay = 0) =>
+  reduceMotion
+    ? {}
+    : {
+        initial: { opacity: 0, y: 16 },
+        animate: { opacity: 1, y: 0 },
+        transition: { duration: 0.35, delay, ease: "easeOut" },
+      };
+
+function countWords(text) {
+  return text.split(/\s+/).filter(Boolean).length;
+}
+
+/* Word-level cascade for a line of text, in the same spirit as the pricing
+   page's feature-list rows: each word is its own motion.span with an
+   explicitly computed delay (baseDelay + index * wordStagger), not a
+   parent stagger container. Renders as a fragment so it can sit directly
+   inside a heading/paragraph tag. */
+function StaggerWords({ text, className, baseDelay = 0, wordStagger = 0.04, wordDuration = 0.25 }) {
+  const reduceMotion = useReducedMotion();
+  const tokens = text.split(/(\s+)/);
+  let wordIndex = -1;
+  return (
+    <>
+      {tokens.map((token, i) => {
+        if (/^\s+$/.test(token)) return token;
+        wordIndex += 1;
+        const delay = baseDelay + wordIndex * wordStagger;
+        return (
+          <motion.span
+            key={i}
+            className={`inline-block ${className || ""}`}
+            initial={reduceMotion ? false : { opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: wordDuration, delay, ease: "easeOut" }}
+          >
+            {token}
+          </motion.span>
+        );
+      })}
+    </>
+  );
+}
+
 /* Aligned with /company: blue-600 primary, restrained type weights */
 const CTA_PRIMARY = "bg-blue-600 hover:bg-blue-700";
 const CTA_SECTION = "bg-slate-50 dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800";
@@ -28,7 +75,7 @@ const BTN_HERO_SECONDARY = "inline-flex w-full sm:w-fit items-center justify-cen
 const LINK_ACTION = "inline-flex items-center gap-1 text-sm font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors";
 const CARD = "rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900";
 
-/* Matches CompanyQuickLinks.jsx exactly, so avatar badges look identical to the real /company page. */
+/* Matches the /company avatar badge palette exactly, so mockups look identical to the real page. */
 const AVATAR_PALETTE = [
   "from-blue-500 to-blue-600",
   "from-violet-500 to-violet-600",
@@ -85,7 +132,7 @@ function HeroCta() {
   if (isLoggedIn) {
     return (
       <div className="w-full max-w-[17.5rem] sm:max-w-none mx-auto lg:mx-0">
-        <div className="flex flex-col sm:flex-row items-center lg:items-start gap-3">
+        <div className="flex flex-col sm:flex-row items-center justify-center lg:items-start lg:justify-start gap-3">
           <button
             type="button"
             onClick={() => navigate("/company")}
@@ -106,7 +153,7 @@ function HeroCta() {
 
   return (
     <div className="w-full max-w-[17.5rem] sm:max-w-none mx-auto lg:mx-0">
-      <div className="flex flex-col sm:flex-row items-center lg:items-start gap-3">
+      <div className="flex flex-col sm:flex-row items-center justify-center lg:items-start lg:justify-start gap-3">
         <Link
           to="/signup"
           className={BTN_HERO_PRIMARY}
@@ -590,7 +637,7 @@ function CompanyMockup({ active = false }) {
           className="mb-2.5 flex items-center gap-1.5 rounded-lg border border-emerald-200 dark:border-emerald-900/60 bg-emerald-50/80 dark:bg-emerald-950/30 px-2.5 py-1.5"
         >
           <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500" aria-hidden />
-          <p className="text-[10px] text-emerald-800 dark:text-emerald-300">{t("company.detail.monitoringActive")}</p>
+          <p className="text-[10px] text-emerald-800 dark:text-emerald-300">{t("company.watchlist.starredHint")}</p>
         </motion.div>
 
         <motion.div
@@ -1214,43 +1261,67 @@ function HeroDataTrust() {
   );
 }
 
+// Hierarchy mirrors the pricing page: title lands as one solid block first
+// (fadeUp, 0.35s), then the finer-grained content below cascades in word by
+// word starting slightly before the title finishes — same overlap ratio
+// pricing uses between a card's own delay (0.08) and its feature rows (0.2).
+const HERO_TITLE_DELAY = 0.08;
+const HERO_SUBTITLE_BASE_DELAY = 0.2;
+const HERO_SUBTITLE_WORD_STAGGER = 0.035;
+const HERO_SUBTITLE_WORD_DURATION = 0.25;
+
 function HeroSection() {
   const { t } = useLocale();
   const reduceMotion = useReducedMotion();
   const { ref: demoRef, active, hoverHandlers } = useMockupActive({ amount: 0.45 });
+
+  const subtitle = t("landing.hero.subtitle");
+  const subtitleWordCount = countWords(subtitle);
+  const subtitleEnd =
+    HERO_SUBTITLE_BASE_DELAY + Math.max(subtitleWordCount - 1, 0) * HERO_SUBTITLE_WORD_STAGGER + HERO_SUBTITLE_WORD_DURATION;
+  const ctaDelay = subtitleEnd + 0.05;
 
   return (
     <div
       className="flex flex-col lg:grid lg:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)] lg:gap-16 lg:items-center"
       {...hoverHandlers}
     >
-      <motion.div
-        className="min-h-[calc(100dvh-4rem)] lg:min-h-0 w-full max-w-none lg:max-w-[44rem] text-center lg:text-left flex flex-col justify-center items-center lg:items-start"
-        initial={{ opacity: 0, y: 16 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.35, ease: "easeOut" }}
-      >
-        <HeroDataTrust />
-        <h1 className="text-[2.125rem] sm:text-5xl lg:text-[3.5rem] font-semibold tracking-tight text-slate-900 dark:text-slate-100 leading-[1.12] mb-6 lg:mb-4">
-          {t("landing.hero.titleLine1")}<br />
+      <div className="min-h-[calc(100dvh-4rem)] lg:min-h-0 w-full max-w-none lg:max-w-[44rem] text-center lg:text-left flex flex-col justify-center items-center lg:items-start">
+        <motion.div {...fadeUp(reduceMotion)}>
+          <HeroDataTrust />
+        </motion.div>
+        <motion.h1
+          className="text-[2.125rem] sm:text-5xl lg:text-[3.5rem] font-semibold tracking-tight text-slate-900 dark:text-slate-100 leading-[1.12] mb-6 lg:mb-4"
+          {...fadeUp(reduceMotion, HERO_TITLE_DELAY)}
+        >
+          {t("landing.hero.titleLine1")}
+          <br />
           <span className="bg-gradient-to-r from-blue-600 to-cyan-500 dark:from-blue-400 dark:to-cyan-300 bg-clip-text text-transparent">
             {t("landing.hero.titleLine2")}
           </span>
-        </h1>
+        </motion.h1>
         <p className="text-base sm:text-lg text-slate-500 dark:text-slate-400 leading-relaxed mb-10 lg:mb-8 max-w-[20rem] sm:max-w-[28rem] lg:max-w-[36rem] mx-auto lg:mx-0">
-          {t("landing.hero.subtitle")}
+          <StaggerWords
+            text={subtitle}
+            baseDelay={HERO_SUBTITLE_BASE_DELAY}
+            wordStagger={HERO_SUBTITLE_WORD_STAGGER}
+            wordDuration={HERO_SUBTITLE_WORD_DURATION}
+          />
         </p>
 
-        <HeroCta />
+        <motion.div {...fadeUp(reduceMotion, ctaDelay)}>
+          <HeroCta />
+        </motion.div>
 
-        <a
+        <motion.a
           href="#hero-demo"
           aria-label={t("landing.hero.scrollToDemo")}
           className="mt-10 lg:hidden text-slate-300 dark:text-slate-600 hover:text-slate-400 dark:hover:text-slate-500 transition-colors"
+          {...fadeUp(reduceMotion, ctaDelay)}
         >
           <ChevronDown size={24} strokeWidth={1.5} className="motion-safe:animate-bounce" />
-        </a>
-      </motion.div>
+        </motion.a>
+      </div>
 
       <motion.div
         id="hero-demo"

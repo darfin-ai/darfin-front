@@ -5,12 +5,12 @@ import { avatarLabel, avatarGradientForCompany } from '../lib/avatar';
  * @param {{
  *   results: { corpCode: string, name: string, ticker: string, market?: string | null, analyzed: boolean }[],
  *   loading?: boolean,
- *   isMonitored?: (corpCode: string) => boolean,
+ *   isStarred?: (corpCode: string) => boolean,
  *   onSelect: (result: { corpCode: string, name: string, ticker: string }) => void,
  *   emptyMessage?: string,
  * }} props
  */
-export function CompanySearchResults({ results, loading, isMonitored, onSelect, emptyMessage }) {
+export function CompanySearchResults({ results, loading, isStarred, onSelect, emptyMessage }) {
   const { t } = useLocale();
 
   if (loading) {
@@ -31,7 +31,7 @@ export function CompanySearchResults({ results, loading, isMonitored, onSelect, 
       <ul className="flex flex-col gap-2">
         {results.map((result) => {
           const company = { id: result.corpCode, name: result.name, ticker: result.ticker, market: result.market };
-          const monitored = isMonitored?.(result.corpCode);
+          const starred = isStarred?.(result.corpCode);
 
           return (
             <li key={result.corpCode}>
@@ -51,9 +51,9 @@ export function CompanySearchResults({ results, loading, isMonitored, onSelect, 
                   </span>
                   <span className="block truncate text-xs text-slate-400 dark:text-slate-500">{result.ticker}</span>
                 </span>
-                {monitored ? (
-                  <span className="shrink-0 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300">
-                    {t('company.monitoring.alreadyMonitoring')}
+                {starred ? (
+                  <span className="shrink-0 rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-700 dark:bg-amber-950/50 dark:text-amber-300">
+                    {t('company.watchlist.starredBadge')}
                   </span>
                 ) : null}
               </button>

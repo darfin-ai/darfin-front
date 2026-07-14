@@ -11,34 +11,32 @@ import {
 } from '../../../shared/components/ui/dialog';
 
 /**
+ * 잠금 해제 402(토큰 부족) 안내 — 플랜 업그레이드 유도.
  * @param {{
  *   open: boolean,
- *   limit: number,
+ *   cost: number,
  *   onOpenChange: (open: boolean) => void,
- *   onFocusSearch: () => void,
  * }} props
  */
-export function MonitorLimitDialog({ open, limit, onOpenChange, onFocusSearch }) {
-  const { t } = useLocale();
+export function InsufficientTokensDialog({ open, cost, onOpenChange }) {
+  const { t, locale } = useLocale();
+  const costLabel = cost.toLocaleString(locale === 'ko' ? 'ko-KR' : 'en-US');
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{t('company.monitoring.limitTitle')}</DialogTitle>
+          <DialogTitle>{t('company.unlock.insufficientTitle')}</DialogTitle>
           <DialogDescription>
-            {t('company.monitoring.limitBody', { limit })}
+            {t('company.unlock.insufficientBody', { cost: costLabel })}
           </DialogDescription>
         </DialogHeader>
-        <DialogFooter className="gap-2 sm:gap-0">
+        <DialogFooter>
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
             {t('common.cancel')}
           </Button>
-          <Button type="button" variant="secondary" onClick={onFocusSearch}>
-            {t('company.monitoring.removeHint')}
-          </Button>
           <Button type="button" asChild>
-            <Link to="/pricing">{t('company.monitoring.upgrade')}</Link>
+            <Link to="/pricing">{t('company.unlock.goPricing')}</Link>
           </Button>
         </DialogFooter>
       </DialogContent>

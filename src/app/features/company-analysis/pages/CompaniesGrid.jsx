@@ -1,13 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { useLocale } from '../../../shared/i18n';
-import { useAuth } from '../../auth';
 import { fetchCompanies, searchCompanies } from '../api/companyAnalysisApi';
 import { CompanySearchBar } from '../components/CompanySearchBar';
 import { CompanySearchResults } from '../components/CompanySearchResults';
-import { MyAnalysisSection } from '../components/MyAnalysisSection';
-import { getPlanLabelKey } from '../lib/monitoringPlan';
-import { useMonitoredCompanies } from '../lib/useMonitoredCompanies';
+import { WatchlistSection } from '../components/WatchlistSection';
+import { useStarredCompanies } from '../lib/useStarredCompanies';
 import { usePageMeta } from '../../../shared/hooks/usePageMeta';
 
 const SEARCH_DEBOUNCE_MS = 300;
@@ -22,7 +20,6 @@ export function CompaniesGrid() {
   });
 
   const navigate = useNavigate();
-  const { user } = useAuth();
   const inputRef = useRef(null);
 
   const [query, setQuery] = useState('');
@@ -31,12 +28,10 @@ export function CompaniesGrid() {
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchError, setSearchError] = useState(null);
 
-  const { items, limit, count, canAddMore, isMonitored, loading: monitoredLoading } = useMonitoredCompanies();
+  const { items, count, isStarred, unstar, loading: starredLoading } = useStarredCompanies();
 
   const trimmedQuery = query.trim();
   const isStockSearch = trimmedQuery.length >= MIN_SEARCH_LENGTH;
-
-  const planLabel = t(getPlanLabelKey(user?.subscriptionLevel));
 
   useEffect(() => {
     let cancelled = false;
@@ -98,14 +93,23 @@ export function CompaniesGrid() {
     [navigate],
   );
 
+  const handleUnstar = useCallback(
+    (corpCode) => {
+      unstar(corpCode).catch(() => {
+        /* 낙관적 갱신 없음 — 실패 시 목록이 그대로 남아 재시도 가능 */
+      });
+    },
+    [unstar],
+  );
+
   return (
     <div className="container pb-16">
       <header className="pt-10 text-center">
         <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
-          {t('company.monitoring.pageTitle')}
+          {t('company.watchlist.pageTitle')}
         </h1>
         <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
-          {t('company.monitoring.pageSubtitle')}
+          {t('company.watchlist.pageSubtitle')}
         </p>
       </header>
 
@@ -122,21 +126,19 @@ export function CompaniesGrid() {
             <CompanySearchResults
               results={stockResults}
               loading={searchLoading}
-              isMonitored={isMonitored}
+              isStarred={isStarred}
               onSelect={handleSearchSelect}
               emptyMessage={t('company.grid.noMatch', { query: trimmedQuery })}
             />
           </>
-        ) : monitoredLoading ? (
+        ) : starredLoading ? (
           <p className="py-12 text-center text-sm text-slate-400 dark:text-slate-500">{t('common.loading')}</p>
         ) : (
-          <MyAnalysisSection
+          <WatchlistSection
             items={items}
             count={count}
-            limit={limit}
-            planLabel={planLabel}
             filingDatesByCorp={filingDatesByCorp}
-            atLimit={!canAddMore}
+            onUnstar={handleUnstar}
           />
         )}
       </div>

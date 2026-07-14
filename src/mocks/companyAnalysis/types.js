@@ -408,7 +408,9 @@
  */
 
 /**
- * @typedef {Object} MonitoredCompany
+ * 관심 기업(watchlist) — 무료·무제한 별표 북마크.
+ * GET/POST/DELETE /api/v1/companies/starred[/{corpCode}]
+ * @typedef {Object} StarredCompany
  * @property {string} corpCode
  * @property {string} name
  * @property {string} ticker
@@ -416,10 +418,19 @@
  */
 
 /**
- * @typedef {Object} MonitoredCompanyList
- * @property {MonitoredCompany[]} items
+ * @typedef {Object} StarredCompanyList
+ * @property {StarredCompany[]} items
  * @property {number} count
- * @property {number} limit
+ */
+
+/**
+ * AI 분석 열람권 구매 — POST /api/v1/companies/{corpCode}/ai-analysis/unlock
+ * 2000토큰 차감(1회) + 관심 기업 자동 등록. 별표를 해제해도 열람권은 유지된다.
+ * 잔액 부족 시 402.
+ * @typedef {Object} AiUnlockResult
+ * @property {boolean} unlocked
+ * @property {boolean} alreadyUnlocked true면 이미 열람권 보유 — 토큰 차감 없음
+ * @property {number} tokenBalance 차감 후 잔액
  */
 
 /**
@@ -435,6 +446,68 @@
  * @property {CompanyOverview} [overview]
  * @property {DartOverview} [dartOverview]  DART 정기공시 API 기반 구조화 개요 (개요 탭)
  * @property {boolean} [preview] stock-only preview before onboard
+ * @property {boolean} [aiUnlocked] 요청 사용자의 AI 분석 열람권 보유 여부
+ */
+
+/**
+ * AI분석 탭 — GET /api/v1/companies/{corpCode}/ai-analysis
+ * 백엔드 계약 사본: darfin-main dto/analysis/AiAnalysisResponse.java —
+ * 한쪽을 바꾸면 반드시 같이 바꿀 것 (AGENTS.md 규칙).
+ *
+ * @typedef {'liquidity'|'leverage'|'earnings_quality'|'going_concern'|'governance'|'operational'} RiskCategory
+ * @typedef {'신규발생'|'악화'|'지속'|'개선'|'해소'|'정상'|'데이터부족'} RiskState
+ */
+
+/**
+ * @typedef {Object} RiskCategoryState
+ * @property {RiskCategory} category
+ * @property {RiskState} state
+ * @property {number} consecutiveQtrs 같은 상태 연속 분기 수 ("악화 3분기 연속")
+ * @property {string|null} narrativeKo LLM 생성 서사 — null이면 quant-only(폴링 대상)
+ * @property {string|null} watchNextKo "차기 분기 확인 사항" (prescriptive 출력)
+ * @property {Object|null} signals 판정에 쓰인 정량 신호 스냅샷
+ */
+
+/**
+ * @typedef {Object} RiskTrajectoryPoint
+ * @property {string} quarter 예: 2024Q1
+ * @property {RiskState} state
+ * @property {number} consecutiveQtrs
+ */
+
+/**
+ * @typedef {Object} RiskCategoryTrajectory
+ * @property {RiskCategory} category
+ * @property {RiskTrajectoryPoint[]} points
+ */
+
+/**
+ * @typedef {Object} AiAnalysisQuarterMetrics
+ * @property {string} quarter
+ * @property {Object} metrics ratios/altmanZ/piotroskiF/dupont/zscores12q 등 (결정론적 산출)
+ */
+
+/**
+ * @typedef {Object} DossierEvent
+ * @property {string} rceptNo
+ * @property {'item_appeared'|'item_disappeared'|'correction_material'|'restatement_gap'} eventType
+ * @property {string} category
+ * @property {string|null} itemKey
+ * @property {Object|null} detail
+ * @property {string} createdAt
+ */
+
+/**
+ * @typedef {Object} AiAnalysis
+ * @property {'locked'|'quant_only'|'complete'|'insufficient_data'|'preview'} status locked = 열람권 미보유 게이트
+ * @property {number} [unlockCost] status=locked일 때만 — 열람권 가격(토큰)
+ * @property {'CFS'|'OFS'|null} fsDiv 상태머신이 사용한 재무제표 구분 (연결 우선, 별도 폴백)
+ * @property {boolean} preview 미온보딩 종목 — 계산 없이 게이트만 알림
+ * @property {string[]} quarters
+ * @property {RiskCategoryState[]} currentStates 최신 분기의 카테고리별 상태
+ * @property {RiskCategoryTrajectory[]} trajectories
+ * @property {AiAnalysisQuarterMetrics[]} metricsSeries
+ * @property {DossierEvent[]} dossierEvents
  */
 
 export const SCORE_COMPONENT_LABELS = {

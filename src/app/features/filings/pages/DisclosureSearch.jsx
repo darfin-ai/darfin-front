@@ -106,7 +106,7 @@ function saveState(state) {
   } catch {}
 }
 
-/** Stagger presets aligned with company-analysis list entrances (CompanyQuickLinks, CompanyCard). */
+/** Stagger presets aligned with company-analysis list entrances (CompanyCard). */
 function getStaggerVariants(reduceMotion, { stagger = 0.03, delayChildren = 0 } = {}) {
   if (reduceMotion) {
     return {
