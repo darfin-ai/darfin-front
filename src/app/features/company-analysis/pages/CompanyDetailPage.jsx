@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router';
+import { motion, useReducedMotion } from 'motion/react';
 import { useLocale } from '../../../shared/i18n';
-import { fetchCompanies, fetchCompanyDetail, fetchAiAnalysis, unlockAiAnalysis } from '../api/companyAnalysisApi';
+import { fetchCompanies, fetchCompanyDetail, fetchAiAnalysis, retryAiAnalysis, unlockAiAnalysis } from '../api/companyAnalysisApi';
 import { IdentityStrip } from '../components/IdentityStrip';
 import { CompanyDetailSkeleton } from '../components/CompanyDetailSkeleton';
 import { SimilarCompaniesPanel } from '../components/SimilarCompaniesPanel';
@@ -35,6 +36,24 @@ import { usePageMeta } from '../../../shared/hooks/usePageMeta';
 const POLL_INTERVAL_MS = 12_000;
 const MAX_POLLS = 10;
 const DEFAULT_UNLOCK_COST = 2000;
+const RISK_PENDING_STATUSES = new Set([
+  'preview',
+  'preparing_filings',
+  'quant_only',
+  'quant_ready',
+  'generating_narrative',
+]);
+const RISK_QUANT_STATUSES = new Set(['quant_only', 'quant_ready', 'generating_narrative']);
+const RISK_ERROR_CODES = new Set([
+  'AI_TIMEOUT',
+  'AI_RATE_LIMITED',
+  'SOURCE_UNAVAILABLE',
+  'AI_PROCESSING_FAILED',
+]);
+
+function riskErrorKey(errorCode) {
+  return RISK_ERROR_CODES.has(errorCode) ? errorCode : 'default';
+}
 
 function FindingsSkeleton() {
   return (
@@ -55,6 +74,7 @@ function FindingsSkeleton() {
 export function CompanyDetailPage() {
   const { t } = useLocale();
   const { id } = useParams();
+  const shouldReduceMotion = useReducedMotion();
   const [tab, setTab] = useState('overview');
 
   const [detail, setDetail] = useState(null);
@@ -162,9 +182,11 @@ export function CompanyDetailPage() {
     };
   }, [tab, detail, riskAnalysis, riskError, id, t]);
 
-  // quant_only(내러티브 미완) 동안 폴링 — 기존 AI 인사이트 폴링과 동일 리듬.
+  // 서버의 준비 단계 동안 폴링한다. quant_only은 이전 서버와의 호환 상태다.
+  // 모든 준비 상태를 합쳐 최대 약 2분까지만 자동 확인하고 이후에는 사용자가
+  // 명시적으로 다시 확인할 수 있게 한다.
   useEffect(() => {
-    if (riskAnalysis?.status !== 'quant_only' || riskPollCount >= MAX_POLLS) return;
+    if (!RISK_PENDING_STATUSES.has(riskAnalysis?.status) || riskPollCount >= MAX_POLLS) return;
     const timer = setTimeout(() => {
       fetchAiAnalysis(id)
         .then((fresh) => setRiskAnalysis(fresh))
@@ -184,6 +206,18 @@ export function CompanyDetailPage() {
     setRiskError(null);
     setRiskPollCount(0);
   }, []);
+
+  const handleRetryFailedRisk = useCallback(() => {
+    setRiskLoading(true);
+    setRiskError(null);
+    retryAiAnalysis(id)
+      .then((fresh) => {
+        setRiskAnalysis(fresh);
+        setRiskPollCount(0);
+      })
+      .catch((err) => setRiskError(err.message || t('company.risk.loadFail')))
+      .finally(() => setRiskLoading(false));
+  }, [id, t]);
 
   // 별표 토글 — 무료 북마크라 확인 다이얼로그 없이 즉시 반영.
   // preview(미온보딩) 종목의 별표는 서버가 온보딩까지 수행하므로 상세를 재조회한다.
@@ -306,15 +340,33 @@ export function CompanyDetailPage() {
 
           <TabsContent value="overview">
             <div className="space-y-8">
-              {showDartOverview && <DartSectionNav activeGroups={activeGroups} />}
+              {showDartOverview && (
+                <motion.div
+                  initial={shouldReduceMotion ? false : { opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: shouldReduceMotion ? 0 : 0.3, ease: 'easeOut' }}
+                >
+                  <DartSectionNav activeGroups={activeGroups} />
+                </motion.div>
+              )}
               {showDartOverview ? (
                 <>
-                  <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[1fr_280px]">
+                  <motion.div
+                    initial={shouldReduceMotion ? false : { opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: shouldReduceMotion ? 0 : 0.06, duration: shouldReduceMotion ? 0 : 0.35, ease: 'easeOut' }}
+                    className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[1fr_280px]"
+                  >
                     <DartOverviewHeroStrip dartOverview={dartOverview} />
                     {!isPreview && <RecentFilingsPanel filings={recentFilings} />}
-                  </div>
+                  </motion.div>
 
-                  <div id="dart-group-governance">
+                  <motion.div
+                    id="dart-group-governance"
+                    initial={shouldReduceMotion ? false : { opacity: 0, y: 16 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: shouldReduceMotion ? 0 : 0.12, duration: shouldReduceMotion ? 0 : 0.35, ease: 'easeOut' }}
+                  >
                     <DartGroupEyebrow>{t('company.dart.groups.governance')}</DartGroupEyebrow>
                     <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-2">
                       <MajorShareholderPanel
@@ -323,37 +375,57 @@ export function CompanyDetailPage() {
                       />
                       <ShareholderChangePanel section={dartOverview.majorShareholderChanges} />
                     </div>
-                  </div>
+                  </motion.div>
 
-                  <div id="dart-group-capital">
+                  <motion.div
+                    id="dart-group-capital"
+                    initial={shouldReduceMotion ? false : { opacity: 0, y: 16 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: shouldReduceMotion ? 0 : 0.18, duration: shouldReduceMotion ? 0 : 0.35, ease: 'easeOut' }}
+                  >
                     <DartGroupEyebrow>{t('company.dart.groups.capital')}</DartGroupEyebrow>
                     <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-2">
                       <StockCompositionPanel section={dartOverview.stockTotals} />
                       <CapitalChangePanel section={dartOverview.capitalChanges} />
                     </div>
-                  </div>
+                  </motion.div>
 
-                  <div id="dart-group-returns">
+                  <motion.div
+                    id="dart-group-returns"
+                    initial={shouldReduceMotion ? false : { opacity: 0, y: 16 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: shouldReduceMotion ? 0 : 0.24, duration: shouldReduceMotion ? 0 : 0.35, ease: 'easeOut' }}
+                  >
                     <DartGroupEyebrow>{t('company.dart.groups.returns')}</DartGroupEyebrow>
                     <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-2">
                       <DartDividendPanel section={dartOverview.dividends} meta={dartOverview.meta} />
                       <TreasuryStockPanel section={dartOverview.treasuryStock} />
                     </div>
-                  </div>
+                  </motion.div>
 
-                  <div id="dart-group-snapshot">
+                  <motion.div
+                    id="dart-group-snapshot"
+                    initial={shouldReduceMotion ? false : { opacity: 0, y: 16 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: shouldReduceMotion ? 0 : 0.3, duration: shouldReduceMotion ? 0 : 0.35, ease: 'easeOut' }}
+                  >
                     <DartGroupEyebrow>{t('company.dart.groups.snapshot')}</DartGroupEyebrow>
                     <EmployeePanel section={dartOverview.employees} />
                     <div className="mt-6 grid grid-cols-1 items-start gap-6 lg:grid-cols-[1fr_360px]">
                       <ExecutivePanel section={dartOverview.executives} />
                       <AuditOpinionPanel section={dartOverview.auditOpinions} />
                     </div>
-                  </div>
+                  </motion.div>
                 </>
               ) : (
-                <p className="rounded-md border border-dashed border-slate-200 dark:border-slate-700 px-4 py-8 text-center text-sm text-slate-400 dark:text-slate-500">
+                <motion.p
+                  initial={shouldReduceMotion ? false : { opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: shouldReduceMotion ? 0 : 0.35, ease: 'easeOut' }}
+                  className="rounded-md border border-dashed border-slate-200 dark:border-slate-700 px-4 py-8 text-center text-sm text-slate-400 dark:text-slate-500"
+                >
                   {t('company.dart.noData')}
-                </p>
+                </motion.p>
               )}
             </div>
           </TabsContent>
@@ -367,10 +439,6 @@ export function CompanyDetailPage() {
                   error={unlockError}
                   onUnlock={handleUnlock}
                 />
-              ) : riskAnalysis?.status === 'preview' ? (
-                <p className="rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900/50 px-4 py-6 text-center text-sm text-slate-500 dark:text-slate-400">
-                  {t('company.unlock.preparingNote')}
-                </p>
               ) : (
                 <>
                   {/* 리스크 상태머신 (on-demand quant + LLM 폴링 보강) */}
@@ -378,6 +446,34 @@ export function CompanyDetailPage() {
                     <p className="text-sm text-red-500 dark:text-red-400">{riskError}</p>
                   )}
                   {riskLoading && !riskAnalysis && <FindingsSkeleton />}
+                  {riskAnalysis && ['preview', 'preparing_filings'].includes(riskAnalysis.status) && (
+                    <div className="rounded-lg border border-blue-100 dark:border-blue-900 bg-blue-50/60 dark:bg-blue-950/30 px-4 py-6 text-center text-sm text-blue-700 dark:text-blue-300">
+                      <p>{t(`company.risk.status.${riskAnalysis.status}`)}</p>
+                      {riskPollCount >= MAX_POLLS && (
+                        <button
+                          type="button"
+                          onClick={handleRetryRisk}
+                          className="mt-3 rounded-md border border-blue-300 dark:border-blue-700 px-2 py-1 text-xs font-medium hover:bg-blue-100 dark:hover:bg-blue-900/40"
+                        >
+                          {t('company.risk.retryCheck')}
+                        </button>
+                      )}
+                    </div>
+                  )}
+                  {riskAnalysis && riskAnalysis.status === 'failed' && (
+                    <div className="rounded-lg border border-red-100 dark:border-red-900 bg-red-50/60 dark:bg-red-950/30 px-4 py-6 text-center text-sm text-red-700 dark:text-red-300">
+                      <p>{t(`company.risk.errors.${riskErrorKey(riskAnalysis.errorCode)}`)}</p>
+                      {riskAnalysis.retryable !== false && (
+                        <button
+                          type="button"
+                          onClick={handleRetryFailedRisk}
+                          className="mt-3 rounded-md border border-red-300 dark:border-red-700 px-2 py-1 text-xs font-medium hover:bg-red-100 dark:hover:bg-red-900/40"
+                        >
+                          {t('company.risk.retryCheck')}
+                        </button>
+                      )}
+                    </div>
+                  )}
                   {riskAnalysis && riskAnalysis.status === 'insufficient_data' && (
                     <p className="rounded-md border border-dashed border-slate-200 dark:border-slate-700 px-4 py-6 text-center text-sm text-slate-400 dark:text-slate-500">
                       {t('company.risk.insufficientNote')}
@@ -395,12 +491,12 @@ export function CompanyDetailPage() {
                           </span>
                         )}
                       </div>
-                      {riskAnalysis.status === 'quant_only' && riskPollCount < MAX_POLLS && (
+                      {RISK_QUANT_STATUSES.has(riskAnalysis.status) && riskPollCount < MAX_POLLS && (
                         <p className="rounded-md border border-blue-100 dark:border-blue-900 bg-blue-50/60 dark:bg-blue-950/30 px-3 py-2 text-xs text-blue-700 dark:text-blue-300">
-                          {t('company.risk.quantOnlyNote')}
+                          {t(`company.risk.status.${riskAnalysis.status}`)}
                         </p>
                       )}
-                      {riskAnalysis.status === 'quant_only' && riskPollCount >= MAX_POLLS && (
+                      {RISK_QUANT_STATUSES.has(riskAnalysis.status) && riskPollCount >= MAX_POLLS && (
                         <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-amber-100 dark:border-amber-900 bg-amber-50/60 dark:bg-amber-950/30 px-3 py-2 text-xs text-amber-700 dark:text-amber-300">
                           <span>{t('company.risk.quantOnlyDelayedNote')}</span>
                           <button

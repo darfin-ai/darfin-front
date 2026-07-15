@@ -577,6 +577,12 @@ export function DisclosureSearch() {
         </AnimatePresence>
       </form>
       </div>
+
+      {!results && !searchError && (
+        <motion.div variants={pageStagger.item}>
+          <TodayDisclosures />
+        </motion.div>
+      )}
       </motion.div>
 
       {collectMessage && !searchError && (
@@ -584,8 +590,6 @@ export function DisclosureSearch() {
       )}
 
       {searchError && <div className={ALERT_ERROR}>{searchError}</div>}
-
-      {!results && !searchError && <TodayDisclosures />}
 
       {results && !searchError && (
         <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">

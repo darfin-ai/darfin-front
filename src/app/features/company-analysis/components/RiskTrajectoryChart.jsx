@@ -1,3 +1,4 @@
+import { motion, useReducedMotion } from 'motion/react';
 import { useLocale } from '../../../shared/i18n';
 import { RISK_STATE_KEYS, RISK_CATEGORY_KEYS, RISK_STATE_STYLES } from '../lib/riskStates';
 
@@ -11,10 +12,16 @@ import { RISK_STATE_KEYS, RISK_CATEGORY_KEYS, RISK_STATE_STYLES } from '../lib/r
  */
 export function RiskTrajectoryChart({ quarters, trajectories }) {
   const { t } = useLocale();
+  const shouldReduceMotion = useReducedMotion();
   if (!quarters?.length || !trajectories?.length) return null;
 
   return (
-    <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4">
+    <motion.div
+      initial={shouldReduceMotion ? false : { opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: shouldReduceMotion ? 0 : 0.16, duration: shouldReduceMotion ? 0 : 0.35, ease: 'easeOut' }}
+      className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4"
+    >
       <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-200">
         {t('company.risk.trajectoryTitle')}
       </h4>
@@ -52,8 +59,15 @@ export function RiskTrajectoryChart({ quarters, trajectories }) {
                       : q;
                     return (
                       <td key={q} className="p-0">
-                        <div
+                        <motion.div
                           title={label}
+                          initial={shouldReduceMotion || !style ? false : { opacity: 0, scaleX: 0 }}
+                          animate={{ opacity: 1, scaleX: 1 }}
+                          transition={{
+                            delay: shouldReduceMotion ? 0 : 0.24 + quarters.indexOf(q) * 0.035,
+                            duration: shouldReduceMotion ? 0 : 0.25,
+                            ease: 'easeOut',
+                          }}
                           className={`h-5 min-w-5 rounded-sm ${style ? style.cell : 'bg-transparent'}`}
                         />
                       </td>
@@ -73,6 +87,6 @@ export function RiskTrajectoryChart({ quarters, trajectories }) {
           </span>
         ))}
       </div>
-    </div>
+    </motion.div>
   );
 }

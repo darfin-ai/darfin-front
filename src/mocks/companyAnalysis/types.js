@@ -499,8 +499,10 @@
 
 /**
  * @typedef {Object} AiAnalysis
- * @property {'locked'|'quant_only'|'complete'|'insufficient_data'|'preview'} status locked = 열람권 미보유 게이트
+ * @property {'locked'|'preparing_filings'|'quant_only'|'quant_ready'|'generating_narrative'|'complete'|'failed'|'insufficient_data'|'preview'} status locked = 열람권 미보유 게이트, quant_only = quant_ready 구버전 호환
  * @property {number} [unlockCost] status=locked일 때만 — 열람권 가격(토큰)
+ * @property {boolean} [retryable] status=failed일 때 사용자가 다시 확인할 수 있는지 여부
+ * @property {string} [errorCode] status=failed일 때 사용자 노출 문구 선택용 안전한 오류 코드
  * @property {'CFS'|'OFS'|null} fsDiv 상태머신이 사용한 재무제표 구분 (연결 우선, 별도 폴백)
  * @property {boolean} preview 미온보딩 종목 — 계산 없이 게이트만 알림
  * @property {string[]} quarters

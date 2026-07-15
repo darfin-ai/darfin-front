@@ -1,13 +1,16 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, Link } from "react-router";
 import { motion, AnimatePresence, useReducedMotion, useInView } from "motion/react";
-import { ChevronRight, ChevronDown, ArrowRight, ArrowLeft, Lightbulb, TrendingUp, Landmark, AlertTriangle, ShieldCheck, Check, CheckCircle2, CornerDownRight, MessageCircle } from "lucide-react";
+import { ChevronRight, ChevronDown, ArrowRight, ArrowLeft, Lightbulb, TrendingUp, Landmark, AlertTriangle, ShieldCheck, Check, CheckCircle2, CornerDownRight, MessageCircle, Loader2 } from "lucide-react";
 import { useTheme } from "next-themes";
+import { formatDistanceToNowStrict } from "date-fns";
 import { useAuth } from "../features/auth";
 import { useLocale } from "../shared/i18n";
+import { getDateFnsLocale } from "../shared/i18n/localeFormat";
 import { usePageMeta } from "../shared/hooks/usePageMeta";
 import { useJsonLd } from "../shared/hooks/useJsonLd";
 import { getSiteUrl } from "../shared/lib/siteUrl";
+import { getTodayDisclosures } from "../features/filings/api/disclosureApi";
 import { topKospiCompanies } from "../../mocks/companyAnalysis/topKospi";
 import { topKosdaqCompanies } from "../../mocks/companyAnalysis/topKosdaq";
 
@@ -1403,12 +1406,43 @@ function WalkthroughRow({ item, index, Mockup, link }) {
 
 const WALKTHROUGH_LINKS = ["/company", "/trading", "/community"];
 const WALKTHROUGH_MOCKUPS = [CompanyMockup, TradingMockup, CommunityMockup];
+const DISCLOSURE_POLL_INTERVAL_MS = 30_000;
 
 export function Home() {
   const navigate = useNavigate();
   const { isLoggedIn } = useAuth();
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
   const siteUrl = getSiteUrl();
+  const [disclosureItems, setDisclosureItems] = useState(null);
+  const [disclosureError, setDisclosureError] = useState(null);
+
+  useEffect(() => {
+    let mounted = true;
+
+    const loadDisclosures = async () => {
+      try {
+        const data = await getTodayDisclosures(6);
+        if (mounted) {
+          setDisclosureItems(data);
+          setDisclosureError(null);
+        }
+      } catch (error) {
+        if (mounted && disclosureItems === null) {
+          setDisclosureError(error?.message ?? t("disclosure.search.todayError"));
+        }
+      }
+    };
+
+    loadDisclosures();
+    const intervalId = setInterval(loadDisclosures, DISCLOSURE_POLL_INTERVAL_MS);
+
+    return () => {
+      mounted = false;
+      clearInterval(intervalId);
+    };
+    // Keep polling independent of render state; a successful refresh clears any initial error.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   usePageMeta({
     title: t("seo.home.title"),
@@ -1442,7 +1476,6 @@ export function Home() {
 
   const credibilityStats = t("landing.credibility.stats");
   const walkthroughItems = t("landing.walkthrough.items");
-  const disclosureItems = t("landing.disclosures.items");
   const lensItems = t("landing.lenses.items");
   const lensStyleMap = lensStyles();
   return (
@@ -1587,22 +1620,41 @@ export function Home() {
 
           <div className={`${CARD} p-2`} role="feed" aria-label={t("landing.disclosures.feedLabel")} aria-live="polite">
             <div className="divide-y divide-slate-100 dark:divide-slate-800">
-              {disclosureItems.map((d, i) => (
-                <motion.div key={`${d.code}-${i}`} initial={{ opacity: 0, y: 8 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.06, duration: 0.25 }}>
-                  <Link to={`/disclosure/${i + 1}`} className="group flex items-center gap-3 p-3 hover:bg-slate-50 dark:hover:bg-slate-800/50 rounded-md transition-colors">
+              {disclosureItems === null && !disclosureError && (
+                <div className="flex items-center justify-center gap-2 py-10 text-slate-400 dark:text-slate-500">
+                  <Loader2 size={18} className="animate-spin" aria-hidden="true" />
+                  <span className="text-sm">{t("disclosure.search.todayLoading")}</span>
+                </div>
+              )}
+              {disclosureError && disclosureItems === null && (
+                <p className="py-8 text-center text-sm text-red-600 dark:text-red-400">{disclosureError}</p>
+              )}
+              {disclosureItems?.length === 0 && (
+                <p className="py-8 text-center text-sm text-slate-500 dark:text-slate-400">{t("disclosure.search.todayEmpty")}</p>
+              )}
+              {disclosureItems?.map((d, i) => (
+                <motion.div key={d.rceptNo} initial={{ opacity: 0, y: 8 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.06, duration: 0.25 }}>
+                  <Link to={`/disclosure/${d.rceptNo}?company=${encodeURIComponent(d.companyName)}`} className="group flex items-center gap-3 p-3 hover:bg-slate-50 dark:hover:bg-slate-800/50 rounded-md transition-colors">
                     <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br text-xs font-semibold text-white ${AVATAR_PALETTE[i % AVATAR_PALETTE.length]}`}>
-                      {avatarLabel({ name: d.company })}
+                      {avatarLabel({ name: d.companyName })}
                     </span>
-                    <div className="w-28 flex-shrink-0">
-                      <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{d.company}</div>
-                      <div className="text-xs text-slate-400 dark:text-slate-500 tabular-nums">{d.code}</div>
+                    <div className="w-28 flex-shrink-0 min-w-0">
+                      <div className="text-sm font-medium text-slate-900 dark:text-slate-100 truncate">{d.companyName}</div>
+                      <div className="text-xs text-slate-400 dark:text-slate-500 truncate">{d.filerName}</div>
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm text-slate-600 dark:text-slate-400 truncate group-hover:text-slate-900 dark:group-hover:text-slate-100 transition-colors">{d.title}</p>
-                      <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">{d.type}</p>
+                      <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">{d.typeName}</p>
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0">
-                      <span className="text-xs text-slate-400 dark:text-slate-500 tabular-nums">{d.time}</span>
+                      <span className="text-xs text-slate-400 dark:text-slate-500 tabular-nums">
+                        {d.detectedAt
+                          ? formatDistanceToNowStrict(new Date(d.detectedAt), {
+                              addSuffix: true,
+                              locale: getDateFnsLocale(locale),
+                            })
+                          : d.filedAt}
+                      </span>
                       <ChevronRight size={16} className="text-slate-300 dark:text-slate-600 group-hover:text-blue-500 dark:group-hover:text-blue-400 transition-colors" aria-hidden="true" />
                     </div>
                   </Link>
