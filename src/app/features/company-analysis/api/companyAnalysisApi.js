@@ -44,6 +44,11 @@ export function fetchAiAnalysis(corpCode) {
   return request(`/api/v1/companies/${encodeURIComponent(corpCode)}/ai-analysis`);
 }
 
+/** Explicitly retry a failed AI narrative job. */
+export function retryAiAnalysis(corpCode) {
+  return request(`/api/v1/companies/${encodeURIComponent(corpCode)}/ai-analysis/retry`, { method: 'POST' });
+}
+
 /**
  * corp_code가 존재하지 않으면 apiClient의 request()가 { status: 404 }를 던진다.
  * @returns {Promise<import('../../../../mocks/companyAnalysis/types').CompanyDetail>}

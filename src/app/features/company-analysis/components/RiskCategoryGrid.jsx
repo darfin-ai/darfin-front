@@ -1,3 +1,4 @@
+import { motion, useReducedMotion } from 'motion/react';
 import { useLocale } from '../../../shared/i18n';
 import { RISK_STATE_KEYS, RISK_CATEGORY_KEYS, RISK_STATE_STYLES, isFlaggedState } from '../lib/riskStates';
 
@@ -8,16 +9,20 @@ import { RISK_STATE_KEYS, RISK_CATEGORY_KEYS, RISK_STATE_STYLES, isFlaggedState 
  */
 export function RiskCategoryGrid({ currentStates }) {
   const { t } = useLocale();
+  const shouldReduceMotion = useReducedMotion();
   if (!currentStates?.length) return null;
 
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-      {currentStates.map((cs) => {
+      {currentStates.map((cs, index) => {
         const style = RISK_STATE_STYLES[cs.state] ?? RISK_STATE_STYLES['데이터부족'];
         const flagged = isFlaggedState(cs.state);
         return (
-          <div
+          <motion.div
             key={cs.category}
+            initial={shouldReduceMotion ? false : { opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: shouldReduceMotion ? 0 : index * 0.07, duration: shouldReduceMotion ? 0 : 0.35, ease: 'easeOut' }}
             className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4"
           >
             <div className="flex items-center justify-between gap-2">
@@ -49,7 +54,7 @@ export function RiskCategoryGrid({ currentStates }) {
                 <p className="mt-0.5 text-xs text-slate-600 dark:text-slate-300">{cs.watchNextKo}</p>
               </div>
             )}
-          </div>
+          </motion.div>
         );
       })}
     </div>

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import { formatDistanceToNowStrict } from "date-fns";
 import { CalendarClock, FileText, Loader2 } from "lucide-react";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useLocale } from "@/app/shared/i18n";
 import { getDateFnsLocale } from "@/app/shared/i18n/localeFormat";
 import { getTodayDisclosures } from "../api/disclosureApi";
@@ -18,6 +19,7 @@ export function TodayDisclosures() {
   const navigate = useNavigate();
   const { t, locale } = useLocale();
   const dateFnsLocale = getDateFnsLocale(locale);
+  const reduceMotion = useReducedMotion();
 
   const [items, setItems] = useState(null);
   const [error, setError] = useState(null);
@@ -61,25 +63,50 @@ export function TodayDisclosures() {
         {t("disclosure.search.todayTitle")}
       </h2>
 
+      <AnimatePresence mode="wait" initial={false}>
       {showInitialLoading && (
-        <div className="flex items-center justify-center gap-2 py-10 text-slate-400 dark:text-slate-500">
+        <motion.div
+          key="loading"
+          exit={reduceMotion ? undefined : { opacity: 0, y: -4 }}
+          transition={{ duration: 0.2, ease: "easeOut" }}
+          className="flex items-center justify-center gap-2 py-10 text-slate-400 dark:text-slate-500"
+        >
           <Loader2 size={20} className="animate-spin" />
           <span className="text-sm">{t("disclosure.search.todayLoading")}</span>
-        </div>
+        </motion.div>
       )}
 
       {error && !showInitialLoading && (
-        <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+        <motion.p
+          key="error"
+          initial={reduceMotion ? false : { opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="text-sm text-red-600 dark:text-red-400"
+        >
+          {error}
+        </motion.p>
       )}
 
       {items && items.length === 0 && (
-        <div className={`${CARD} shadow-sm p-8 text-center text-sm text-slate-500 dark:text-slate-400`}>
+        <motion.div
+          key="empty"
+          initial={reduceMotion ? false : { opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, ease: "easeOut" }}
+          className={`${CARD} shadow-sm p-8 text-center text-sm text-slate-500 dark:text-slate-400`}
+        >
           {t("disclosure.search.todayEmpty")}
-        </div>
+        </motion.div>
       )}
 
       {items && items.length > 0 && (
-        <div className={`${CARD} shadow-sm overflow-hidden`}>
+        <motion.div
+          key="items"
+          initial={reduceMotion ? false : { opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, ease: "easeOut" }}
+          className={`${CARD} shadow-sm overflow-hidden`}
+        >
           <div className={ROW_DIVIDER}>
             {items.map((item) => (
               <div
@@ -111,8 +138,9 @@ export function TodayDisclosures() {
               </div>
             ))}
           </div>
-        </div>
+        </motion.div>
       )}
+      </AnimatePresence>
     </div>
   );
 }
