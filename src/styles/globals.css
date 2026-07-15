@@ -61,6 +61,41 @@ body {
   animation: darfin-skeleton-shimmer 1.25s ease-in-out infinite;
 }
 
+.darfin-trading-surface {
+  --trading-bg: #ffffff;
+  --trading-card: #ffffff;
+  --trading-card-border: #eef1f4;
+  --trading-ink: #191f28;
+  --trading-sub: #8b95a1;
+  --trading-brand: #1b64da;
+  --trading-up: #f04452;
+  --trading-down: #3182f6;
+  --trading-muted-bg: #f2f4f6;
+  --trading-muted-bg-strong: #f9fafb;
+  --trading-row-hover: #f9fafb;
+  --trading-divider: #eef1f4;
+}
+
+.dark .darfin-trading-surface {
+  --trading-bg: #020617;
+  --trading-card: #0f172a;
+  --trading-card-border: #1e293b;
+  --trading-ink: #f8fafc;
+  --trading-sub: #94a3b8;
+  --trading-brand: #60a5fa;
+  --trading-up: #fb7185;
+  --trading-down: #60a5fa;
+  --trading-muted-bg: #1e293b;
+  --trading-muted-bg-strong: #111827;
+  --trading-row-hover: #1e293b;
+  --trading-divider: #1e293b;
+}
+
+.dark .darfin-skeleton {
+  background: linear-gradient(90deg, #1e293b 0%, #334155 42%, #263449 58%, #1e293b 100%);
+  background-size: 220% 100%;
+}
+
 .darfin-trading-rank-scroller {
   max-width: 100%;
 }

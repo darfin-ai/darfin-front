@@ -50,11 +50,11 @@ export {
 };
 
 // Trading surface tokens from DESIGN.md §2.
-export const INK = '#191F28';
-export const SUB = '#8B95A1';
-export const BRAND = '#1B64DA';
-export const UP = '#F04452';
-export const DOWN = '#3182F6';
+export const INK = 'var(--trading-ink, #191F28)';
+export const SUB = 'var(--trading-sub, #8B95A1)';
+export const BRAND = 'var(--trading-brand, #1B64DA)';
+export const UP = 'var(--trading-up, #F04452)';
+export const DOWN = 'var(--trading-down, #3182F6)';
 export const CHART_UP = UP;
 export const CHART_DOWN = DOWN;
 export const CHART_FLAT = SUB;
@@ -433,9 +433,9 @@ export const ghostBtn = {
   height: 40,
   padding: '0 16px',
   borderRadius: 12,
-  border: '1px solid #E5E8EB',
-  background: '#fff',
-  color: '#4E5968',
+  border: '1px solid var(--trading-card-border, #E5E8EB)',
+  background: 'var(--trading-card, #fff)',
+  color: 'var(--trading-sub, #4E5968)',
   fontSize: 14,
   fontWeight: 700,
   cursor: 'pointer',
@@ -479,8 +479,8 @@ export function Pill({ active, children, onClick, color }) {
         fontSize: 14,
         fontWeight: 700,
         whiteSpace: 'nowrap',
-        background: active ? (color || BRAND) : '#F2F4F6',
-        color: active ? '#fff' : '#4E5968',
+        background: active ? (color || BRAND) : 'var(--trading-muted-bg, #F2F4F6)',
+        color: active ? '#fff' : SUB,
       }}
     >
       {children}
@@ -515,8 +515,8 @@ export function Card({ children, className = '', style }) {
     <div
       className={className}
       style={{
-        background: '#fff',
-        border: '1px solid #EEF1F4',
+        background: 'var(--trading-card, #fff)',
+        border: '1px solid var(--trading-card-border, #EEF1F4)',
         borderRadius: 20,
         padding: 24,
         ...style,

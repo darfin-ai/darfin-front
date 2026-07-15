@@ -1,26 +1,30 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useNavigate as useRouterNavigate } from 'react-router';
 import { useStore } from '../store/store.jsx';
+import { useLocale } from '../../../shared/i18n';
 import { getQuestions } from '../../community/api/communityApi.js';
 import {
   UP, DOWN, SUB, INK, BRAND,
   won, wonShort, signPct, signNum, tone, timeAgo,
-  Avatar, Sparkline, CandleChart, Card, Pill, Tab, Heart, Skeleton, SkeletonText, displayStockName,
+  Avatar, Sparkline, CandleChart, Card, Pill, Tab, Heart, Skeleton, SkeletonText, displayStockName, useTradingFormat,
 } from '../components/ui.jsx';
 
 // ===== Home dashboard (Toss layout, domestic only) =====
 function MarketCard({ idx, big }) {
+  const { locale, t } = useLocale();
+  const { signNum, signPct } = useTradingFormat();
   const col = idx.up ? UP : DOWN;
+  const label = idx.name || (idx.nameId ? t(`trading.market.indices.${idx.nameId}`) : '');
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 14, flex: 1, minWidth: 0 }}>
       <div style={{ flexShrink: 0 }}><Sparkline pts={idx.spark} color={col} w={big ? 120 : 70} h={big ? 56 : 40} /></div>
       <div style={{ minWidth: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
-          <span style={{ fontSize: 14, fontWeight: 700, color: '#4E5968', whiteSpace: 'nowrap' }}>{idx.name}</span>
+          <span style={{ fontSize: 14, fontWeight: 700, color: INK, whiteSpace: 'nowrap' }}>{label}</span>
           {idx.tag && <span style={{ fontSize: 11, fontWeight: 700, color: SUB, background: '#F2F4F6', padding: '2px 6px', borderRadius: 6, whiteSpace: 'nowrap' }}>{idx.tag}</span>}
         </div>
         <div style={{ fontSize: big ? 26 : 19, fontWeight: 800, color: INK, letterSpacing: '-0.02em', lineHeight: 1.1, whiteSpace: 'nowrap' }}>
-          {idx.value.toLocaleString('ko-KR', { minimumFractionDigits: 2 })}
+          {idx.value.toLocaleString(locale === 'ko' ? 'ko-KR' : 'en-US', { minimumFractionDigits: 2 })}
         </div>
         <div style={{ fontSize: 13, fontWeight: 700, color: col, marginTop: 2 }}>
           {signNum(idx.amt)} ({signPct(idx.pct)})
@@ -45,6 +49,8 @@ function SectionTitle({ children, action, onAction }) {
 
 // 1. 코스피/코스닥 지수 (TR_ID: FHPUP02100000) 반영 컴포넌트
 function MiniIndexCard({ idx }) {
+  const { locale, t } = useLocale();
+  const { signNum, signPct } = useTradingFormat();
   if (!idx) {
     return (
       <Card style={{ padding: '14px 18px', flex: 1, minWidth: 0 }}>
@@ -56,15 +62,16 @@ function MiniIndexCard({ idx }) {
   }
   const isUp = idx.pct >= 0;
   const col = isUp ? UP : DOWN;
+  const label = idx.name || (idx.nameId ? t(`trading.market.indices.${idx.nameId}`) : '');
   return (
     <Card style={{ padding: '14px 18px', flex: 1, minWidth: 0 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
-        <span style={{ fontSize: 14, fontWeight: 700, color: '#4E5968', whiteSpace: 'nowrap' }}>{idx.name}</span>
+        <span style={{ fontSize: 14, fontWeight: 700, color: INK, whiteSpace: 'nowrap' }}>{label}</span>
         {idx.tag && <span style={{ fontSize: 11, fontWeight: 700, color: col, background: col + '14', padding: '2px 7px', borderRadius: 6, whiteSpace: 'nowrap' }}>{idx.tag}</span>}
       </div>
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 }}>
         <span style={{ fontSize: 24, fontWeight: 800, color: INK, letterSpacing: '-0.02em', whiteSpace: 'nowrap' }}>
-          {(idx.value || 0).toLocaleString('ko-KR', { minimumFractionDigits: 2 })}
+          {(idx.value || 0).toLocaleString(locale === 'ko' ? 'ko-KR' : 'en-US', { minimumFractionDigits: 2 })}
         </span>
         <span style={{ fontSize: 13, fontWeight: 700, color: col, whiteSpace: 'nowrap' }}>
           {signNum(idx.amt)} ({signPct(idx.pct)})
@@ -76,17 +83,21 @@ function MiniIndexCard({ idx }) {
 
 export function InvestHero() {
   const { state, getStock, navigate, goToLogin } = useStore();
+  const { t } = useLocale();
+  const { won, signNum, signPct } = useTradingFormat();
   if (!state.isLoggedIn) {
+    const guestTitle = t('trading.hero.guestTitle').split('\n');
+    const guestDesc = t('trading.hero.guestDesc').split('\n');
     return (
       <div style={{ position: 'relative', overflow: 'hidden', borderRadius: 24, padding: '36px 36px', marginBottom: 28,
         background: 'linear-gradient(120deg,#1B64DA 0%,#2E7DF0 55%,#3D8BFF 100%)', color: '#fff' }}>
         <HeroGlow />
         <div style={{ position: 'relative', maxWidth: 560 }}>
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 700, background: 'rgba(255,255,255,0.18)', padding: '6px 12px', borderRadius: 999, marginBottom: 16 }}>✦ AI 모의투자</div>
-          <div style={{ fontSize: 32, fontWeight: 800, lineHeight: 1.25, letterSpacing: '-0.03em' }}>실전처럼 연습하는 모의투자,<br />Darfin에서 시작하세요</div>
-          <div style={{ fontSize: 15, color: 'rgba(255,255,255,0.85)', marginTop: 12, lineHeight: 1.6 }}>가상 자금 1,000만 원으로 국내 주식을 사고팔며<br />AI가 내 투자 성향을 분석해줘요.</div>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 700, background: 'rgba(255,255,255,0.18)', padding: '6px 12px', borderRadius: 999, marginBottom: 16 }}>{t('trading.hero.badge')}</div>
+          <div style={{ fontSize: 32, fontWeight: 800, lineHeight: 1.25, letterSpacing: '-0.03em' }}>{guestTitle.map((line, i) => <span key={line}>{line}{i < guestTitle.length - 1 && <br />}</span>)}</div>
+          <div style={{ fontSize: 15, color: 'rgba(255,255,255,0.85)', marginTop: 12, lineHeight: 1.6 }}>{guestDesc.map((line, i) => <span key={line}>{line}{i < guestDesc.length - 1 && <br />}</span>)}</div>
           <button onClick={goToLogin} style={{ marginTop: 22, height: 52, padding: '0 28px', borderRadius: 14, border: 'none',
-            background: '#fff', color: BRAND, fontSize: 16, fontWeight: 800, cursor: 'pointer' }}>1,000만 원으로 시작하기</button>
+            background: '#fff', color: BRAND, fontSize: 16, fontWeight: 800, cursor: 'pointer' }}>{t('trading.hero.guestCta')}</button>
         </div>
       </div>
     );
@@ -111,29 +122,29 @@ export function InvestHero() {
       <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 24, flexWrap: 'wrap' }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14, fontWeight: 700, color: 'rgba(255,255,255,0.82)', marginBottom: 10, whiteSpace: 'nowrap' }}>
-            <span style={{ width: 28, height: 28, borderRadius: 8, background: 'rgba(255,255,255,0.18)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>나</span>
-            내 모의투자 자산
+            <span style={{ width: 28, height: 28, borderRadius: 8, background: 'rgba(255,255,255,0.18)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>{t('trading.hero.me')}</span>
+            {t('trading.hero.myAssets')}
           </div>
           <div style={{ fontSize: 40, fontWeight: 800, letterSpacing: '-0.03em', lineHeight: 1, whiteSpace: 'nowrap' }}>{won(assets)}</div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 14 }}>
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 15, fontWeight: 800, background: 'rgba(255,255,255,0.16)', padding: '7px 14px', borderRadius: 999, whiteSpace: 'nowrap' }}>
-              {pnlUp ? '▲' : '▼'} {signNum(pnl)}원 ({signPct(pnlPct)})
+              {pnlUp ? '▲' : '▼'} {won(pnl)} ({signPct(pnlPct)})
             </span>
-            <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.7)', whiteSpace: 'nowrap' }}>평가손익</span>
+            <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.7)', whiteSpace: 'nowrap' }}>{t('trading.hero.unrealizedPnl')}</span>
           </div>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12, width: 250, flexShrink: 0 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, whiteSpace: 'nowrap' }}>
-            <span style={{ color: 'rgba(255,255,255,0.72)' }}>주문 가능 현금</span>
+            <span style={{ color: 'rgba(255,255,255,0.72)' }}>{t('trading.hero.availableCash')}</span>
             <span style={{ fontWeight: 800 }}>{won(cash)}</span>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, whiteSpace: 'nowrap' }}>
-            <span style={{ color: 'rgba(255,255,255,0.72)' }}>보유 종목</span>
-            <span style={{ fontWeight: 800 }}>{state.holdings.length}종목</span>
+            <span style={{ color: 'rgba(255,255,255,0.72)' }}>{t('trading.hero.holdingsCount')}</span>
+            <span style={{ fontWeight: 800 }}>{t('trading.hero.holdingsUnit', { count: state.holdings.length })}</span>
           </div>
           <div style={{ display: 'flex', gap: 8, marginTop: 6, flexWrap: 'wrap' }}>
-            <button onClick={() => navigate('portfolio')} style={heroBtn(true)}>내 주식</button>
-            <button onClick={() => navigate('ai')} style={heroBtn(false)}>✦ AI 리포트</button>
+            <button onClick={() => navigate('portfolio')} style={heroBtn(true)}>{t('trading.hero.myStocks')}</button>
+            <button onClick={() => navigate('ai')} style={heroBtn(false)}>{t('trading.hero.aiReport')}</button>
           </div>
         </div>
       </div>
@@ -178,18 +189,16 @@ function StockRowsSkeleton({ count = 10 }) {
 }
 
 function StockRow({ rank, stock, onClick, watched, onWatch, onHover, rankTab }) {
+  const { formatRankValue, won, signPct } = useTradingFormat();
   const col = tone(stock.pct);
   const displayValue = (rankTab === 'volume' ? stock.volume : stock.value) || 0;
-
-  let valText = `${displayValue.toLocaleString()}억원`;
-  if (rankTab === 'volume') valText = `${displayValue.toLocaleString()}주`;
-  else if (rankTab === 'topGainers' || rankTab === 'topLosers') valText = `${displayValue.toLocaleString()}원`;
+  const valText = formatRankValue(displayValue, rankTab);
 
   return (
     <div onClick={onClick}
       style={{ display: 'grid', gridTemplateColumns: RANK_COLS, alignItems: 'center',
         gap: 8, padding: '10px 8px', borderRadius: 12, cursor: 'pointer' }}
-      onMouseEnter={e => { e.currentTarget.style.background = '#F9FAFB'; onHover && onHover(); }}
+      onMouseEnter={e => { e.currentTarget.style.background = 'var(--trading-row-hover, #F9FAFB)'; onHover && onHover(); }}
       onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
 
       {/* 찜 */}
@@ -242,6 +251,8 @@ function StockRow({ rank, stock, onClick, watched, onWatch, onHover, rankTab }) 
 
 function HomeMain() {
   const { state, market, marketError, stocks, industries, navigate, toggleWatch, rankTab, setRankTab, kisLoading } = useStore();
+  const { t } = useLocale();
+  const { formatIndustryValue, signPct } = useTradingFormat();
   const [tab, setTab] = useState('chart');
 
   const [hoveredCode, setHoveredCode] = useState('');
@@ -270,10 +281,10 @@ function HomeMain() {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
           <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#1FA463' }} />
-          <span style={{ fontSize: 15, fontWeight: 700, color: INK }}>{market?.status?.label || '장 운영중'}</span>
-          <span style={{ fontSize: 14, color: SUB }}>{market?.status?.hours || '09:00 ~ 15:30'}</span>
+          <span style={{ fontSize: 15, fontWeight: 700, color: INK }}>{market?.status?.label || t('trading.market.status.regularSession')}</span>
+          <span style={{ fontSize: 14, color: SUB }}>{market?.status?.hours || t('trading.market.status.defaultHours')}</span>
           <span style={{ fontSize: 13, color: marketError ? DOWN : SUB, marginLeft: 4 }}>
-            · {marketError ? 'KIS 시장 지표 연결 실패' : '실시간 자동 갱신 중'}
+            · {marketError ? t('trading.market.kisError') : t('trading.market.liveUpdating')}
           </span>
         </div>
       </div>
@@ -287,21 +298,21 @@ function HomeMain() {
 
       {/* tabs */}
       <div style={{ borderBottom: '1px solid #EEF1F4', marginBottom: 18 }}>
-        <Tab active={tab === 'chart'} onClick={() => setTab('chart')}>실시간 차트</Tab>
-        <Tab active={tab === 'industry'} onClick={() => setTab('industry')}>지금 뜨는 산업</Tab>
+        <Tab active={tab === 'chart'} onClick={() => setTab('chart')}>{t('trading.home.tabChart')}</Tab>
+        <Tab active={tab === 'industry'} onClick={() => setTab('industry')}>{t('trading.home.tabIndustry')}</Tab>
       </div>
 
       {tab === 'chart' && (
         <div className="darfin-trading-chart-layout" style={{ display: 'grid', gridTemplateColumns: '1fr 392px', gap: 24, alignItems: 'start' }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
-              <Pill active={rankTab === 'tradeValue'} onClick={() => setRankTab('tradeValue')}>거래대금</Pill>
-              <Pill active={rankTab === 'volume'} onClick={() => setRankTab('volume')}>거래량</Pill>
-              <Pill active={rankTab === 'topGainers'} onClick={() => setRankTab('topGainers')}>급상승</Pill>
-              <Pill active={rankTab === 'topLosers'} onClick={() => setRankTab('topLosers')}>급하락</Pill>
+              <Pill active={rankTab === 'tradeValue'} onClick={() => setRankTab('tradeValue')}>{t('trading.home.rankTradeValue')}</Pill>
+              <Pill active={rankTab === 'volume'} onClick={() => setRankTab('volume')}>{t('trading.home.rankVolume')}</Pill>
+              <Pill active={rankTab === 'topGainers'} onClick={() => setRankTab('topGainers')}>{t('trading.home.rankTopGainers')}</Pill>
+              <Pill active={rankTab === 'topLosers'} onClick={() => setRankTab('topLosers')}>{t('trading.home.rankTopLosers')}</Pill>
               <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6, fontSize: 14, fontWeight: 700, color: BRAND }}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={BRAND} strokeWidth="2"><circle cx="12" cy="12" r="9" /><path d="M8 12l3 3 5-6" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                투자위험 주식 숨기기
+                {t('trading.home.hideRisky')}
               </div>
             </div>
             
@@ -309,15 +320,15 @@ function HomeMain() {
               <div className="darfin-trading-rank-table">
                 <div style={{ display: 'grid', gridTemplateColumns: RANK_COLS, gap: 8, padding: '0 8px 10px', fontSize: 12, color: SUB, fontWeight: 600 }}>
                   <span />
-                  <span style={{ textAlign: 'center' }}>순위</span>
+                  <span style={{ textAlign: 'center' }}>{t('trading.home.colRank')}</span>
                   <span />
-                  <span>종목</span>
-                  <span style={{ textAlign: 'right' }}>현재가</span>
-                  <span style={{ textAlign: 'right' }}>등락률</span>
+                  <span>{t('trading.home.colStock')}</span>
+                  <span style={{ textAlign: 'right' }}>{t('trading.home.colPrice')}</span>
+                  <span style={{ textAlign: 'right' }}>{t('trading.home.colChange')}</span>
                   <span style={{ textAlign: 'right' }}>
-                    {rankTab === 'tradeValue' ? '거래대금' : rankTab === 'volume' ? '거래량' : '당일변동'}
+                    {rankTab === 'tradeValue' ? t('trading.home.colTradeValue') : rankTab === 'volume' ? t('trading.home.colVolume') : t('trading.home.colDayChange')}
                   </span>
-                  <span style={{ textAlign: 'right' }}>업종</span>
+                  <span style={{ textAlign: 'right' }}>{t('trading.home.colSector')}</span>
                 </div>
 
                 {displayStocks.length > 0 ? (
@@ -330,7 +341,7 @@ function HomeMain() {
                 ) : kisLoading.ranks ? (
                   <StockRowsSkeleton />
                 ) : (
-                  <div style={{ padding: '40px 0', textAlign: 'center', fontSize: 14, color: SUB }}>순위 데이터를 불러올 수 없어요.</div>
+                  <div style={{ padding: '40px 0', textAlign: 'center', fontSize: 14, color: SUB }}>{t('trading.home.loading')}</div>
                 )}
               </div>
             </div>
@@ -348,9 +359,9 @@ function HomeMain() {
       {tab === 'industry' && (
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, padding: '0 4px', flexWrap: 'wrap' }}>
-            <span style={{ fontSize: 13, fontWeight: 700, color: '#4E5968' }}>최근 거래대금 및 상승률 상위 업종</span>
-            <span style={{ fontSize: 12, color: SUB }}>· 등락률은 당일 업종 평균 기준</span>
-            <span style={{ fontSize: 11, fontWeight: 700, color: BRAND, background: '#EFF5FF', padding: '3px 8px', borderRadius: 6, marginLeft: 'auto', whiteSpace: 'nowrap' }}>실시간 업데이트</span>
+            <span style={{ fontSize: 13, fontWeight: 700, color: INK }}>{t('trading.home.industrySub')}</span>
+            <span style={{ fontSize: 12, color: SUB }}>{t('trading.home.industryNote')}</span>
+            <span style={{ fontSize: 11, fontWeight: 700, color: BRAND, background: 'var(--trading-muted-bg, #EFF5FF)', padding: '3px 8px', borderRadius: 6, marginLeft: 'auto', whiteSpace: 'nowrap' }}>{t('trading.home.industryLive')}</span>
           </div>
           <Card style={{ padding: 8 }}>
             {kisLoading.industries ? (
@@ -364,13 +375,13 @@ function HomeMain() {
                     {ind.code && <span style={{ fontSize: 12, color: SUB }}>({ind.code})</span>}
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                    {ind.value && <span style={{ fontSize: 14, color: '#4E5968', fontWeight: 500 }}>{ind.value.toLocaleString()}억원</span>}
+                    {ind.value && <span style={{ fontSize: 14, color: SUB, fontWeight: 500 }}>{formatIndustryValue(ind.value)}</span>}
                     <span style={{ fontSize: 16, fontWeight: 800, color: tone(ind.pct), minWidth: 64, textAlign: 'right' }}>{signPct(ind.pct)}</span>
                   </div>
                 </div>
               ))
             ) : (
-              <div style={{ padding: '40px 0', textAlign: 'center', fontSize: 14, color: SUB }}>업종 지표 데이터를 불러오는 중입니다...</div>
+              <div style={{ padding: '40px 0', textAlign: 'center', fontSize: 14, color: SUB }}>{t('trading.home.industryLoading')}</div>
             )}
           </Card>
         </div>
@@ -419,6 +430,8 @@ const weeklyCache = {};
 
 function StockPreviewCard({ stock: rawStock }) {
   const { navigate, getStock } = useStore();
+  const { t } = useLocale();
+  const { won, signNum, signPct, timeAgo } = useTradingFormat();
   const routerNavigate = useRouterNavigate();
   // 모든 훅을 조건 분기 전에 선언 (Rules of Hooks)
   const [candles, setCandles] = useState([]);
@@ -515,33 +528,33 @@ function StockPreviewCard({ stock: rawStock }) {
           </div>
         </div>
       </div>
-      <div style={{ fontSize: 12, fontWeight: 700, color: SUB, marginBottom: 4 }}>주봉</div>
+      <div style={{ fontSize: 12, fontWeight: 700, color: SUB, marginBottom: 4 }}>{t('trading.home.weeklyChart')}</div>
       {status === 'loading' && (
         <ChartSkeleton height={170} />
       )}
       {status === 'error' && (
-        <div style={{ height: 170, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, color: SUB }}>차트를 불러올 수 없어요</div>
+        <div style={{ height: 170, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, color: SUB }}>{t('trading.home.chartError')}</div>
       )}
       {status === 'ok' && (
         <CandleChart candles={candles} dates={dates} w={356} h={170} volH={36} currentPrice={stock.price} />
       )}
-      <div style={{ borderTop: '1px solid #F2F4F6', marginTop: 14, paddingTop: 14 }}>
+      <div style={{ borderTop: '1px solid var(--trading-divider, #F2F4F6)', marginTop: 14, paddingTop: 14 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-          <span style={{ fontSize: 14, fontWeight: 800, color: INK }}>커뮤니티</span>
-          <span onClick={() => routerNavigate('/community')} style={{ fontSize: 12, color: SUB, cursor: 'pointer' }}>더보기 ›</span>
+          <span style={{ fontSize: 14, fontWeight: 800, color: INK }}>{t('trading.home.community')}</span>
+          <span onClick={() => routerNavigate('/community')} style={{ fontSize: 12, color: SUB, cursor: 'pointer' }}>{t('trading.home.seeMore')}</span>
         </div>
         {communityStatus === 'loading' ? (
           <SkeletonText lines={2} widths={['76%', '58%']} height={13} />
         ) : communityStatus === 'error' ? (
-          <div style={{ fontSize: 13, color: SUB, padding: '8px 0' }}>커뮤니티 글을 불러올 수 없어요.</div>
+          <div style={{ fontSize: 13, color: SUB, padding: '8px 0' }}>{t('trading.home.communityError')}</div>
         ) : communityPosts.length === 0 ? (
-          <div style={{ fontSize: 13, color: SUB, padding: '8px 0' }}>아직 글이 없어요. 첫 글을 남겨보세요.</div>
+          <div style={{ fontSize: 13, color: SUB, padding: '8px 0' }}>{t('trading.home.communityEmpty')}</div>
         ) : communityPosts.map(p => (
           <div key={p.id} onClick={() => routerNavigate(`/community/${p.id}`)} style={{ display: 'flex', gap: 8, marginBottom: 10, cursor: 'pointer' }}>
-            <div style={{ width: 28, height: 28, borderRadius: '50%', background: BRAND, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 12, flexShrink: 0 }}>{(p.authorNickname || '익').charAt(0)}</div>
+            <div style={{ width: 28, height: 28, borderRadius: '50%', background: BRAND, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 12, flexShrink: 0 }}>{(p.authorNickname || t('trading.home.anonymous')).charAt(0)}</div>
             <div style={{ minWidth: 0 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <span style={{ fontSize: 13, fontWeight: 700, color: INK }}>{p.authorNickname || '익명'}</span>
+                <span style={{ fontSize: 13, fontWeight: 700, color: INK }}>{p.authorNickname || t('trading.home.anonymous')}</span>
                 <span style={{ fontSize: 11, color: SUB }}>{timeAgo(new Date(p.createdAt).getTime())}</span>
               </div>
               <div style={{ fontSize: 13, color: '#4E5968', lineHeight: 1.5, overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{p.title || p.content}</div>
@@ -555,6 +568,8 @@ function StockPreviewCard({ stock: rawStock }) {
 
 // 3. 투자자 동향 (TR_ID: HHPPG046600C1) 반영 컴포넌트
 function InvestorTrendCard({ market, loading }) {
+  const { t } = useLocale();
+  const { numLocale } = useTradingFormat();
   if (loading || !market || !market.invSentiment) {
     return (
       <Card>
@@ -578,8 +593,8 @@ function InvestorTrendCard({ market, loading }) {
   return (
     <Card>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
-        <span style={{ fontSize: 17, fontWeight: 800, color: INK, whiteSpace: 'nowrap' }}>국내 투자자 동향</span>
-        <span style={{ fontSize: 12, fontWeight: 600, color: SUB, whiteSpace: 'nowrap' }}>오늘 · 억원</span>
+        <span style={{ fontSize: 17, fontWeight: 800, color: INK, whiteSpace: 'nowrap' }}>{t('trading.market.investorTrend')}</span>
+        <span style={{ fontSize: 12, fontWeight: 600, color: SUB, whiteSpace: 'nowrap' }}>{t('trading.market.investorTrendSub')}</span>
       </div>
       {market.invSentiment.map((s, i) => {
         const col = s.buy ? UP : DOWN;
@@ -587,12 +602,12 @@ function InvestorTrendCard({ market, loading }) {
         return (
           <div key={i} style={{ marginBottom: i < market.invSentiment.length - 1 ? 18 : 0 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-              <span style={{ fontSize: 15, fontWeight: 700, color: INK, whiteSpace: 'nowrap' }}>{s.who}</span>
+              <span style={{ fontSize: 15, fontWeight: 700, color: INK, whiteSpace: 'nowrap' }}>{s.who || t(`trading.market.investors.${s.invType}`)}</span>
               <span style={{ fontSize: 15, fontWeight: 800, color: col, whiteSpace: 'nowrap' }}>
-                {s.buy ? '순매수' : '순매도'} {Math.abs(s.val || 0).toLocaleString()}
+                {s.buy ? t('trading.market.netBuy') : t('trading.market.netSell')} {Math.abs(s.val || 0).toLocaleString(numLocale)}
               </span>
             </div>
-            <div style={{ height: 8, background: '#F2F4F6', borderRadius: 4, overflow: 'hidden' }}>
+            <div style={{ height: 8, background: 'var(--trading-muted-bg, #F2F4F6)', borderRadius: 4, overflow: 'hidden' }}>
               <div style={{ width: pct + '%', height: '100%', background: col }} />
             </div>
           </div>
@@ -604,6 +619,8 @@ function InvestorTrendCard({ market, loading }) {
 
 function WatchRail() {
   const { state, getStock, navigate, toggleWatch, kisLoading } = useStore();
+  const { t } = useLocale();
+  const { wonShort, signNum, signPct } = useTradingFormat();
   const top = state.watchlist.map(getStock).filter(Boolean).slice(0, 10);
   const loading = state.isLoggedIn && (kisLoading.watchlist || kisLoading.summaries) && state.watchlist.length > 0 && top.length === 0;
   return (
@@ -611,8 +628,8 @@ function WatchRail() {
       <div className="darfin-trading-watch-sticky" style={{ position: 'sticky', top: 84 }}>
         <Card style={{ padding: 0 }}>
           <div style={{ padding: '18px 18px 8px' }}>
-            <div style={{ fontSize: 17, fontWeight: 800, color: INK }}>관심 주식 TOP 10</div>
-            <div style={{ fontSize: 13, color: SUB, marginTop: 4 }}>관심 종목을 등록하면 상위 10개 종목이 표시됩니다.</div>
+            <div style={{ fontSize: 17, fontWeight: 800, color: INK }}>{t('trading.home.watchTop10')}</div>
+            <div style={{ fontSize: 13, color: SUB, marginTop: 4 }}>{t('trading.home.watchDesc')}</div>
           </div>
           {loading ? (
             <WatchRailSkeleton />
@@ -621,7 +638,7 @@ function WatchRail() {
             return (
               <div key={s.code} onClick={() => navigate('detail', { code: s.code })}
                 style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '11px 18px', cursor: 'pointer' }}
-                onMouseEnter={e => e.currentTarget.style.background = '#F9FAFB'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                onMouseEnter={e => e.currentTarget.style.background = 'var(--trading-row-hover, #F9FAFB)'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
                 <Avatar stock={s} size={34} />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 14, fontWeight: 700, color: INK, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{displayStockName(s)}</div>
@@ -634,7 +651,7 @@ function WatchRail() {
               </div>
             );
           })}
-          <button onClick={() => navigate('watchlist')} style={{ width: '100%', padding: 14, border: 'none', borderTop: '1px solid #F2F4F6', background: 'none', color: BRAND, fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>관심 종목 전체 보기</button>
+          <button onClick={() => navigate('watchlist')} style={{ width: '100%', padding: 14, border: 'none', borderTop: '1px solid var(--trading-divider, #F2F4F6)', background: 'none', color: BRAND, fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>{t('trading.home.watchViewAll')}</button>
         </Card>
       </div>
     </aside>
@@ -679,6 +696,8 @@ function ChartSkeleton({ height = 170 }) {
 
 function MarketTicker() {
   const { market } = useStore();
+  const { locale, t } = useLocale();
+  const { signNum, signPct } = useTradingFormat();
   const [show, setShow] = useState(false);
   useEffect(() => {
     const onScroll = () => setShow(window.scrollY > 320);
@@ -697,7 +716,7 @@ function MarketTicker() {
   if (items.length === 0) return null;
   return (
     <div style={{ position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 45,
-      background: 'rgba(255,255,255,0.96)', backdropFilter: 'blur(10px)', borderTop: '1px solid #EEF1F4',
+      background: 'color-mix(in srgb, var(--trading-card, #fff) 96%, transparent)', backdropFilter: 'blur(10px)', borderTop: '1px solid var(--trading-divider, #EEF1F4)',
       transform: show ? 'translateY(0)' : 'translateY(100%)', transition: 'transform 0.28s cubic-bezier(0.2,0.8,0.2,1)',
       boxShadow: '0 -4px 20px rgba(0,0,0,0.05)' }}>
       <div style={{ ...HOME_LAYOUT, padding: '0 28px', height: 52, display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -705,8 +724,8 @@ function MarketTicker() {
           const col = tone(it.pct);
           return (
             <div key={i} style={{ display: 'flex', alignItems: 'baseline', gap: 7, padding: '0 14px', borderLeft: i === 0 ? 'none' : '1px solid #F2F4F6', flexShrink: 0, whiteSpace: 'nowrap' }}>
-              <span style={{ fontSize: 13, fontWeight: 700, color: '#4E5968' }}>{it.name}</span>
-              <span style={{ fontSize: 13, fontWeight: 800, color: INK }}>{(it.value || 0).toLocaleString('ko-KR', { minimumFractionDigits: 2 })}</span>
+              <span style={{ fontSize: 13, fontWeight: 700, color: SUB }}>{it.name || (it.nameId ? t(`trading.market.indices.${it.nameId}`) : '')}</span>
+              <span style={{ fontSize: 13, fontWeight: 800, color: INK }}>{(it.value || 0).toLocaleString(locale === 'ko' ? 'ko-KR' : 'en-US', { minimumFractionDigits: 2 })}</span>
               <span style={{ fontSize: 12, fontWeight: 700, color: col }}>{signNum(it.amt)} ({signPct(it.pct)})</span>
             </div>
           );

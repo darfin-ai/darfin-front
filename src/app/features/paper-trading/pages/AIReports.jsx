@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
 import { ChevronDown } from 'lucide-react';
 import { useStore } from '../store/store.jsx';
+import { useLocale } from '../../../shared/i18n';
 import {
   UP, DOWN, SUB, INK, BRAND,
   signNum, tone, dateLabel,
   Card, primaryBtn, displayStockName,
-  PageShell, Empty, LoginGate,
+  PageShell, Empty, LoginGate, useTradingFormat,
 } from '../components/ui.jsx';
 import {
   downloadPortfolioReportPdf,
@@ -15,13 +16,6 @@ import {
   getDarfinUserId,
 } from '../lib/aiEngine.js';
 import { normalizeUserText, userDisplayName } from '../../../shared/lib/userText.js';
-
-const AXES = [
-  { n: '①', t: '행동 패턴', d: '매매 빈도 · 보유 기간 · 손절/익절 · 추격 매수' },
-  { n: '②', t: '리스크', d: '업종 집중도 · 종목 집중도 · 손실 비중 · 등급' },
-  { n: '③', t: '수익률', d: '총 수익률 · 기여 상위/하위 · 업종 기여도' },
-  { n: '④', t: '투자 성향', d: '8개 유형 분류 · 건강도 점수 100점' },
-];
 
 function ReportSection({ no, title, children }) {
   return (
@@ -45,9 +39,10 @@ function MetricChip({ label, value, warn }) {
 }
 
 function AdviceLine({ text }) {
+  const { t } = useLocale();
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6, background: '#FFF8EC', borderRadius: 12, padding: '13px 15px', marginTop: 12 }}>
-      <span style={{ color: '#C2740B', fontWeight: 900, flexShrink: 0, fontSize: 13 }}>개선 제안</span>
+      <span style={{ color: '#C2740B', fontWeight: 900, flexShrink: 0, fontSize: 13 }}>{t('trading.ai.adviceSuggestion')}</span>
       <span style={{ fontSize: 15, color: '#5C4A20', lineHeight: 1.65 }}>{text}</span>
     </div>
   );
@@ -133,16 +128,18 @@ function HealthBar({ label, score, max }) {
 }
 
 function ContribRow({ x, positive }) {
+  const { signNum } = useTradingFormat();
+  const { t } = useLocale();
   const col = positive ? UP : DOWN;
   const name = displayStockName(x, '-');
-  const sector = x.sector || '미분류';
+  const sector = x.sector || t('trading.ai.unclassified');
   return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '9px 0' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
         <span style={{ fontSize: 14, fontWeight: 700, color: INK, whiteSpace: 'nowrap' }}>{name}</span>
         <span style={{ fontSize: 12, color: SUB, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{sector}</span>
       </div>
-      <span style={{ fontSize: 14, fontWeight: 800, color: col, whiteSpace: 'nowrap' }}>{signNum(x.v)}원</span>
+      <span style={{ fontSize: 14, fontWeight: 800, color: col, whiteSpace: 'nowrap' }}>{(x.v > 0 ? '+' : '') + signNum(x.v)}</span>
     </div>
   );
 }
@@ -159,7 +156,7 @@ function normalizeReport(report) {
     nickname: normalizeUserText(r.nickname),
     label: r.label || '-',
     labelReason: r.labelReason || '-',
-    disclaimer: r.disclaimer || '이 리포트는 모의투자 학습을 목적으로 제공되며, 특정 종목의 매수·매도를 권유하지 않아요.',
+    disclaimer: r.disclaimer,
     health: {
       breakdown: health.breakdown || {},
       total: health.total ?? 0,
@@ -194,11 +191,13 @@ async function downloadReport(r) {
   try {
     await downloadPortfolioReportPdf(r.remoteReportId);
   } catch (error) {
-    alert(error?.message || 'PDF 다운로드에 실패했습니다.');
+    alert(error?.message || 'PDF download failed.');
   }
 }
 
 function ReportCard({ report: r }) {
+  const { t } = useLocale();
+  const { signNum } = useTradingFormat();
   r = normalizeReport(r);
   const user = getDarfinUser();
   const displayName = normalizeUserText(r.nickname) || userDisplayName(user);
@@ -206,15 +205,16 @@ function ReportCard({ report: r }) {
   const b = r.behavior;
   const rk = r.risk;
   const rt = r.returns;
-  const gradeColor = health.grade === '우수' ? '#1FA463' : health.grade === '보통' ? '#F5A623' : '#F04452';
+  const gradeColor = health.grade === '우수' || health.grade === 'Excellent' ? '#1FA463' : health.grade === '보통' || health.grade === 'Average' ? '#F5A623' : '#F04452';
+  const disclaimer = r.disclaimer || t('trading.ai.disclaimer');
   return (
     <Card>
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <span style={{ width: 44, height: 44, borderRadius: 13, background: BRAND, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>✦</span>
           <div>
-            <div style={{ fontSize: 19, fontWeight: 800, color: INK, whiteSpace: 'nowrap' }}>포트폴리오 통합 분석 리포트</div>
-            <div style={{ fontSize: 13, color: SUB, whiteSpace: 'nowrap' }}>{displayName}님 · Darfin AI · {dateLabel(r.ts || Date.now())} 생성</div>
+            <div style={{ fontSize: 19, fontWeight: 800, color: INK, whiteSpace: 'nowrap' }}>{t('trading.ai.reportTitle')}</div>
+            <div style={{ fontSize: 13, color: SUB, whiteSpace: 'nowrap' }}>{t('trading.format.reportForUser', { name: displayName, date: dateLabel(r.ts || Date.now()) })}</div>
           </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
@@ -222,36 +222,36 @@ function ReportCard({ report: r }) {
           <button onClick={() => downloadReport(r)} style={{ display: 'flex', alignItems: 'center', gap: 6, height: 38, padding: '0 14px', borderRadius: 10,
             border: '1px solid #E5E8EB', background: '#fff', color: '#4E5968', fontSize: 13, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3v12m0 0l-4-4m4 4l4-4M5 21h14" /></svg>
-            리포트 다운로드
+            {t('trading.ai.download')}
           </button>
         </div>
       </div>
-      <div style={{ fontSize: 12, color: SUB, marginTop: 14, background: '#F9FAFB', borderRadius: 10, padding: '10px 14px', lineHeight: 1.5 }}>※ {r.disclaimer}</div>
+      <div style={{ fontSize: 12, color: SUB, marginTop: 14, background: 'var(--trading-muted-bg-strong, #F9FAFB)', borderRadius: 10, padding: '10px 14px', lineHeight: 1.5 }}>※ {disclaimer}</div>
       {r.geminiError && (
         <div style={{ fontSize: 12, color: '#C2740B', marginTop: 10, background: '#FFF8EC', borderRadius: 10, padding: '10px 14px', lineHeight: 1.5 }}>
-          분석 서버 연결에 실패해 리포트 생성이 제한됐어요. {r.geminiError}
+          {t('trading.ai.serverFail', { error: r.geminiError })}
         </div>
       )}
       {r.dbError && (
         <div style={{ fontSize: 12, color: '#C2740B', marginTop: 10, background: '#FFF8EC', borderRadius: 10, padding: '10px 14px', lineHeight: 1.5 }}>
-          리포트는 생성됐지만 DB 저장에 실패했어요. {r.dbError}
+          {t('trading.ai.dbFail', { error: r.dbError })}
         </div>
       )}
 
-      <ReportSection no="1" title="투자 성향 요약">
+      <ReportSection no="1" title={t('trading.ai.sectionProfile')}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
           <span style={{ fontSize: 22, fontWeight: 800, color: BRAND }}>{r.label}</span>
         </div>
-        <div style={{ fontSize: 15, color: '#4E5968', lineHeight: 1.7 }}>{r.labelReason}</div>
+        <div style={{ fontSize: 15, color: SUB, lineHeight: 1.7 }}>{r.labelReason}</div>
       </ReportSection>
 
       {r.geminiAnalysis && (
-        <ReportSection no="AI" title="Darfin AI 종합 해석">
+        <ReportSection no="AI" title={t('trading.ai.sectionAi')}>
           <DarfinInsight text={r.geminiAnalysis} />
         </ReportSection>
       )}
 
-      <ReportSection no="2" title="포트폴리오 건강도">
+      <ReportSection no="2" title={t('trading.ai.sectionHealth')}>
         <div style={{ display: 'flex', gap: 24, alignItems: 'center', flexWrap: 'wrap' }}>
           <div style={{ textAlign: 'center', minWidth: 120 }}>
             <div style={{ fontSize: 44, fontWeight: 800, color: gradeColor, lineHeight: 1 }}>{health.total}<span style={{ fontSize: 20, color: SUB }}> / 100</span></div>
@@ -261,58 +261,58 @@ function ReportCard({ report: r }) {
             {Object.entries(health.breakdown).map(([k, v]) => <HealthBar key={k} label={k} score={v} max={25} />)}
           </div>
         </div>
-        <div style={{ fontSize: 15, color: '#4E5968', lineHeight: 1.7, marginTop: 16 }}>{health.comment}</div>
+        <div style={{ fontSize: 15, color: SUB, lineHeight: 1.7, marginTop: 16 }}>{health.comment}</div>
       </ReportSection>
 
-      <ReportSection no="3" title="행동 패턴 분석">
+      <ReportSection no="3" title={t('trading.ai.sectionBehavior')}>
         {!b.limited && (
           <div style={{ display: 'flex', gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
-            <MetricChip label="월 매매" value={(b.metrics.tradesPerMonth ?? 0).toFixed(1) + '회'} warn={(b.metrics.tradesPerMonth ?? 0) >= 6} />
-            <MetricChip label="평균 보유" value={(b.metrics.avgHoldDays ?? 0).toFixed(0) + '일'} />
-            <MetricChip label="손절 비율" value={(b.metrics.stopLossRatio ?? 0).toFixed(0) + '%'} warn={(b.metrics.stopLossRatio ?? 0) <= 10} />
-            <MetricChip label="익절 비율" value={(b.metrics.takeProfitRatio ?? 0).toFixed(0) + '%'} />
-            <MetricChip label="추격 매수" value={(b.metrics.chaseBuyCount ?? 0) + '건'} warn={(b.metrics.chaseBuyCount ?? 0) >= 2} />
+            <MetricChip label={t('trading.ai.metricMonthTrades')} value={t('trading.format.monthTrades', { n: (b.metrics.tradesPerMonth ?? 0).toFixed(1) })} warn={(b.metrics.tradesPerMonth ?? 0) >= 6} />
+            <MetricChip label={t('trading.ai.metricAvgHold')} value={t('trading.format.avgHoldDays', { n: (b.metrics.avgHoldDays ?? 0).toFixed(0) })} />
+            <MetricChip label={t('trading.ai.metricStopLoss')} value={t('trading.format.stopLossRatio', { n: (b.metrics.stopLossRatio ?? 0).toFixed(0) })} warn={(b.metrics.stopLossRatio ?? 0) <= 10} />
+            <MetricChip label={t('trading.ai.metricTakeProfit')} value={t('trading.format.takeProfitRatio', { n: (b.metrics.takeProfitRatio ?? 0).toFixed(0) })} />
+            <MetricChip label={t('trading.ai.metricChaseBuy')} value={t('trading.format.chaseBuyCount', { n: (b.metrics.chaseBuyCount ?? 0) })} warn={(b.metrics.chaseBuyCount ?? 0) >= 2} />
           </div>
         )}
-        <div style={{ fontSize: 15, color: '#4E5968', lineHeight: 1.75 }}>{b.text}</div>
+        <div style={{ fontSize: 15, color: SUB, lineHeight: 1.75 }}>{b.text}</div>
         <AdviceLine text={b.advice} />
       </ReportSection>
 
-      <ReportSection no="4" title="리스크 진단">
+      <ReportSection no="4" title={t('trading.ai.sectionRisk')}>
         <div style={{ display: 'flex', gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
-          <MetricChip label="리스크 점수" value={(rk.riskScore ?? 0) + '점 · ' + (rk.riskGrade || '-')} warn={(rk.riskScore ?? 0) > 60} />
-          <MetricChip label="업종 집중도" value={(rk.sectorConcentration ?? 0).toFixed(0) + '%'} warn={(rk.sectorConcentration ?? 0) > 40} />
-          <MetricChip label="종목 집중도" value={(rk.topStockConcentration ?? 0).toFixed(0) + '%'} warn={(rk.topStockConcentration ?? 0) > 30} />
-          <MetricChip label="손실 종목" value={(rk.lossStockRatio ?? 0).toFixed(0) + '%'} warn={(rk.lossStockRatio ?? 0) > 50} />
+          <MetricChip label={t('trading.ai.metricRiskScore')} value={t('trading.format.riskScoreGrade', { score: rk.riskScore ?? 0, grade: rk.riskGrade || '-' })} warn={(rk.riskScore ?? 0) > 60} />
+          <MetricChip label={t('trading.ai.metricSectorConc')} value={t('trading.format.sectorConcentration', { n: (rk.sectorConcentration ?? 0).toFixed(0) })} warn={(rk.sectorConcentration ?? 0) > 40} />
+          <MetricChip label={t('trading.ai.metricStockConc')} value={t('trading.format.topStockConcentration', { n: (rk.topStockConcentration ?? 0).toFixed(0) })} warn={(rk.topStockConcentration ?? 0) > 30} />
+          <MetricChip label={t('trading.ai.metricLossStocks')} value={t('trading.format.lossStockRatio', { n: (rk.lossStockRatio ?? 0).toFixed(0) })} warn={(rk.lossStockRatio ?? 0) > 50} />
         </div>
-        <div style={{ fontSize: 15, color: '#4E5968', lineHeight: 1.75 }}>{rk.text}</div>
+        <div style={{ fontSize: 15, color: SUB, lineHeight: 1.75 }}>{rk.text}</div>
         <AdviceLine text={rk.advice} />
       </ReportSection>
 
-      <ReportSection no="5" title="수익률 요인 분석">
-        <div style={{ fontSize: 15, color: '#4E5968', lineHeight: 1.75, marginBottom: 16 }}>{rt.text}</div>
+      <ReportSection no="5" title={t('trading.ai.sectionReturns')}>
+        <div style={{ fontSize: 15, color: SUB, lineHeight: 1.75, marginBottom: 16 }}>{rt.text}</div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
           <div style={{ background: '#F9FAFB', borderRadius: 12, padding: '14px 16px' }}>
-            <div style={{ fontSize: 13, fontWeight: 800, color: UP, marginBottom: 4 }}>수익 기여 상위</div>
-            {rt.top3.length ? rt.top3.map(x => <ContribRow key={x.code} x={x} positive />) : <div style={{ fontSize: 13, color: SUB, padding: '9px 0' }}>해당 없음</div>}
+            <div style={{ fontSize: 13, fontWeight: 800, color: UP, marginBottom: 4 }}>{t('trading.ai.topContributors')}</div>
+            {rt.top3.length ? rt.top3.map(x => <ContribRow key={x.code} x={x} positive />) : <div style={{ fontSize: 13, color: SUB, padding: '9px 0' }}>{t('trading.ai.none')}</div>}
           </div>
           <div style={{ background: '#F9FAFB', borderRadius: 12, padding: '14px 16px' }}>
-            <div style={{ fontSize: 13, fontWeight: 800, color: DOWN, marginBottom: 4 }}>손실 원인 하위</div>
-            {rt.bottom3.length ? rt.bottom3.map(x => <ContribRow key={x.code} x={x} positive={false} />) : <div style={{ fontSize: 13, color: SUB, padding: '9px 0' }}>해당 없음</div>}
+            <div style={{ fontSize: 13, fontWeight: 800, color: DOWN, marginBottom: 4 }}>{t('trading.ai.bottomContributors')}</div>
+            {rt.bottom3.length ? rt.bottom3.map(x => <ContribRow key={x.code} x={x} positive={false} />) : <div style={{ fontSize: 13, color: SUB, padding: '9px 0' }}>{t('trading.ai.none')}</div>}
           </div>
         </div>
         {rt.sectorContrib.length > 0 && (
           <div style={{ marginTop: 14, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             {rt.sectorContrib.map(s => (
               <span key={s.sector} style={{ fontSize: 13, fontWeight: 700, padding: '6px 12px', borderRadius: 999, color: tone(s.v), background: s.v >= 0 ? '#FEF0F1' : '#EFF5FF', whiteSpace: 'nowrap' }}>
-                {s.sector} {signNum(s.v)}
+                {t('trading.format.sectorContrib', { sector: s.sector, value: signNum(s.v) })}
               </span>
             ))}
           </div>
         )}
       </ReportSection>
 
-      <ReportSection no="6" title="개선 Advice Top 3">
+      <ReportSection no="6" title={t('trading.ai.sectionAdvice')}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           {r.adviceTop3.map((a, i) => (
             <div key={i} style={{ display: 'flex', gap: 12, background: '#FFF8EC', borderRadius: 12, padding: '14px 16px' }}>
@@ -326,14 +326,15 @@ function ReportCard({ report: r }) {
         </div>
       </ReportSection>
 
-      <ReportSection no="7" title="전략 제안">
-        <div style={{ fontSize: 15, color: '#4E5968', lineHeight: 1.75 }}>{r.strategy}</div>
+      <ReportSection no="7" title={t('trading.ai.sectionStrategy')}>
+        <div style={{ fontSize: 15, color: SUB, lineHeight: 1.75 }}>{r.strategy}</div>
       </ReportSection>
     </Card>
   );
 }
 
 function ReportAccordion({ report: r }) {
+  const { t } = useLocale();
   r = normalizeReport(r);
   const health = r.health;
   const [open, setOpen] = useState(false);
@@ -357,7 +358,7 @@ function ReportAccordion({ report: r }) {
       >
         <span style={{ fontSize: 14, fontWeight: 800, color: BRAND, background: '#EFF5FF', padding: '6px 10px', borderRadius: 8, whiteSpace: 'nowrap' }}>{r.label || '-'}</span>
         <span style={{ fontSize: 14, fontWeight: 700, color: INK, whiteSpace: 'nowrap' }}>{dateLabel(r.ts || Date.now())}</span>
-        <span style={{ fontSize: 13, color: SUB, marginLeft: 'auto', whiteSpace: 'nowrap' }}>건강도 {health.total ?? '-'}점</span>
+        <span style={{ fontSize: 13, color: SUB, marginLeft: 'auto', whiteSpace: 'nowrap' }}>{t('trading.format.healthScore', { score: health.total ?? '-' })}</span>
         <ChevronDown
           size={18}
           strokeWidth={2.4}
@@ -381,6 +382,7 @@ function ReportAccordion({ report: r }) {
 
 export function AIReports() {
   const { state, getStock, addAiReport, setAiReports, navigate } = useStore();
+  const { t } = useLocale();
   const [generating, setGenerating] = useState(false);
   const [reportsLoaded, setReportsLoaded] = useState(false);
   const userKey = getDarfinUserId() || getDarfinUser()?.email || '';
@@ -404,7 +406,7 @@ export function AIReports() {
     return () => { cancelled = true; };
   }, [reportsLoaded, setAiReports, state.isLoggedIn]);
 
-  if (!state.isLoggedIn) return <PageShell title="AI 분석"><LoginGate /></PageShell>;
+  if (!state.isLoggedIn) return <PageShell title={t('trading.nav.ai')}><LoginGate /></PageShell>;
 
   const generate = async () => {
     if (!hasAnalysisData) return;
@@ -424,12 +426,12 @@ export function AIReports() {
           dbError: aiResult.dbError,
         });
       } catch (error) {
-        const geminiError = error?.message || '투자분석 서버 연결 실패';
+        const geminiError = error?.message || t('trading.ai.serverConnectionFail');
         console.warn('포트폴리오 분석 실패', error);
         addAiReport({
-          label: '분석 실패',
-          labelReason: '투자분석 서버 연결에 실패했어요.',
-          disclaimer: '이 리포트는 모의투자 학습을 목적으로 제공되며, 특정 종목의 매수·매도를 권유하지 않아요.',
+          label: t('trading.ai.analysisFailed'),
+          labelReason: t('trading.ai.analysisFailedReason'),
+          disclaimer: t('trading.ai.disclaimer'),
           health: { breakdown: {}, total: 0, grade: '-', comment: '-' },
           behavior: { metrics: {}, text: '-', advice: '-', limited: true },
           risk: { text: '-', advice: '-' },
@@ -446,19 +448,19 @@ export function AIReports() {
   };
 
   return (
-    <PageShell title="AI 분석 리포트" sub="Darfin AI가 행동 패턴 · 리스크 · 수익률 · 투자 성향을 분석해 맞춤 해석을 붙여요"
+    <PageShell title={t('trading.ai.title')} sub={t('trading.ai.sub')}
       right={<button onClick={generate} disabled={generating || !hasAnalysisData} style={{ ...primaryBtn, height: 46, opacity: generating || !hasAnalysisData ? 0.6 : 1, cursor: generating || !hasAnalysisData ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: 8, whiteSpace: 'nowrap' }}>
-        <span>✦</span>{generating ? '분석 중…' : hasAnalysisData ? '리포트 생성' : '거래 후 생성'}</button>}>
+        <span>✦</span>{generating ? t('trading.ai.generating') : hasAnalysisData ? t('trading.ai.generate') : t('trading.ai.generateAfterTrade')}</button>}>
 
-      <Card style={{ marginBottom: 20, background: 'linear-gradient(135deg,#F4F8FF,#fff)' }}>
+      <Card style={{ marginBottom: 20, background: 'linear-gradient(135deg, color-mix(in srgb, var(--trading-brand, #1B64DA) 10%, var(--trading-card, #fff)), var(--trading-card, #fff))' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-          <span style={{ fontSize: 15, fontWeight: 800, color: BRAND, whiteSpace: 'nowrap' }}>✦ Darfin AI 기반 4대 축 분석</span>
-          <span style={{ fontSize: 12, color: SUB, marginLeft: 'auto', whiteSpace: 'nowrap' }}>버튼 클릭 시 1회 생성 · 종합 리포트 1개</span>
+          <span style={{ fontSize: 15, fontWeight: 800, color: BRAND, whiteSpace: 'nowrap' }}>{t('trading.ai.bannerTitle')}</span>
+          <span style={{ fontSize: 12, color: SUB, marginLeft: 'auto', whiteSpace: 'nowrap' }}>{t('trading.ai.bannerNote')}</span>
         </div>
-        <div style={{ fontSize: 13, color: '#4E5968', marginBottom: 16, lineHeight: 1.5 }}>보유 종목·매매 이력·수익률 데이터를 Darfin AI가 분석하고 맞춤 해석과 개선 제안을 생성해요.</div>
+        <div style={{ fontSize: 13, color: SUB, marginBottom: 16, lineHeight: 1.5 }}>{t('trading.ai.bannerDesc')}</div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
-          {AXES.map(a => (
-            <div key={a.n} style={{ background: '#fff', border: '1px solid #EAF0FB', borderRadius: 14, padding: 16 }}>
+          {t('trading.ai.axes').map(a => (
+            <div key={a.n} style={{ background: 'var(--trading-card, #fff)', border: '1px solid var(--trading-card-border, #EAF0FB)', borderRadius: 14, padding: 16 }}>
               <div style={{ fontSize: 14, fontWeight: 800, color: BRAND, marginBottom: 6 }}>{a.n} {a.t}</div>
               <div style={{ fontSize: 12, color: SUB, lineHeight: 1.5 }}>{a.d}</div>
             </div>
@@ -469,13 +471,13 @@ export function AIReports() {
       {generating && (
         <Card style={{ marginBottom: 20, display: 'flex', alignItems: 'center', gap: 14 }}>
           <div className="spin" style={{ width: 22, height: 22, border: '3px solid #D6E4FF', borderTopColor: BRAND, borderRadius: '50%' }} />
-          <span style={{ fontSize: 15, fontWeight: 700, color: BRAND }}>Darfin AI가 사용자의 보유 종목, 매매 이력, 수익률 흐름을 바탕으로 투자 성향을 분석 중입니다.</span>
+          <span style={{ fontSize: 15, fontWeight: 700, color: BRAND }}>{t('trading.ai.generatingMsg')}</span>
         </Card>
       )}
 
       {state.aiReports.length === 0 && !generating ? (
-        <Empty text={!hasAnalysisData ? '거래 이력이 부족해 분석이 제한돼요. 먼저 종목을 매매해보세요.' : "'리포트 생성'을 눌러 첫 통합 분석 리포트를 받아보세요."}
-          cta={!hasAnalysisData ? '종목 둘러보기' : null} onCta={() => navigate('home')} />
+        <Empty text={!hasAnalysisData ? t('trading.ai.emptyNoTrades') : t('trading.ai.emptyPrompt')}
+          cta={!hasAnalysisData ? t('trading.ai.browse') : null} onCta={() => navigate('home')} />
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
           {state.aiReports[0] && <ReportCard report={state.aiReports[0]} />}
