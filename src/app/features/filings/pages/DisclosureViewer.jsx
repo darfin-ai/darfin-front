@@ -17,6 +17,7 @@ import {
   Info,
   Lightbulb,
   Loader2,
+  RefreshCw,
   Sparkles,
   Wand2
 } from "lucide-react";
@@ -100,6 +101,7 @@ export function DisclosureViewer() {
   const [originalBlocks, setOriginalBlocks] = useState(null);
   const [isLoadingOriginal, setIsLoadingOriginal] = useState(true);
   const [originalTextError, setOriginalTextError] = useState(null);
+  const [originalRetryToken, setOriginalRetryToken] = useState(0);
 
   // 전문용어 — API에서 받은 TermHighlightDto[]
   const [termHighlights, setTermHighlights] = useState([]);
@@ -136,16 +138,28 @@ export function DisclosureViewer() {
     return () => { mounted = false; };
   }, [rceptNo]);
 
+  // 방금 접수된 공시는 DART 목록(list.json)에는 바로 잡히지만, 실제 원문 ZIP(document.xml)은
+  // DART 쪽에서 아직 생성 중이라 몇 분간 "014/파일이 존재하지 않습니다" 오류가 나는 경우가 있다.
+  // 원문 실패를 코드 버그처럼 보이지 않게, 이 케이스는 안내 문구 + 재시도 버튼으로 대체한다.
+  const isDocumentNotReadyYet = (message) =>
+    /status=0?1[34]|파일이 존재하지 않습니다/.test(message ?? "");
+
   useEffect(() => {
     let mounted = true;
     setIsLoadingOriginal(true);
     setOriginalTextError(null);
     getDisclosureOriginalText(rceptNo)
       .then((d) => { if (mounted) { setOriginalText(d.text); setOriginalBlocks(d.blocks ?? null); } })
-      .catch((e) => { if (mounted) setOriginalTextError(e.message ?? t("disclosure.viewer.originalError")); })
+      .catch((e) => {
+        if (!mounted) return;
+        const message = e.message ?? t("disclosure.viewer.originalError");
+        setOriginalTextError(
+          isDocumentNotReadyYet(message) ? t("disclosure.viewer.originalNotReadyYet") : message
+        );
+      })
       .finally(() => { if (mounted) setIsLoadingOriginal(false); });
     return () => { mounted = false; };
-  }, [rceptNo]);
+  }, [rceptNo, originalRetryToken]);
 
   // 전문용어 토글을 처음 켤 때만 API 호출
   useEffect(() => {
@@ -181,6 +195,29 @@ export function DisclosureViewer() {
   const highlightCount = analysisItems.filter(
     (i) => i.charOffsetStart >= 0 && i.charOffsetEnd > i.charOffsetStart
   ).length;
+
+  // 같은 분석 결과(카테고리 + materialImpact)를 가진 항목은 세부 근거(targetKey)만 다른 경우가
+  // 많아, 카드 하나로 묶고 근거들은 그 안에 나열한다.
+  const groupedAnalysisItems = useMemo(() => {
+    const groups = [];
+    const indexByKey = new Map();
+    for (const item of analysisItems) {
+      const key = `${item.analysisCategory}||${item.materialImpact}`;
+      const existingIndex = indexByKey.get(key);
+      if (existingIndex === undefined) {
+        indexByKey.set(key, groups.length);
+        groups.push({ ...item, details: [item] });
+      } else {
+        const group = groups[existingIndex];
+        group.details.push(item);
+        if ((item.riskTier ?? 0) > (group.riskTier ?? 0)) {
+          group.riskLevel = item.riskLevel;
+          group.riskTier = item.riskTier;
+        }
+      }
+    }
+    return groups;
+  }, [analysisItems]);
 
   // 용어사전 탭에서 중복 제거 (같은 용어가 여러 번 등장하면 termId 기준으로 한 번만)
   const uniqueTerms = termHighlights.reduce((acc, th) => {
@@ -425,11 +462,11 @@ export function DisclosureViewer() {
                           count: termHighlights.length > 0 ? ` (${uniqueTerms.length})` : "",
                         })
                   }
-                  icon={<BookA size={14} className={termsEnabled ? "text-slate-600 dark:text-slate-300" : "text-slate-400 dark:text-slate-500"} />}
+                  icon={<BookA size={14} className={termsEnabled ? "text-blue-600 dark:text-blue-400" : "text-slate-400 dark:text-slate-500"} />}
                   checked={termsEnabled}
                   onCheckedChange={setTermsEnabled}
                   disabled={!originalText || isLoadingTerms}
-                  checkedBg="bg-slate-500"
+                  checkedBg="bg-blue-500"
                 />
               </div>
             )}
@@ -463,14 +500,24 @@ export function DisclosureViewer() {
             <div className="flex-1 flex flex-col items-center justify-center gap-3 p-8 text-center text-slate-400 dark:text-slate-500">
               <AlertTriangle size={32} className="text-red-400 dark:text-red-500" />
               <p className="text-sm text-red-600 dark:text-red-400">{originalTextError}</p>
-              <button
-                type="button"
-                onClick={handleOpenDartViewer}
-                className={`flex items-center gap-1.5 ${BTN_PRIMARY} mt-1`}
-              >
-                <ExternalLink size={16} />
-                {t("disclosure.download.openDart")}
-              </button>
+              <div className="flex items-center gap-2 mt-1">
+                <button
+                  type="button"
+                  onClick={() => setOriginalRetryToken((n) => n + 1)}
+                  className={`flex items-center gap-1.5 ${BTN_SECONDARY}`}
+                >
+                  <RefreshCw size={16} />
+                  {t("disclosure.viewer.retry")}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleOpenDartViewer}
+                  className={`flex items-center gap-1.5 ${BTN_PRIMARY}`}
+                >
+                  <ExternalLink size={16} />
+                  {t("disclosure.download.openDart")}
+                </button>
+              </div>
             </div>
           ) : (
             <div className="flex-1 overflow-y-auto p-6" ref={originalPanelRef}>
@@ -500,9 +547,9 @@ export function DisclosureViewer() {
             <ViewerTab value="summary" activeTab={activeTab}>{t("disclosure.viewer.tabSummary")}</ViewerTab>
             <ViewerTab value="analysis" activeTab={activeTab}>
               {t("disclosure.viewer.tabAnalysis")}
-              {analysisItems.length > 0 && (
+              {groupedAnalysisItems.length > 0 && (
                 <span className="ml-1.5 text-[10px] bg-blue-100 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 px-1.5 py-0.5 rounded-full font-medium">
-                  {analysisItems.length}
+                  {groupedAnalysisItems.length}
                 </span>
               )}
             </ViewerTab>
@@ -550,33 +597,45 @@ export function DisclosureViewer() {
             {/* 핵심 분석 탭 */}
             <Tabs.Content value="analysis" className="space-y-3 animate-in fade-in outline-none">
               <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400 font-semibold mb-4"><Highlighter size={18} /><span>{t("disclosure.viewer.analysisTitle")}</span></div>
-              {analysisItems.length > 0 ? (
+              {groupedAnalysisItems.length > 0 ? (
                 <div className="space-y-4">
-                  {analysisItems.map((item, index) => {
-                    const isActive = activeHighlightKey === item.targetKey;
-                    const hasCoords = item.charOffsetStart >= 0 && item.charOffsetEnd > item.charOffsetStart;
+                  {groupedAnalysisItems.map((group, index) => {
                     // 분석 결과가 하나뿐이면 여러 개일 때 쓰던 촘촘한 글자 크기 그대로는
                     // 가독성이 떨어져서, 이 경우만 더 크게 키운다.
-                    const isSingle = analysisItems.length === 1;
+                    const isSingle = groupedAnalysisItems.length === 1;
+                    const isGroupActive = group.details.some((d) => activeHighlightKey === d.targetKey);
                     return (
                       <div
-                        key={`${item.analysisCategory}-${index}`}
-                        onClick={() => hasCoords && handleAnalysisItemClick(item)}
+                        key={`${group.analysisCategory}-${index}`}
                         className={`border border-slate-200 dark:border-slate-800 rounded-xl transition-all duration-200 bg-white dark:bg-slate-900
                           ${isSingle ? "p-5" : "p-4.5"}
-                          ${isActive ? "ring-2 ring-amber-400 dark:ring-amber-500 ring-offset-1 dark:ring-offset-slate-900 border-amber-300 dark:border-amber-700" : ""}
-                          ${hasCoords ? "cursor-pointer hover:shadow-sm hover:border-slate-300 dark:hover:border-slate-700" : ""}`}
+                          ${isGroupActive ? "ring-2 ring-amber-400 dark:ring-amber-500 ring-offset-1 dark:ring-offset-slate-900 border-amber-300 dark:border-amber-700" : ""}`}
                       >
                         <div className="flex items-start justify-between gap-2 mb-2.5">
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            <h4 className={`font-bold text-slate-900 dark:text-slate-100 ${isSingle ? "text-lg" : "text-base"}`}>{getAnalysisCategoryLabel(t, item.analysisCategory)}</h4>
-                            {hasCoords && <span className={`flex items-center gap-0.5 text-[10px] ${META}`}><ChevronRight size={10} />{t("disclosure.viewer.goToOriginal")}</span>}
-                          </div>
-                          <RiskBadge riskLabel={item.riskLevel} riskTier={item.riskTier} size="md" />
+                          <h4 className={`font-bold text-slate-900 dark:text-slate-100 ${isSingle ? "text-lg" : "text-base"}`}>{getAnalysisCategoryLabel(t, group.analysisCategory)}</h4>
+                          <RiskBadge riskLabel={group.riskLevel} riskTier={group.riskTier} size="md" />
                         </div>
-                        <p className={`font-medium text-slate-600 dark:text-slate-300 mb-2.5 bg-amber-50 dark:bg-amber-950/30 border border-amber-100 dark:border-amber-900/50 px-2.5 py-1.5 rounded italic leading-relaxed ${isSingle ? "text-base" : "text-sm"}`}>"{item.targetKey}"</p>
+                        <div className="space-y-1.5 mb-2.5">
+                          {group.details.map((detail, di) => {
+                            const hasCoords = detail.charOffsetStart >= 0 && detail.charOffsetEnd > detail.charOffsetStart;
+                            const isActive = activeHighlightKey === detail.targetKey;
+                            return (
+                              <p
+                                key={di}
+                                onClick={() => hasCoords && handleAnalysisItemClick(detail)}
+                                className={`font-medium text-slate-600 dark:text-slate-300 bg-amber-50 dark:bg-amber-950/30 border border-amber-100 dark:border-amber-900/50 px-2.5 py-1.5 rounded italic leading-relaxed flex items-center justify-between gap-2
+                                  ${isSingle ? "text-base" : "text-sm"}
+                                  ${isActive ? "ring-1 ring-amber-400 dark:ring-amber-500" : ""}
+                                  ${hasCoords ? "cursor-pointer hover:border-amber-300 dark:hover:border-amber-700" : ""}`}
+                              >
+                                <span>"{detail.targetKey}"</span>
+                                {hasCoords && <span className={`shrink-0 flex items-center gap-0.5 text-[10px] not-italic ${META}`}><ChevronRight size={10} />{t("disclosure.viewer.goToOriginal")}</span>}
+                              </p>
+                            );
+                          })}
+                        </div>
                         <div className="space-y-1.5">
-                          {splitIntoSentences(item.materialImpact).map((sentence, si) => (
+                          {splitIntoSentences(group.materialImpact).map((sentence, si) => (
                             <p
                               key={si}
                               className={`font-medium text-slate-700 dark:text-slate-300 leading-relaxed ${isSingle ? "text-lg" : "text-base"}`}

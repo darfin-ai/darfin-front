@@ -61,6 +61,8 @@ export const disclosure = {
     legendTerms: "Technical terms (click → Glossary tab)",
     loadingOriginal: "Loading filing text from DART...",
     originalError: "Could not load filing text.",
+    originalNotReadyYet: "This filing was just submitted, so DART hasn't generated the document file yet. Please try again in a moment.",
+    retry: "Retry",
     tabSummary: "AI summary",
     tabAnalysis: "Key analysis",
     tabGlossary: "Glossary",

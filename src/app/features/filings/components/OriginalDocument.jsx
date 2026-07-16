@@ -148,9 +148,9 @@ function isNoteRow(row) {
 // 레벨(1=장, 2=절, 3=항)에 따라 크기·굵기·색을 모두 달리해 위계가 한눈에 구분되게 한다.
 // 첫 제목은 상단 여백을 없애고, 각 레벨은 위아래 여백으로 문서 리듬을 만든다.
 const HEADING_CLASS = {
-  1: "text-base font-bold text-slate-900 mt-7 mb-3 pb-2 border-b border-slate-200 first:mt-0",
-  2: "text-sm font-bold text-slate-800 mt-6 mb-2 first:mt-0",
-  3: "text-[13px] font-semibold text-slate-500 mt-4 mb-1.5 first:mt-0",
+  1: "text-base font-bold text-slate-900 dark:text-slate-100 mt-7 mb-3 pb-2 border-b border-slate-200 dark:border-slate-700 first:mt-0",
+  2: "text-sm font-bold text-slate-800 dark:text-slate-200 mt-6 mb-2 first:mt-0",
+  3: "text-[13px] font-semibold text-slate-600 dark:text-slate-400 mt-4 mb-1.5 first:mt-0",
 };
 
 // ── 툴팁 (싱글톤 + 이벤트 위임) ────────────────────────────────────
@@ -162,10 +162,10 @@ const TOOLTIP_ID = "odoc-tooltip";
 
 // 위험도 tier -> 칩 색상 (분석 하이라이트 툴팁용)
 const RISK_CHIP_CLASS = {
-  Critical: "bg-red-100 text-red-700",
-  High: "bg-orange-100 text-orange-700",
-  Neutral: "bg-slate-100 text-slate-600",
-  Low: "bg-emerald-100 text-emerald-700",
+  Critical: "bg-red-100 dark:bg-red-950/40 text-red-700 dark:text-red-300",
+  High: "bg-orange-100 dark:bg-orange-950/40 text-orange-700 dark:text-orange-300",
+  Neutral: "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300",
+  Low: "bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300",
 };
 
 // 주입 데이터(kind로 분기)를 툴팁 본문 노드로 변환한다. 순수 함수라 모듈 스코프에 둔다.
@@ -175,31 +175,31 @@ function renderTooltipBody(info, getCategoryLabel) {
     return (
       <div className="p-3">
         <div className="flex items-center gap-1.5 mb-1.5">
-          <span className="text-sm font-semibold text-blue-800">{t.term}</span>
+          <span className="text-sm font-semibold text-blue-800 dark:text-blue-300">{t.term}</span>
           {t.category && (
-            <span className="text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded font-mono">
+            <span className="text-[10px] bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300 px-1.5 py-0.5 rounded font-mono">
               {t.category}
             </span>
           )}
         </div>
-        <p className="text-xs text-slate-600 leading-relaxed">{t.definition}</p>
+        <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">{t.definition}</p>
       </div>
     );
   }
 
   const it = info.data;
-  const chip = RISK_CHIP_CLASS[it.riskTier] ?? "bg-slate-100 text-slate-600";
+  const chip = RISK_CHIP_CLASS[it.riskTier] ?? "bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300";
   return (
     <div className="p-3">
       <div className="flex items-center gap-1.5 mb-1.5">
-        <span className="text-sm font-semibold text-slate-800">
+        <span className="text-sm font-semibold text-slate-800 dark:text-slate-100">
           {getCategoryLabel(it.analysisCategory)}
         </span>
         {it.riskLevel && (
           <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${chip}`}>{it.riskLevel}</span>
         )}
       </div>
-      {it.materialImpact && <p className="text-xs text-slate-600 leading-relaxed">{it.materialImpact}</p>}
+      {it.materialImpact && <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">{it.materialImpact}</p>}
     </div>
   );
 }
@@ -267,7 +267,7 @@ const DocumentTooltip = forwardRef(function DocumentTooltip(_props, ref) {
       ref={floatingRef}
       role="tooltip"
       id={TOOLTIP_ID}
-      className="w-max max-w-xs bg-white border border-slate-200 rounded-lg shadow-lg text-left"
+      className="w-max max-w-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg text-left"
       style={{
         position: "absolute",
         left: 0,
@@ -427,13 +427,18 @@ export function OriginalDocument({
 
       if (seg.type === "highlight") {
         const isActive = activeHighlightKey === seg.item.targetKey;
+        // 배경 위 텍스트 색을 부모(문단/제목/표 셀)에서 물려받게 두면 위계별로 대비가 들쭉날쭉해진다
+        // (예: 3레벨 제목의 옅은 회색 안에서는 대비가 확 떨어짐). mark 자체에 진한 텍스트 색을
+        // 명시해서 어디에 나타나든 배경과의 대비가 항상 보장되게 한다. 다크모드는 반투명 노랑 위에
+        // 밝은 호박색 텍스트로 뒤집어서 마찬가지로 고대비를 유지한다.
         return (
           <mark
             key={key}
             data-highlight-key={seg.item.targetKey}
             onClick={() => onHighlightSelect?.(seg.item.targetKey)}
-            className={`bg-yellow-200 rounded-sm px-0.5 cursor-pointer transition-all duration-200
-              ${isActive ? "outline outline-2 outline-offset-1 outline-yellow-500" : ""}`}
+            className={`bg-yellow-200 dark:bg-yellow-500/25 text-slate-900 dark:text-amber-100
+              font-semibold rounded-sm px-0.5 cursor-pointer transition-all duration-200
+              ${isActive ? "outline outline-2 outline-offset-1 outline-yellow-500 dark:outline-amber-400" : ""}`}
           >
             {seg.text}
           </mark>
@@ -446,10 +451,10 @@ export function OriginalDocument({
           key={key}
           data-term-id={seg.th.termId}
           onClick={() => onTermSelect?.(seg.th.termId)}
-          className={`cursor-pointer border-b-2 border-dotted transition-all duration-200 no-underline
+          className={`cursor-pointer border-b-2 border-dotted transition-all duration-200 no-underline font-medium
             ${isActive
-              ? "border-blue-600 text-blue-900 bg-blue-50"
-              : "border-blue-400 text-blue-800 hover:border-blue-600"}`}
+              ? "border-blue-600 dark:border-blue-400 text-blue-900 dark:text-blue-100 bg-blue-50 dark:bg-blue-950/40"
+              : "border-blue-400 dark:border-blue-500 text-blue-800 dark:text-blue-300 hover:border-blue-600 dark:hover:border-blue-300"}`}
           style={{ textDecoration: "none" }}
         >
           {seg.text}
@@ -465,7 +470,7 @@ export function OriginalDocument({
       return cellBlocks.map((cb, cbi) => renderBlock(cb, `${key}-${cbi}`, cbi));
     }
     return (
-      <div className="divide-y divide-slate-200 -my-1">
+      <div className="divide-y divide-slate-200 dark:divide-slate-700 -my-1">
         {cellBlocks.map((cb, cbi) => {
           const segments =
             cb.charStart != null && highlightMask
@@ -534,7 +539,7 @@ export function OriginalDocument({
       return (
         <div
           key={key}
-          className={`my-4 rounded-lg border border-slate-200 overflow-auto ${isTall ? "max-h-[420px]" : ""}`}
+          className={`my-4 rounded-lg border border-slate-200 dark:border-slate-700 overflow-auto ${isTall ? "max-h-[420px]" : ""}`}
         >
           <table className="min-w-full border-collapse text-sm">
             <tbody>
@@ -551,7 +556,7 @@ export function OriginalDocument({
                   <tr
                     key={ri}
                     className={
-                      !isHeaderRow && !noteRow && ri % 2 === 1 ? "bg-slate-50/60" : undefined
+                      !isHeaderRow && !noteRow && ri % 2 === 1 ? "bg-slate-50/60 dark:bg-slate-800/40" : undefined
                     }
                   >
                     {row.map((cell, ci) => {
@@ -575,17 +580,17 @@ export function OriginalDocument({
                       // sticky는 첫 헤더 행에만 건다 — 2단 헤더에서 둘째 행까지 top-0로 고정하면
                       // 스크롤 시 첫 행과 같은 위치에서 겹친다.
                       const tdClass = [
-                        "border border-slate-200 px-3 py-2 align-top leading-6",
+                        "border border-slate-200 dark:border-slate-700 px-3 py-2 align-top leading-6",
                         isHeaderRow
-                          ? `whitespace-nowrap text-center bg-slate-100 font-semibold text-slate-700 ${ri === 0 ? "sticky top-0 z-10" : ""}`
+                          ? `whitespace-nowrap text-center bg-slate-100 dark:bg-slate-800 font-semibold text-slate-700 dark:text-slate-200 ${ri === 0 ? "sticky top-0 z-10" : ""}`
                           : noteRow
-                            ? "whitespace-pre-wrap text-slate-500 text-xs italic bg-slate-50/40"
+                            ? "whitespace-pre-wrap text-slate-500 dark:text-slate-400 text-xs italic bg-slate-50/40 dark:bg-slate-800/30"
                             : isFinancialCell
-                              ? `whitespace-nowrap text-center ${isNumeric ? "tabular-nums font-medium text-slate-800" : "text-slate-700"}`
+                              ? `whitespace-nowrap text-center font-medium ${isNumeric ? "tabular-nums text-slate-800 dark:text-slate-100" : "text-slate-700 dark:text-slate-300"}`
                               : isFormCell
-                                ? "whitespace-nowrap text-center text-slate-700"
-                                : "whitespace-pre-wrap text-slate-700",
-                        isFormLabel ? "bg-slate-50 font-medium text-slate-600 w-1/3" : "",
+                                ? "whitespace-nowrap text-center font-medium text-slate-700 dark:text-slate-300"
+                                : "whitespace-pre-wrap text-slate-700 dark:text-slate-300",
+                        isFormLabel ? "bg-slate-50 dark:bg-slate-800/60 font-semibold text-slate-600 dark:text-slate-300 w-1/3" : "",
                       ]
                         .filter(Boolean)
                         .join(" ");
@@ -598,7 +603,7 @@ export function OriginalDocument({
                           className={tdClass}
                         >
                           {isEmpty && !isHeaderRow ? (
-                            <span className="text-slate-300">–</span>
+                            <span className="text-slate-300 dark:text-slate-600">–</span>
                           ) : (
                             renderCellContent(cell.blocks, `${key}-${ri}-${ci}`)
                           )}
@@ -623,7 +628,7 @@ export function OriginalDocument({
     return (
       <p
         key={key}
-        className="text-sm text-slate-700 leading-7 whitespace-pre-wrap font-sans mb-3 last:mb-0"
+        className="text-sm text-slate-700 dark:text-slate-300 leading-7 whitespace-pre-wrap font-sans mb-3 last:mb-0"
       >
         {segments ? renderSegments(segments, key) : block.text}
       </p>

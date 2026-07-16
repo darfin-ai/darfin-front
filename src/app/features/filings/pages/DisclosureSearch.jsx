@@ -148,18 +148,20 @@ export function DisclosureSearch() {
   const defaultPreset = "sixMonths";
   const defaultRange = getDateRangeForPreset(defaultPreset);
 
-  const [searchTerm, setSearchTerm] = useState(saved?.searchTerm ?? "");
+  // 검색어/검색 결과는 세션에 저장하지 않고 페이지에 들어올 때마다 초기화한다 —
+  // 항상 "오늘 올라온 공시" 기본 화면부터 시작하고, 날짜/유형 필터만 이전 설정을 유지한다.
+  const [searchTerm, setSearchTerm] = useState("");
   const [selectedTypeCodes, setSelectedTypeCodes] = useState(saved?.selectedTypeCodes ?? []);
   const [datePreset, setDatePreset] = useState(saved?.datePreset ?? defaultPreset);
   const [dateRange, setDateRange] = useState(saved?.dateRange ?? defaultRange);
   const [isSearching, setIsSearching] = useState(false);
-  const [collectMessage, setCollectMessage] = useState(saved?.collectMessage ?? null);
+  const [collectMessage, setCollectMessage] = useState(null);
   const [searchError, setSearchError] = useState(null);
-  const [results, setResults] = useState(saved?.results ?? null);
-  const [currentPage, setCurrentPage] = useState(saved?.currentPage ?? 1);
-  const [sortKey, setSortKey] = useState(saved?.sortKey ?? null);
-  const [sortDirection, setSortDirection] = useState(saved?.sortDirection ?? "desc");
-  const [lastSearchedTerm, setLastSearchedTerm] = useState(saved?.lastSearchedTerm ?? null);
+  const [results, setResults] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [sortKey, setSortKey] = useState(null);
+  const [sortDirection, setSortDirection] = useState("desc");
+  const [lastSearchedTerm, setLastSearchedTerm] = useState(null);
   // Filters already default to "last 6 months, all types" and work without being opened —
   // only expand automatically if the user had customized them in a previous visit.
   const [filtersOpen, setFiltersOpen] = useState(
@@ -254,13 +256,6 @@ export function DisclosureSearch() {
     if (!lastSearchedTerm) return;
     await performSearch({ companyName: lastSearchedTerm, page, key, direction });
   };
-
-  useEffect(() => {
-    if (saved?.lastSearchedTerm) {
-      runSearch();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   const handleSort = (key) => {
     let nextDirection = "desc";

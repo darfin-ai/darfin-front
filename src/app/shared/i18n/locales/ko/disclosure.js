@@ -61,6 +61,8 @@ export const disclosure = {
     legendTerms: "전문용어 (클릭 → 용어 사전 탭)",
     loadingOriginal: "DART에서 공시 원문을 불러오는 중입니다...",
     originalError: "공시 원문을 불러오지 못했습니다.",
+    originalNotReadyYet: "방금 접수된 공시라 DART에 원문 파일이 아직 준비되지 않았습니다. 잠시 후 다시 시도해주세요.",
+    retry: "다시 시도",
     tabSummary: "AI 요약",
     tabAnalysis: "핵심 분석",
     tabGlossary: "용어 사전",

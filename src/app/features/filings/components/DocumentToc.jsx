@@ -17,11 +17,11 @@ export function DocumentToc({ headings, activeId, onSelect }) {
   if (!headings || headings.length === 0) return null;
 
   return (
-    <aside className="w-56 shrink-0 bg-white border border-slate-200 rounded-2xl shadow-sm flex flex-col overflow-hidden">
-      <div className="flex items-center gap-2 px-4 py-3 border-b border-slate-100 bg-slate-50/50 text-sm font-medium text-slate-700 shrink-0">
-        <List size={16} className="text-blue-600" />
+    <aside className="w-56 shrink-0 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-sm flex flex-col overflow-hidden">
+      <div className="flex items-center gap-2 px-4 py-3 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50 text-sm font-semibold text-slate-800 dark:text-slate-100 shrink-0">
+        <List size={16} className="text-blue-600 dark:text-blue-400" />
         목차
-        <span className="ml-auto text-xs text-slate-400 font-normal">{headings.length}</span>
+        <span className="ml-auto text-xs text-slate-500 dark:text-slate-400 font-normal">{headings.length}</span>
       </div>
       <nav ref={navRef} className="flex-1 overflow-y-auto p-2">
         {headings.map((h) => {
@@ -33,10 +33,10 @@ export function DocumentToc({ headings, activeId, onSelect }) {
               data-toc-id={h.id}
               onClick={() => onSelect(h.id)}
               title={h.text}
-              className={`w-full text-left px-2 py-1.5 rounded-md text-xs leading-snug transition-colors truncate block border-l-2
+              className={`w-full text-left px-2 py-1.5 rounded-md text-sm leading-snug transition-colors truncate block border-l-2 whitespace-nowrap
                 ${isActive
-                  ? "border-blue-500 bg-blue-50 text-blue-700 font-semibold"
-                  : "border-transparent text-slate-600 hover:bg-slate-50 hover:text-slate-900"}`}
+                  ? "border-blue-500 bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 font-semibold"
+                  : "border-transparent text-slate-700 dark:text-slate-300 font-medium hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100"}`}
               style={{ paddingLeft: `${(h.level - 1) * 12 + 8}px` }}
             >
               {h.text}
