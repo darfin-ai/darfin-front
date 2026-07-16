@@ -1,6 +1,7 @@
-import { useState, useMemo } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useStore } from '../store/store.jsx';
 import { useLocale } from '../../../shared/i18n';
+import { msUntilNextKstDay, resolveTradeHoldDays } from '../lib/holdingDays.js';
 import {
   UP, DOWN, SUB, INK, BRAND,
   won, wonShort, signPct, signNum, tone, dateLabel,
@@ -35,6 +36,25 @@ function usePortfolio() {
 }
 
 const DONUT_COLORS = ['#1B64DA', '#F04452', '#F5A623', '#7C3AED', '#1FA463', '#FF7A45', '#00B8D9', '#8B95A1'];
+
+function useKstDayNow() {
+  const [now, setNow] = useState(Date.now());
+
+  useEffect(() => {
+    let timerId;
+    const schedule = () => {
+      timerId = window.setTimeout(() => {
+        setNow(Date.now());
+        schedule();
+      }, msUntilNextKstDay());
+    };
+
+    schedule();
+    return () => window.clearTimeout(timerId);
+  }, []);
+
+  return now;
+}
 
 export function Portfolio() {
   const { state, navigate, kisLoading } = useStore();
@@ -90,20 +110,20 @@ export function Portfolio() {
               <div style={{ flex: 1 }}><SkeletonText lines={5} widths={['90%', '78%', '84%', '68%', '72%']} height={13} gap={11} /></div>
             </div>
           ) : slices.length > 1 ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
-              <div style={{ position: 'relative' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+              <div style={{ position: 'relative', flex: '0 0 140px' }}>
                 <Donut slices={slices} size={140} thickness={26} />
                 <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
                   <div style={{ fontSize: 11, color: SUB }}>{t('trading.format.stockCount')}</div>
                   <div style={{ fontSize: 20, fontWeight: 800, color: INK }}>{p.rows.length}</div>
                 </div>
               </div>
-              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <div style={{ flex: '1 1 150px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {slices.slice(0, 5).map((s, i) => (
                   <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
                     <span style={{ width: 9, height: 9, borderRadius: 3, background: s.color, flexShrink: 0 }} />
-                    <span style={{ color: SUB, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.label}</span>
-                    <span style={{ fontWeight: 700, color: INK }}>{((s.value / totalForPct) * 100).toFixed(0)}%</span>
+                    <span style={{ color: SUB, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.label}</span>
+                    <span style={{ fontWeight: 700, color: INK, flexShrink: 0 }}>{((s.value / totalForPct) * 100).toFixed(0)}%</span>
                   </div>
                 ))}
               </div>
@@ -413,6 +433,7 @@ function TradesTable() {
   const { t: tr } = useLocale();
   const { won, signNum, qtyShares } = useTradingFormat();
   const [filter, setFilter] = useState('ALL');
+  const holdDayNow = useKstDayNow();
   const rows = state.trades.filter(t => filter === 'ALL' || t.type === filter);
   return (
     <div>
@@ -434,6 +455,7 @@ function TradesTable() {
           {rows.map(t => {
             const s = getStock(t.code);
             const isBuy = t.type === 'BUY';
+            const holdDays = resolveTradeHoldDays(t, holdDayNow);
             return (
               <div key={t.id} onClick={() => navigate('detail', { code: t.code })}
                 style={{ display: 'grid', gridTemplateColumns: '100px 1.6fr 1fr 1fr 1.1fr 0.8fr 1fr', gap: 8, padding: '14px 16px', alignItems: 'center', borderRadius: 12, cursor: 'pointer' }}
@@ -448,7 +470,7 @@ function TradesTable() {
                 </div>
                 <div style={{ textAlign: 'right', fontSize: 15, color: INK }}>{won(t.price)}</div>
                 <div style={{ textAlign: 'right', fontSize: 15, color: SUB }}>{qtyShares(t.qty)}</div>
-                <div style={{ textAlign: 'right', fontSize: 15, color: SUB }}>{isBuy || t.holdDays == null ? '-' : tr('trading.format.holdDays', { n: t.holdDays })}</div>
+                <div style={{ textAlign: 'right', fontSize: 15, color: SUB }}>{holdDays == null ? '-' : tr('trading.format.holdDays', { n: holdDays })}</div>
                 <div style={{ textAlign: 'right', fontSize: 15, fontWeight: 700, color: t.pnl == null ? SUB : tone(t.pnl) }}>{t.pnl == null ? '-' : signNum(t.pnl)}</div>
               </div>
             );

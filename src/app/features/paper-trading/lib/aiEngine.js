@@ -7,6 +7,7 @@ import {
   setTokens,
 } from '../../../shared/api/apiClient.js';
 import { normalizeUserObject, normalizeUserText, userDisplayName } from '../../../shared/lib/userText.js';
+import { resolveTradeHoldDays } from './holdingDays.js';
 
 // AI 분석 요청은 Spring Boot API가 받고, 서버에서 Python 분석 서버 호출/DB 저장을 담당한다.
 export const DISCLAIMER = '이 리포트는 모의투자 학습을 목적으로 제공되며, 특정 종목의 매수·매도를 권유하지 않아요.';
@@ -104,6 +105,7 @@ function stockSnapshotFor(code, getStock, fallback = {}) {
 }
 
 export function buildPortfolioAnalysisPayload(state, getStock) {
+  const now = Date.now();
   const codes = new Set([
     ...(state.holdings || []).map(item => item.code),
     ...(state.trades || []).map(item => item.code),
@@ -120,7 +122,10 @@ export function buildPortfolioAnalysisPayload(state, getStock) {
   return {
     funds: state.funds,
     holdings: state.holdings || [],
-    trades: state.trades || [],
+    trades: (state.trades || []).map(trade => ({
+      ...trade,
+      holdDays: resolveTradeHoldDays(trade, now),
+    })),
     watchlist: state.watchlist || [],
     fundHistory: state.fundHistory || [],
     stocks,
