@@ -31,7 +31,6 @@ import { usePageMeta } from "@/app/shared/hooks/usePageMeta";
 import { getDateFnsLocale } from "@/app/shared/i18n/localeFormat";
 import { searchDisclosures } from "../api/disclosureApi";
 import { RiskBadge } from "../components/RiskBadge";
-import { TodayDisclosures } from "../components/TodayDisclosures";
 import {
   CARD,
   LABEL,
@@ -148,8 +147,8 @@ export function DisclosureSearch() {
   const defaultPreset = "sixMonths";
   const defaultRange = getDateRangeForPreset(defaultPreset);
 
-  // 검색어/검색 결과는 세션에 저장하지 않고 페이지에 들어올 때마다 초기화한다 —
-  // 항상 "오늘 올라온 공시" 기본 화면부터 시작하고, 날짜/유형 필터만 이전 설정을 유지한다.
+  // 검색어/검색 결과는 세션에 저장하지 않고 페이지에 들어올 때마다 초기화한다.
+  // 날짜/유형 필터만 이전 설정을 유지한다.
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedTypeCodes, setSelectedTypeCodes] = useState(saved?.selectedTypeCodes ?? []);
   const [datePreset, setDatePreset] = useState(saved?.datePreset ?? defaultPreset);
@@ -310,8 +309,7 @@ export function DisclosureSearch() {
     performSearch({ companyName, page: 1, key: null, direction: "desc" });
   };
 
-  // 검색창을 비우면 이전 검색 결과를 그대로 붙들고 있지 않고 "오늘 올라온 공시"로
-  // 되돌아간다 — results가 null이어야 TodayDisclosures가 다시 렌더링된다.
+  // 검색창을 비우면 이전 검색 결과를 지우고 초기 검색 화면으로 되돌아간다.
   const handleSearchTermChange = (event) => {
     const value = event.target.value;
     setSearchTerm(value);
@@ -573,11 +571,6 @@ export function DisclosureSearch() {
       </form>
       </div>
 
-      {!results && !searchError && (
-        <motion.div variants={pageStagger.item}>
-          <TodayDisclosures />
-        </motion.div>
-      )}
       </motion.div>
 
       {collectMessage && !searchError && (
