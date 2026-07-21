@@ -1,5 +1,7 @@
-import { ExternalLink } from 'lucide-react';
+import { Link } from 'react-router';
+import { ExternalLink, FileText } from 'lucide-react';
 import { useLocale } from '../../../shared/i18n';
+import { useCompanyName } from '../lib/companyNameContext';
 import {
   Dialog,
   DialogContent,
@@ -10,11 +12,16 @@ import {
 } from '../../../shared/components/ui/dialog';
 
 /**
+ * sourceRef는 이 섹션 데이터의 출처가 된 공시의 rcept_no다(DartOverviewSection.SourceRef 참고).
  * @param {{ sectionLabel: string, excerpt: string, sourceRef: string, label?: string, className?: string }} props
  */
 export function SourceExcerptDialog({ sectionLabel, excerpt, sourceRef, label, className = '' }) {
   const { t } = useLocale();
+  const companyName = useCompanyName();
   const triggerLabel = label ?? t('company.panels.viewSource');
+  const disclosureHref = sourceRef
+    ? `/disclosure/${encodeURIComponent(sourceRef)}${companyName ? `?company=${encodeURIComponent(companyName)}` : ''}`
+    : null;
 
   return (
     <Dialog>
@@ -35,6 +42,15 @@ export function SourceExcerptDialog({ sectionLabel, excerpt, sourceRef, label, c
         </DialogHeader>
         <p className="whitespace-pre-line text-sm leading-relaxed text-slate-700 dark:text-slate-300">{excerpt}</p>
         <p className="font-mono text-xs text-slate-400 dark:text-slate-500">{sourceRef}</p>
+        {disclosureHref && (
+          <Link
+            to={disclosureHref}
+            className="inline-flex w-fit items-center gap-1.5 rounded-md border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/40 px-3 py-1.5 text-xs font-medium text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/40"
+          >
+            <FileText size={13} />
+            {t('company.panels.goToDisclosureAnalysis')}
+          </Link>
+        )}
       </DialogContent>
     </Dialog>
   );

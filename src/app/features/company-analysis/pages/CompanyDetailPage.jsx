@@ -31,6 +31,7 @@ import { Skeleton } from '../../../shared/components/ui/skeleton';
 import { hasDartOverviewData } from '../components/dart/dartDerive';
 import { latestValue } from '../lib/scoring';
 import { useStarredCompanies } from '../lib/useStarredCompanies';
+import { CompanyNameProvider } from '../lib/companyNameContext';
 import { usePageMeta } from '../../../shared/hooks/usePageMeta';
 
 const POLL_INTERVAL_MS = 12_000;
@@ -319,6 +320,7 @@ export function CompanyDetailPage() {
     : null;
 
   return (
+    <CompanyNameProvider name={company.name}>
     <div className="w-full">
       <IdentityStrip company={company} score={compositeScore} />
 
@@ -445,7 +447,12 @@ export function CompanyDetailPage() {
                   {riskError && (
                     <p className="text-sm text-red-500 dark:text-red-400">{riskError}</p>
                   )}
-                  {riskLoading && !riskAnalysis && <FindingsSkeleton />}
+                  {riskLoading && !riskAnalysis && (
+                    <>
+                      <AiAnalyzingOverlay />
+                      <FindingsSkeleton />
+                    </>
+                  )}
                   {riskAnalysis && ['preview', 'preparing_filings'].includes(riskAnalysis.status) && (
                     <div className="rounded-lg border border-blue-100 dark:border-blue-900 bg-blue-50/60 dark:bg-blue-950/30 px-4 py-6 text-center text-sm text-blue-700 dark:text-blue-300">
                       <p>{t(`company.risk.status.${riskAnalysis.status}`)}</p>
@@ -538,5 +545,6 @@ export function CompanyDetailPage() {
         onOpenChange={setInsufficientOpen}
       />
     </div>
+    </CompanyNameProvider>
   );
 }

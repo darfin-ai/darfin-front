@@ -265,6 +265,7 @@ export const company = {
       "AI가 공시에서 발견한 주요 변화와 판단 근거입니다. 각 항목의 원문 보기를 클릭하면 실제 공시 발췌문을 확인할 수 있습니다.",
     viewSource: "공시 원문",
     viewSourceFull: "공시 원문 보기",
+    goToDisclosureAnalysis: "이 공시 분석 보러가기",
     verification: "근거 확인",
     verificationEmpty: "왼쪽 근거 체인에서 항목을 선택하면 원문 발췌가 여기에 표시됩니다.",
     similar: "동일 업종 유사 기업",

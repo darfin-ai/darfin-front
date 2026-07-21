@@ -32,7 +32,6 @@ export const en = {
   footer: {
     terms: "Terms of service",
     privacy: "Privacy policy",
-    api: "API documentation",
     copyright: "© 2026 darfin. All rights reserved.",
   },
   prefs: {

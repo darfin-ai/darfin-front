@@ -265,6 +265,7 @@ export const company = {
       "Major changes the AI found in filings and the reasoning behind them. Click view source on any item to see the original excerpt.",
     viewSource: "View source",
     viewSourceFull: "View filing source",
+    goToDisclosureAnalysis: "View this filing's analysis",
     verification: "Source verification",
     verificationEmpty: "Select an item in the evidence chain on the left to see the source excerpt here.",
     similar: "Similar companies",

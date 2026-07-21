@@ -32,7 +32,6 @@ export const ko = {
   footer: {
     terms: "이용약관",
     privacy: "개인정보처리방침",
-    api: "API 연동 안내",
     copyright: "© 2026 darfin. All rights reserved.",
   },
   prefs: {

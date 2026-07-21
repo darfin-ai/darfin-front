@@ -324,9 +324,6 @@ export function Layout() {
             <Link to="/privacy" className="hover:text-slate-900 dark:hover:text-slate-100">
               {t("footer.privacy")}
             </Link>
-            <a href="mailto:hello@darfin.com" className="hover:text-slate-900 dark:hover:text-slate-100">
-              {t("footer.api")}
-            </a>
           </div>
         </div>
       </footer>
