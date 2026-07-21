@@ -11,7 +11,7 @@ import {
   UP, DOWN, SUB, INK, BRAND,
   won, wonShort, signPct, signNum, tone, timeAgo,
   Avatar, Card, Heart, Modal, primaryBtn, iconBtn, CandleChart, Stub, Skeleton, SkeletonText, displayStockName,
-  useTradingFormat,
+  useTradingFormat, LoginGate,
 } from '../components/ui.jsx';
 
 const PERIODS = [
@@ -238,7 +238,7 @@ function OrderResultModal({ result, onClose }) {
 }
 
 function OrderPanel({ stock, price, setPrice, priceType, setPriceType }) {
-  const { refreshPortfolio } = useStore();
+  const { state, refreshPortfolio } = useStore();
   const { t } = useLocale();
   const { won, wonShort, signPct, signNum, qtyShares } = useTradingFormat();
   const ts = tickSize(stock.price);
@@ -249,6 +249,7 @@ function OrderPanel({ stock, price, setPrice, priceType, setPriceType }) {
   const [qty, setQty] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [orderResult, setOrderResult] = useState(null);
+  const [orderError, setOrderError] = useState(null);
 
   const isBuy = tab === 'BUY';
   const isSell = tab === 'SELL';
@@ -263,6 +264,7 @@ function OrderPanel({ stock, price, setPrice, priceType, setPriceType }) {
   };
   // stock.code가 빠르게 바뀌면(연속 탐색) 이전 종목 응답이 늦게 도착해 새 종목 값을 덮어쓸 수 있어 취소 가드 필요
   useEffect(() => {
+    if (!state.isLoggedIn) { setAccountLoading(false); return; } // 비로그인은 위 게이트가 대신 렌더되므로 401 호출 자체를 안 보낸다
     let cancelled = false;
     setAccountLoading(true);
     Promise.allSettled([
@@ -270,8 +272,8 @@ function OrderPanel({ stock, price, setPrice, priceType, setPriceType }) {
       fetchPaperTradingHolding(stock.code).then(data => { if (!cancelled) setHolding(data); }).catch(() => { if (!cancelled) setHolding(null); }),
     ]).finally(() => { if (!cancelled) setAccountLoading(false); });
     return () => { cancelled = true; };
-  }, [tab, stock.code]);
-  useEffect(() => { setQty(0); }, [tab, stock.code]);
+  }, [tab, stock.code, state.isLoggedIn]);
+  useEffect(() => { setQty(0); setOrderError(null); }, [tab, stock.code]);
 
   const effPrice = priceType === 'market' ? stock.price : price;
   const priceValid = effPrice > 0; // 지정가를 0으로 지웠을 때 최대수량/제출이 뚫리는 걸 방지
@@ -287,6 +289,7 @@ function OrderPanel({ stock, price, setPrice, priceType, setPriceType }) {
   const submit = async () => {
     if (!canSubmit) return;
     setSubmitting(true);
+    setOrderError(null);
     const body = {
       stockCode: stock.code,
       orderType: priceType === 'market' ? 'MARKET' : 'LIMIT',
@@ -324,7 +327,8 @@ function OrderPanel({ stock, price, setPrice, priceType, setPriceType }) {
         balance: nextBalance,
         holding: nextHolding,
       });
-    } catch {
+    } catch (e) {
+      setOrderError(e?.response?.data?.message || t('trading.detail.orderFail', { side: isBuy ? t('trading.detail.buy') : t('trading.detail.sell') }));
     } finally {
       setSubmitting(false);
       setAccountLoading(false);
@@ -334,6 +338,15 @@ function OrderPanel({ stock, price, setPrice, priceType, setPriceType }) {
   const accent = isBuy ? UP : DOWN;
   const lblStyle = { fontSize: 14, color: SUB, fontWeight: 600, flexShrink: 0, width: 72 };
   const obStep = { width: 44, height: 48, flexShrink: 0, borderRadius: 10, border: '1px solid #E5E8EB', background: 'var(--trading-card, #fff)', fontSize: 20, fontWeight: 700, color: SUB, cursor: 'pointer' };
+
+  if (!state.isLoggedIn) {
+    return (
+      <Card style={{ padding: 20 }}>
+        <PanelTitle right={<span style={{ fontSize: 12, color: SUB, whiteSpace: 'nowrap' }}>{t('trading.detail.paperTrading')}</span>}>{t('trading.detail.generalOrder')}</PanelTitle>
+        <LoginGate />
+      </Card>
+    );
+  }
 
   return (
     <Card style={{ padding: 20 }}>
@@ -423,9 +436,15 @@ function OrderPanel({ stock, price, setPrice, priceType, setPriceType }) {
             ) : isBuy ? t('trading.detail.availableToOrder', { amount: won(cash) }) : t('trading.detail.ownedQty', { qty: ownedQty })}
           </div>
 
-          {!canSubmit && qty > 0 && (
+          {!accountLoading && !canSubmit && qty > 0 && (
             <div style={{ fontSize: 13, color: UP, fontWeight: 600, marginBottom: 12, textAlign: 'center' }}>
               {!priceValid ? t('trading.detail.enterPrice') : isBuy ? t('trading.detail.insufficientCash') : t('trading.detail.exceedsOwned')}
+            </div>
+          )}
+
+          {orderError && (
+            <div style={{ fontSize: 13, color: DOWN, fontWeight: 600, marginBottom: 12, textAlign: 'center' }}>
+              {orderError}
             </div>
           )}
 
