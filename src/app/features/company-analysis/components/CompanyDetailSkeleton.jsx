@@ -7,9 +7,9 @@ import { DartSectionNav } from './dart/DartSectionNav';
 import { DartGroupEyebrow } from './dart/DartSectionHeader';
 import { AiAnalyzingOverlay } from './AiAnalyzingOverlay';
 
-function PanelSkeleton({ lines = 3 }) {
+function PanelSkeleton({ lines = 3, className = '' }) {
   return (
-    <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4">
+    <div className={`rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 ${className}`}>
       <Skeleton className="h-5 w-32" />
       <div className="mt-4 space-y-2.5">
         {Array.from({ length: lines }).map((_, i) => (
@@ -102,7 +102,7 @@ export function CompanyDetailSkeleton({ tab, onTabChange }) {
               <DartSectionNav />
               <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[1fr_280px]">
                 <HeroStripSkeleton />
-                <PanelSkeleton lines={4} />
+                <PanelSkeleton lines={4} className="lg:h-64" />
               </div>
               <OverviewGroupSkeleton eyebrow={t('company.dart.groups.governance')} />
               <OverviewGroupSkeleton eyebrow={t('company.dart.groups.capital')} />

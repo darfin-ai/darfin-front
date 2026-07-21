@@ -259,6 +259,7 @@ export const company = {
     segments: "Business segments",
     shareholders: "Shareholders",
     recentFilings: "Recent reports",
+    noRecentFilings: "No recent periodic reports.",
     reasoning: "AI analysis evidence",
     reasoningDesc:
       "Major changes the AI found in filings and the reasoning behind them. Click view source on any item to see the original excerpt.",

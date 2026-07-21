@@ -259,6 +259,7 @@ export const company = {
     segments: "사업 부문 현황",
     shareholders: "주주 구성",
     recentFilings: "최근 보고서",
+    noRecentFilings: "최근 정기보고서가 없어요.",
     reasoning: "AI 분석 근거",
     reasoningDesc:
       "AI가 공시에서 발견한 주요 변화와 판단 근거입니다. 각 항목의 원문 보기를 클릭하면 실제 공시 발췌문을 확인할 수 있습니다.",

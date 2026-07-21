@@ -301,7 +301,6 @@ export function CompanyDetailPage() {
   }
 
   const { company, financials, financialsSeparate, recentFilings, dartOverview } = detail;
-  const isPreview = detail.preview === true;
   const showDartOverview = hasDartOverviewData(dartOverview);
   const activeGroups = [
     (dartOverview?.majorShareholders?.rows?.length || dartOverview?.majorShareholderChanges?.rows?.length) && 'dart-group-governance',
@@ -359,7 +358,7 @@ export function CompanyDetailPage() {
                     className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[1fr_280px]"
                   >
                     <DartOverviewHeroStrip dartOverview={dartOverview} />
-                    {!isPreview && <RecentFilingsPanel filings={recentFilings} />}
+                    <RecentFilingsPanel filings={recentFilings} />
                   </motion.div>
 
                   <motion.div
