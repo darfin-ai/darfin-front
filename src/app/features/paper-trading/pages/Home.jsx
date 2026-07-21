@@ -457,7 +457,8 @@ function StockPreviewCard({ stock: rawStock }) {
     const ctrl = new AbortController();
     setStatus('loading'); setCandles([]); setDates([]);
 
-    fetch(`http://localhost:8080/funds/stocks/${stockCode}/candles`, { signal: ctrl.signal })
+    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+    fetch(`${API_BASE_URL}/funds/stocks/${stockCode}/candles`, { signal: ctrl.signal })
       .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
       .then(data => {
         if (!Array.isArray(data) || data.length === 0) { setStatus('error'); return; }
