@@ -1,5 +1,5 @@
 import { useLocale } from '../../../shared/i18n';
-import { avatarLabel, avatarGradientForCompany } from '../lib/avatar';
+import { CompanyAvatar } from './CompanyAvatar';
 
 /**
  * @param {{
@@ -40,11 +40,7 @@ export function CompanySearchResults({ results, loading, isStarred, onSelect, em
                 onClick={() => onSelect(result)}
                 className="group flex w-full items-center gap-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-3 text-left transition-colors hover:border-blue-200 dark:hover:border-blue-800 hover:bg-blue-50/40 dark:hover:bg-blue-950/30"
               >
-                <span
-                  className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br text-xs font-semibold text-white ${avatarGradientForCompany(company)}`}
-                >
-                  {avatarLabel(company)}
-                </span>
+                <CompanyAvatar company={company} size={36} />
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-sm font-medium text-slate-900 dark:text-slate-100 group-hover:text-blue-700 dark:group-hover:text-blue-400">
                     {result.name}

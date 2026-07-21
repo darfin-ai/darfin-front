@@ -2,7 +2,7 @@ import { Link } from 'react-router';
 import { ArrowLeft } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useLocale } from '../../../shared/i18n';
-import { avatarLabel, avatarGradientForCompany } from '../lib/avatar';
+import { CompanyAvatar } from './CompanyAvatar';
 
 /**
  * @param {{ company: import('../../../../mocks/companyAnalysis/types').Company, score?: number | null }} props
@@ -28,12 +28,7 @@ export function IdentityStrip({ company, score = null }) {
 
         <div className="h-6 w-px shrink-0 bg-slate-200 dark:bg-slate-700" />
 
-        <span
-          className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br text-xs font-semibold text-white ${avatarGradientForCompany(company)}`}
-          aria-hidden="true"
-        >
-          {avatarLabel(company)}
-        </span>
+        <CompanyAvatar company={company} size={36} />
 
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">

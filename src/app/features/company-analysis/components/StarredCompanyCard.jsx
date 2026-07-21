@@ -1,7 +1,7 @@
 import { Link } from 'react-router';
 import { ChevronRight, Star } from 'lucide-react';
 import { useLocale } from '../../../shared/i18n';
-import { avatarLabel, avatarGradientForCompany } from '../lib/avatar';
+import { CompanyAvatar } from './CompanyAvatar';
 import { formatRelativeFilingAge } from '../lib/format';
 
 /**
@@ -21,11 +21,7 @@ export function StarredCompanyCard({ company, latestFilingDate, onUnstar }) {
       to={`/company/${company.corpCode}`}
       className="group flex items-center gap-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-3 transition-colors hover:border-blue-200 dark:hover:border-blue-800 hover:bg-blue-50/40 dark:hover:bg-blue-950/30"
     >
-      <span
-        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br text-xs font-semibold text-white ${avatarGradientForCompany(avatarCompany)}`}
-      >
-        {avatarLabel(avatarCompany)}
-      </span>
+      <CompanyAvatar company={avatarCompany} size={36} />
       <span className="min-w-0 flex-1">
         <span className="block truncate text-sm font-medium text-slate-900 dark:text-slate-100 group-hover:text-blue-700 dark:group-hover:text-blue-400">
           {company.name}

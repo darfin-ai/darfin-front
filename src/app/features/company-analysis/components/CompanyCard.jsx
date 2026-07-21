@@ -3,7 +3,7 @@ import { motion } from 'motion/react';
 import { useLocale } from '../../../shared/i18n';
 import { Badge } from '../../../shared/components/ui/badge';
 import { formatFilingDate } from '../lib/format';
-import { avatarLabel, avatarGradientForCompany } from '../lib/avatar';
+import { CompanyAvatar } from './CompanyAvatar';
 import { scoreComponentLabel } from '../lib/i18n';
 import { dominantScoreChange, changeLevel, CHANGE_LEVEL_STYLES } from '../lib/scoring';
 
@@ -30,12 +30,7 @@ export function CompanyCard({ company, scores, index = 0 }) {
       >
         <div className="flex items-start justify-between gap-3 pr-6">
           <div className="flex min-w-0 items-start gap-3">
-            <span
-              className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br text-xs font-semibold text-white ${avatarGradientForCompany(company)}`}
-              aria-hidden="true"
-            >
-              {avatarLabel(company)}
-            </span>
+            <CompanyAvatar company={company} size={36} />
             <div className="min-w-0">
               <h3 className="truncate text-base font-semibold text-slate-900 dark:text-slate-100 group-hover:text-blue-600 dark:group-hover:text-blue-400">
                 {company.name}
