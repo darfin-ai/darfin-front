@@ -5,6 +5,7 @@ import { useLocale } from '../../../shared/i18n';
 import { fetchCompanies, fetchCompanyDetail, fetchAiAnalysis, retryAiAnalysis, unlockAiAnalysis } from '../api/companyAnalysisApi';
 import { IdentityStrip } from '../components/IdentityStrip';
 import { CompanyDetailSkeleton } from '../components/CompanyDetailSkeleton';
+import { AiAnalyzingOverlay } from '../components/AiAnalyzingOverlay';
 import { SimilarCompaniesPanel } from '../components/SimilarCompaniesPanel';
 import { FinancialTrendCharts } from '../components/FinancialTrendCharts';
 import { RiskCategoryGrid } from '../components/RiskCategoryGrid';
