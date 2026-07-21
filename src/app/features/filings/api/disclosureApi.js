@@ -206,7 +206,7 @@ export async function generateSummary({ rceptNo, corpName, dartContext }) {
 }
 
 /**
- * AI 핵심 분석 생성("압축 -> 분석하기"). 재호출 시 서버가 기존 분석결과를 지우고 새로 채운다.
+ * AI 핵심 분석 생성("압축 -> 분석하기"). 이미 DB에 저장된 분석 결과가 있으면 그대로 반환한다(서버 측 캐시).
  * POST /api/analysis
  *
  * @param {object} params
