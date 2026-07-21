@@ -51,6 +51,7 @@ export const disclosure = {
     loading: "공시 정보를 불러오는 중입니다...",
     loadError: "공시 정보를 불러오지 못했습니다.",
     notFound: "공시 정보를 찾을 수 없습니다.",
+    deleted: "삭제되었거나 존재하지 않는 공시입니다.",
     backToSearch: "공시 통합검색으로 돌아가기",
     original: "공시 원문",
     originalShort: "원문",

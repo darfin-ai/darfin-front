@@ -513,7 +513,7 @@ export function CompanyDetailPage() {
                         quarters={riskAnalysis.quarters}
                         trajectories={riskAnalysis.trajectories}
                       />
-                      <DossierTimeline events={riskAnalysis.dossierEvents} />
+                      <DossierTimeline events={riskAnalysis.dossierEvents} companyName={company.name} />
                       <p className="text-[11px] text-slate-400 dark:text-slate-500">
                         {t('company.risk.disclaimer')}
                       </p>

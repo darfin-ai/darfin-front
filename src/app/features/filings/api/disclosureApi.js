@@ -72,7 +72,9 @@ export async function getDisclosureDetail(rceptNo) {
   const response = await fetch(`${API_BASE_URL}/api/disclosures/${encodeURIComponent(rceptNo)}`);
 
   if (!response.ok) {
-    throw new Error(`공시 상세 정보를 불러오지 못했습니다 (HTTP ${response.status})`);
+    const error = new Error(`공시 상세 정보를 불러오지 못했습니다 (HTTP ${response.status})`);
+    error.status = response.status;
+    throw error;
   }
 
   return response.json();

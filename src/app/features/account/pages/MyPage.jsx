@@ -93,6 +93,7 @@ export function MyPage() {
   const [billingHistory, setBillingHistory] = useState([]);
   const [billingLoading, setBillingLoading] = useState(true);
   const [cardRegistering, setCardRegistering] = useState(false);
+  const [methodDeleteError, setMethodDeleteError] = useState(null);
 
   const [isRefundModalOpen, setIsRefundModalOpen] = useState(false);
   const [refundReason, setRefundReason] = useState("");
@@ -210,10 +211,12 @@ export function MyPage() {
   };
 
   const handleDeleteMethod = async (id) => {
+    setMethodDeleteError(null);
     try {
       await deletePaymentMethod(id);
       loadBillingData();
     } catch (err) {
+      setMethodDeleteError(err?.message || t("account.mypage.billing.methodDeleteFailed"));
     }
   };
 
@@ -484,6 +487,9 @@ export function MyPage() {
     <div className="space-y-8">
       <div>
         <h2 className={`${SECTION_TITLE} mb-5`}>{t("account.mypage.billing.paymentMethodsTitle")}</h2>
+        {methodDeleteError && (
+          <p className="mb-3 text-xs font-medium text-red-600 dark:text-red-400">{methodDeleteError}</p>
+        )}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {paymentMethods.map((method) => (
             <div key={method.id} className={`${CARD} p-4 flex items-start justify-between gap-3`}>

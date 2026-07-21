@@ -63,6 +63,8 @@ export const company = {
     tabOverview: "Overview",
     tabAiAnalysis: "AI Analysis",
     tabFinancials: "Financials",
+    analyzingTitle: "Darfin AI is analyzing",
+    analyzingSubtitle: "Sorting through filings and financial data",
   },
   risk: {
     sectionTitle: "Risk status",

@@ -51,6 +51,7 @@ export const disclosure = {
     loading: "Loading filing details...",
     loadError: "Could not load filing details.",
     notFound: "Filing not found.",
+    deleted: "This filing has been deleted or does not exist.",
     backToSearch: "Back to filing search",
     original: "Original text",
     originalShort: "Source",

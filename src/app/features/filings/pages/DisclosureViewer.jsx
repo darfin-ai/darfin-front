@@ -46,7 +46,8 @@ import {
   getDisclosureDetail,
   getDartViewerUrl,
   getDisclosureOriginalText,
-  getDisclosureTerms
+  getDisclosureTerms,
+  searchDisclosures
 } from "../api/disclosureApi";
 import { RiskBadge, RiskBadgeGroup } from "../components/RiskBadge";
 import { OriginalDocument } from "../components/OriginalDocument";
@@ -128,12 +129,41 @@ export function DisclosureViewer() {
   const glossaryListRef = useRef(null);
 
   // ── 데이터 로딩 ──────────────────────────────────────────────
+  // 기업분석(darfin-company-analysis) 쪽 dossier 이벤트가 가리키는 rceptNo는
+  // 공시분석 쪽 disclosure 테이블에 아직 한 번도 수집되지 않았을 수 있다(두 파이프라인이 별도로 동작).
+  // 이 경우 404가 나면, ?company= 쿼리파라미터로 넘어온 회사명으로 최근 3년치를 자동수집(기존
+  // 공시검색의 auto-collect 로직 재사용)한 뒤 한 번 더 조회를 시도한다.
   useEffect(() => {
     let mounted = true;
     setIsLoading(true);
+    setLoadError(null);
+
+    const companyForCollect = searchParams.get("company");
+
     getDisclosureDetail(rceptNo)
       .then((d) => { if (mounted) setDisclosure(d); })
-      .catch((e) => { if (mounted) setLoadError(e.message ?? t("disclosure.viewer.loadError")); })
+      .catch(async (e) => {
+        let finalError = e;
+        if (e.status === 404 && companyForCollect) {
+          try {
+            const dateTo = new Date();
+            const dateFrom = new Date();
+            dateFrom.setFullYear(dateFrom.getFullYear() - 3);
+            await searchDisclosures({ companyName: companyForCollect, dateFrom, dateTo, size: 1 });
+            const retried = await getDisclosureDetail(rceptNo);
+            if (mounted) setDisclosure(retried);
+            return;
+          } catch (retryErr) {
+            // 자동수집 후에도 못 찾으면 그 시점의 에러를 최종 에러로 사용한다.
+            finalError = retryErr;
+          }
+        }
+        if (!mounted) return;
+        // 자동수집까지 시도했는데도 404면 DART에서 삭제/정정취소된 문서일 가능성이 높다.
+        setLoadError(
+          finalError.status === 404 ? t("disclosure.viewer.deleted") : (finalError.message ?? t("disclosure.viewer.loadError"))
+        );
+      })
       .finally(() => { if (mounted) setIsLoading(false); });
     return () => { mounted = false; };
   }, [rceptNo]);

@@ -63,6 +63,8 @@ export const company = {
     tabOverview: "개요",
     tabAiAnalysis: "AI 분석",
     tabFinancials: "재무 추이",
+    analyzingTitle: "Darfin AI가 분석 중입니다",
+    analyzingSubtitle: "공시와 재무 데이터를 정리하고 있어요",
   },
   risk: {
     sectionTitle: "리스크 상태",
