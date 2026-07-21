@@ -37,7 +37,6 @@ export function CapitalChangePanel({ section }) {
       <DartSectionHeader
         id="dart-capital-changes-heading"
         title={t('company.dart.panels.capitalChanges')}
-        sourceRef={section?.sourceRef}
         asOf={section?.asOf}
       />
       <DartCard>

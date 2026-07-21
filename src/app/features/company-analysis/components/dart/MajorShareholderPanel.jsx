@@ -74,7 +74,6 @@ export function MajorShareholderPanel({ section, minoritySection }) {
       <DartSectionHeader
         id="dart-major-shareholders-heading"
         title={t('company.dart.panels.majorShareholders')}
-        sourceRef={section?.sourceRef}
         asOf={section?.asOf}
       />
       <DartCard>

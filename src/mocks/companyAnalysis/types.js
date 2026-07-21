@@ -162,8 +162,9 @@
  */
 
 /**
- * The excerpt shown in a panel's "공시 원문 보기" dialog (see SourceExcerptDialog) —
- * shared shape for every `*SourceRef` field below.
+ * Source-filing metadata for a DART overview section — no longer rendered in the
+ * UI (the "공시 원문 보기" dialog was removed), kept only because the backend still
+ * sends it as part of each `*SourceRef` field below.
  * @typedef {Object} FilingExcerptRef
  * @property {string} sectionLabel
  * @property {string} excerpt

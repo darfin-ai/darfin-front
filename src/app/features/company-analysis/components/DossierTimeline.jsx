@@ -1,4 +1,3 @@
-import { Link } from 'react-router';
 import { motion, useReducedMotion } from 'motion/react';
 import { useLocale } from '../../../shared/i18n';
 import { RISK_CATEGORY_KEYS } from '../lib/riskStates';
@@ -13,9 +12,9 @@ const EVENT_STYLES = {
 /**
  * AI분석 — 도시에(dossier) 이벤트 타임라인. 단일 공시 분석이 못 잡는 시계열
  * 신호(주석 항목 소멸, 정정으로 인한 수치 변경 등)를 최신순으로 나열한다.
- * @param {{ events: import('../../../../mocks/companyAnalysis/types').DossierEvent[], companyName?: string }} props
+ * @param {{ events: import('../../../../mocks/companyAnalysis/types').DossierEvent[] }} props
  */
-export function DossierTimeline({ events, companyName }) {
+export function DossierTimeline({ events }) {
   const { t } = useLocale();
   const shouldReduceMotion = useReducedMotion();
   if (!events?.length) return null;
@@ -56,16 +55,6 @@ export function DossierTimeline({ events, companyName }) {
               {ev.detail?.summary && (
                 <p className="mt-0.5 text-xs text-slate-400 dark:text-slate-500">{ev.detail.summary}</p>
               )}
-              <Link
-                to={
-                  companyName
-                    ? `/disclosure/${ev.rceptNo}?company=${encodeURIComponent(companyName)}`
-                    : `/disclosure/${ev.rceptNo}`
-                }
-                className="mt-0.5 inline-block text-[11px] text-blue-600 dark:text-blue-400 hover:underline"
-              >
-                {t('company.risk.viewFiling')}
-              </Link>
             </div>
           </motion.li>
         ))}

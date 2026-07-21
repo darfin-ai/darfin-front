@@ -55,7 +55,6 @@ export function AuditOpinionPanel({ section }) {
       <DartSectionHeader
         id="dart-audit-heading"
         title={t('company.dart.panels.auditOpinion')}
-        sourceRef={section?.sourceRef}
         asOf={section?.asOf}
       />
       <DartCard>

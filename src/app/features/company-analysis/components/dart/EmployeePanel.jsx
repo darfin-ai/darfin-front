@@ -97,7 +97,6 @@ export function EmployeePanel({ section }) {
       <DartSectionHeader
         id="dart-employees-heading"
         title={t('company.dart.panels.employees')}
-        sourceRef={section?.sourceRef}
         asOf={section?.asOf}
       />
       <DartCard>

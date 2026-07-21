@@ -60,7 +60,6 @@ export function DartDividendPanel({ section, meta }) {
       <DartSectionHeader
         id="dart-dividend-heading"
         title={t('company.dart.panels.dividend')}
-        sourceRef={section?.sourceRef}
       />
       <DartCard>
         {empty ? (

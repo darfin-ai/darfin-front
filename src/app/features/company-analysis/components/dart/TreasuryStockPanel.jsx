@@ -59,7 +59,6 @@ export function TreasuryStockPanel({ section }) {
       <DartSectionHeader
         id="dart-treasury-heading"
         title={t('company.dart.panels.treasuryStock')}
-        sourceRef={section?.sourceRef}
         asOf={section?.asOf}
       />
       <DartCard>

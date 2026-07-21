@@ -32,7 +32,6 @@ import { Skeleton } from '../../../shared/components/ui/skeleton';
 import { hasDartOverviewData } from '../components/dart/dartDerive';
 import { latestValue } from '../lib/scoring';
 import { useStarredCompanies } from '../lib/useStarredCompanies';
-import { CompanyNameProvider } from '../lib/companyNameContext';
 import { usePageMeta } from '../../../shared/hooks/usePageMeta';
 
 const POLL_INTERVAL_MS = 12_000;
@@ -321,7 +320,6 @@ export function CompanyDetailPage() {
     : null;
 
   return (
-    <CompanyNameProvider name={company.name}>
     <div className="w-full">
       <IdentityStrip company={company} score={compositeScore} />
 
@@ -521,7 +519,7 @@ export function CompanyDetailPage() {
                         quarters={riskAnalysis.quarters}
                         trajectories={riskAnalysis.trajectories}
                       />
-                      <DossierTimeline events={riskAnalysis.dossierEvents} companyName={company.name} />
+                      <DossierTimeline events={riskAnalysis.dossierEvents} />
                       <p className="text-[11px] text-slate-400 dark:text-slate-500">
                         {t('company.risk.disclaimer')}
                       </p>
@@ -546,6 +544,5 @@ export function CompanyDetailPage() {
         onOpenChange={setInsufficientOpen}
       />
     </div>
-    </CompanyNameProvider>
   );
 }

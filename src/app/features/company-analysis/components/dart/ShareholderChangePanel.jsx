@@ -24,7 +24,6 @@ export function ShareholderChangePanel({ section }) {
       <DartSectionHeader
         id="dart-shareholder-changes-heading"
         title={t('company.dart.panels.shareholderChanges')}
-        sourceRef={section?.sourceRef}
         asOf={section?.asOf}
       />
       <DartCard>

@@ -44,7 +44,6 @@ export function ExecutivePanel({ section }) {
       <DartSectionHeader
         id="dart-executives-heading"
         title={t('company.dart.panels.executives')}
-        sourceRef={section?.sourceRef}
         asOf={section?.asOf}
       />
       <DartCard>

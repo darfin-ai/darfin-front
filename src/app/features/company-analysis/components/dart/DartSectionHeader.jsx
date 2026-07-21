@@ -1,14 +1,10 @@
 import { useLocale } from '../../../../shared/i18n';
-import { SourceExcerptDialog } from '../SourceExcerptDialog';
-
-const SOURCE_PILL_CLASS =
-  'rounded-full border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-2.5 py-1 text-xs font-medium text-slate-600 dark:text-slate-400 hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700 dark:hover:border-blue-800 dark:hover:bg-blue-950/40 dark:hover:text-blue-300';
 
 const AS_OF_PILL_CLASS =
   'rounded-full border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/40 px-2.5 py-1 text-xs font-medium text-amber-700 dark:text-amber-400';
 
 /**
- * 패널 공통 헤더: 제목 + (있으면) 과거 공시 출처 pill + 공시 원문 보기 pill.
+ * 패널 공통 헤더: 제목 + (있으면) 과거 공시 출처 pill.
  * @param {{
  *   id: string,
  *   title: string,
@@ -16,7 +12,7 @@ const AS_OF_PILL_CLASS =
  *   asOf?: import('../../../../../mocks/companyAnalysis/types').DartSectionAsOf,
  * }} props
  */
-export function DartSectionHeader({ id, title, sourceRef, asOf }) {
+export function DartSectionHeader({ id, title, asOf }) {
   const { t } = useLocale();
   return (
     <div className="mb-4 flex items-center justify-between gap-3">
@@ -28,15 +24,6 @@ export function DartSectionHeader({ id, title, sourceRef, asOf }) {
           <span className={AS_OF_PILL_CLASS} title={t('company.dart.asOf.tooltip')}>
             {asOf.bsnsYear}{t('company.dart.asOf.yearSuffix')} {t(`company.dart.reportCode.${asOf.reprtCode}`)} {t('company.dart.asOf.suffix')}
           </span>
-        )}
-        {sourceRef && (
-          <SourceExcerptDialog
-            sectionLabel={sourceRef.sectionLabel}
-            excerpt={sourceRef.excerpt}
-            sourceRef={sourceRef.sourceRef}
-            label={t('company.panels.viewSourceFull')}
-            className={SOURCE_PILL_CLASS}
-          />
         )}
       </div>
     </div>

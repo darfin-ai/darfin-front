@@ -72,7 +72,6 @@ export const company = {
     timelineTitle: "Filing event timeline",
     watchNext: "What to watch next quarter",
     streak: "{count} quarters in a row",
-    viewFiling: "View filing",
     fsDivNote: {
       CFS: "Consolidated basis",
       OFS: "Separate basis (no consolidated statements)",
@@ -263,9 +262,7 @@ export const company = {
     reasoning: "AI analysis evidence",
     reasoningDesc:
       "Major changes the AI found in filings and the reasoning behind them. Click view source on any item to see the original excerpt.",
-    viewSource: "View source",
     viewSourceFull: "View filing source",
-    goToDisclosureAnalysis: "View this filing's analysis",
     verification: "Source verification",
     verificationEmpty: "Select an item in the evidence chain on the left to see the source excerpt here.",
     similar: "Similar companies",
@@ -292,7 +289,6 @@ export const company = {
     selectStatement: "Select financial statement",
     other: "Other",
     qoqChange: "QoQ",
-    sourceExcerpt: "Filing excerpt",
     newCount: "{n} new",
     analyzing: "Analyzing...",
     newRisks: "{n} new",

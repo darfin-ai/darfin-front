@@ -72,7 +72,6 @@ export const company = {
     timelineTitle: "공시 이벤트 타임라인",
     watchNext: "차기 분기 확인 사항",
     streak: "{count}분기 연속",
-    viewFiling: "공시 원문 보기",
     fsDivNote: {
       CFS: "연결재무제표 기준",
       OFS: "별도재무제표 기준 (연결 미공시)",
@@ -263,9 +262,7 @@ export const company = {
     reasoning: "AI 분석 근거",
     reasoningDesc:
       "AI가 공시에서 발견한 주요 변화와 판단 근거입니다. 각 항목의 원문 보기를 클릭하면 실제 공시 발췌문을 확인할 수 있습니다.",
-    viewSource: "공시 원문",
     viewSourceFull: "공시 원문 보기",
-    goToDisclosureAnalysis: "이 공시 분석 보러가기",
     verification: "근거 확인",
     verificationEmpty: "왼쪽 근거 체인에서 항목을 선택하면 원문 발췌가 여기에 표시됩니다.",
     similar: "동일 업종 유사 기업",
@@ -292,7 +289,6 @@ export const company = {
     selectStatement: "재무제표 선택",
     other: "기타",
     qoqChange: "전분기 대비",
-    sourceExcerpt: "공시 원문 발췌",
     newCount: "{n}건 신규",
     analyzing: "분석 중...",
     newRisks: "{n}건 신규",

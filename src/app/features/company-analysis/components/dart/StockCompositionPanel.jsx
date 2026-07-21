@@ -79,7 +79,6 @@ export function StockCompositionPanel({ section }) {
       <DartSectionHeader
         id="dart-stock-composition-heading"
         title={t('company.dart.panels.stockComposition')}
-        sourceRef={section?.sourceRef}
         asOf={section?.asOf}
       />
       <DartCard>
