@@ -281,7 +281,8 @@ function OrderPanel({ stock, price, setPrice, priceType, setPriceType }) {
   const ownedQty = holding?.quantity ?? 0;
   const maxQty = isBuy ? (priceValid ? Math.floor(cash / effPrice) : 0) : ownedQty;
   const total = qty * effPrice;
-  const canSubmit = !submitting && qty > 0 && priceValid && (isBuy ? total <= cash : qty <= ownedQty);
+  const isValidOrder = qty > 0 && priceValid && (isBuy ? total <= cash : qty <= ownedQty);
+  const canSubmit = !submitting && isValidOrder;
 
   const stepPrice = (d) => setPrice(p => Math.max(ts, Math.round((p + d * ts) / ts) * ts));
   const ratio = (r) => setQty(Math.max(0, Math.floor(maxQty * r)));
@@ -436,7 +437,13 @@ function OrderPanel({ stock, price, setPrice, priceType, setPriceType }) {
             ) : isBuy ? t('trading.detail.availableToOrder', { amount: won(cash) }) : t('trading.detail.ownedQty', { qty: ownedQty })}
           </div>
 
-          {!accountLoading && !canSubmit && qty > 0 && (
+          {submitting && (
+            <div style={{ fontSize: 13, color: SUB, fontWeight: 600, marginBottom: 12, textAlign: 'center' }}>
+              {isBuy ? t('trading.detail.buyProcessing') : t('trading.detail.sellProcessing')}
+            </div>
+          )}
+
+          {!submitting && !accountLoading && !isValidOrder && qty > 0 && (
             <div style={{ fontSize: 13, color: UP, fontWeight: 600, marginBottom: 12, textAlign: 'center' }}>
               {!priceValid ? t('trading.detail.enterPrice') : isBuy ? t('trading.detail.insufficientCash') : t('trading.detail.exceedsOwned')}
             </div>
@@ -451,7 +458,7 @@ function OrderPanel({ stock, price, setPrice, priceType, setPriceType }) {
           <button onClick={submit} disabled={!canSubmit} style={{
             width: '100%', height: 54, borderRadius: 14, border: 'none', fontSize: 17, fontWeight: 800, cursor: canSubmit ? 'pointer' : 'not-allowed',
             background: canSubmit ? accent : '#E5E8EB', color: canSubmit ? '#fff' : '#B0B8C1' }}>
-            {submitting ? t('trading.detail.processing') : qty > 0 ? (isBuy ? t('trading.detail.buySubmit', { amount: won(total) }) : t('trading.detail.sellSubmit', { amount: won(total) })) : (isBuy ? t('trading.detail.buyAction') : t('trading.detail.sellAction'))}
+            {submitting ? (isBuy ? t('trading.detail.buyProcessing') : t('trading.detail.sellProcessing')) : qty > 0 ? (isBuy ? t('trading.detail.buySubmit', { amount: won(total) }) : t('trading.detail.sellSubmit', { amount: won(total) })) : (isBuy ? t('trading.detail.buyAction') : t('trading.detail.sellAction'))}
           </button>
         </>
       )}
