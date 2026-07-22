@@ -8,7 +8,7 @@ export function TradingRoot() {
   const { isLoggedIn, logout } = useAuth();
   const { t } = useLocale();
 
-  usePageMeta({ title: `${t("nav.trading")} - darfin`, noindex: true });
+  usePageMeta({ title: `${t("nav.trading")} - Darfin`, noindex: true });
   return (
     <StoreProvider initialLoggedIn={isLoggedIn} onLogout={logout}>
       <TradingApp />
