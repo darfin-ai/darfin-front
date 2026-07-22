@@ -1354,6 +1354,8 @@ function WalkthroughRow({ item, index, Mockup, link }) {
   const { ref: mockupRef, active, hoverHandlers } = useMockupActive({ amount: 0.5 });
   const reduceMotion = useReducedMotion();
   const textOnRight = index % 2 === 1;
+  const navigate = useNavigate();
+  const { isLoggedIn } = useAuth();
 
   return (
     <div
@@ -1378,7 +1380,16 @@ function WalkthroughRow({ item, index, Mockup, link }) {
             </li>
           ))}
         </ul>
-        <Link to={link} className={LINK_ACTION}>
+        <Link
+          to={link}
+          className={LINK_ACTION}
+          onClick={(e) => {
+            if (!isLoggedIn && link !== "/trading") {
+              e.preventDefault();
+              navigate("/login");
+            }
+          }}
+        >
           {item.cta} <ChevronRight size={15} />
         </Link>
       </motion.div>
@@ -1596,7 +1607,16 @@ export function Home() {
           </div>
 
           <div className="mt-6 text-center">
-            <Link to="/company" className={LINK_ACTION}>
+            <Link
+              to="/company"
+              className={LINK_ACTION}
+              onClick={(e) => {
+                if (!isLoggedIn) {
+                  e.preventDefault();
+                  navigate("/login");
+                }
+              }}
+            >
               {t("landing.lenses.cta")} <ChevronRight size={15} />
             </Link>
           </div>
